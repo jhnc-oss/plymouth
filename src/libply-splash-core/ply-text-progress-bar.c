@@ -194,6 +194,17 @@ ply_text_progress_bar_draw (ply_text_progress_bar_t *progress_bar)
                 double f;
 
                 f = (double) i / (double) width;
+#ifdef PLY_ENABLE_OPENSUSE_COLOR_THEME
+                if (f < white_fraction)
+                        ply_text_display_set_background_color (progress_bar->display,
+                                                               PLY_TERMINAL_COLOR_LEMON);
+                else if (f < blue_fraction)
+                        ply_text_display_set_background_color (progress_bar->display,
+                                                               PLY_TERMINAL_COLOR_SHAMROCK);
+                else if (f < brown_fraction)
+                        ply_text_display_set_background_color (progress_bar->display,
+                                                               PLY_TERMINAL_COLOR_PINE);
+#else
                 if (f < white_fraction)
                         ply_text_display_set_background_color (progress_bar->display,
                                                                PLY_TERMINAL_COLOR_WHITE);
@@ -203,6 +214,7 @@ ply_text_progress_bar_draw (ply_text_progress_bar_t *progress_bar)
                 else if (f < brown_fraction)
                         ply_text_display_set_background_color (progress_bar->display,
                                                                PLY_TERMINAL_COLOR_BROWN);
+#endif
                 else
                         break;
 
@@ -213,6 +225,17 @@ ply_text_progress_bar_draw (ply_text_progress_bar_t *progress_bar)
                                                PLY_TERMINAL_COLOR_BLACK);
 
         if (brown_fraction > 0.5) {
+#ifdef PLY_ENABLE_OPENSUSE_COLOR_THEME
+                if (white_fraction > 0.875)
+                        ply_text_display_set_foreground_color (progress_bar->display,
+                                                               PLY_TERMINAL_COLOR_LEMON);
+                else if (blue_fraction > 0.66)
+                        ply_text_display_set_foreground_color (progress_bar->display,
+                                                               PLY_TERMINAL_COLOR_SHAMROCK);
+                else
+                        ply_text_display_set_foreground_color (progress_bar->display,
+                                                               PLY_TERMINAL_COLOR_PINE);
+#else
                 if (white_fraction > 0.875)
                         ply_text_display_set_foreground_color (progress_bar->display,
                                                                PLY_TERMINAL_COLOR_WHITE);
@@ -222,6 +245,7 @@ ply_text_progress_bar_draw (ply_text_progress_bar_t *progress_bar)
                 else
                         ply_text_display_set_foreground_color (progress_bar->display,
                                                                PLY_TERMINAL_COLOR_BROWN);
+#endif
 
                 ply_text_display_set_cursor_position (progress_bar->display,
                                                       progress_bar->column + width,

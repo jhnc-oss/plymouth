@@ -110,7 +110,11 @@ if test x$enable_tracing = xyes; then
   AC_DEFINE(PLY_ENABLE_TRACING, 1, [Build in verbose debug tracing spew])
 fi
 
-AC_ARG_ENABLE(gdm-transition, AS_HELP_STRING([--enable-gdm-transition],[enable smooth transition to gdm]),enable_gdm_transition=$enableval,enable_gdm_transition=no)
+AC_ARG_ENABLE(opensuse-color-theme, AS_HELP_STRING([--enable-opensuse-color-theme],[use opensuse color to display step bar and fonts]),enable_opensuse_color_theme=$enableval,enable_opensuse_color_theme=no)
+
+if test x$enable_opensuse_color_theme = xyes; then
+  AC_DEFINE(PLY_ENABLE_OPENSUSE_COLOR_THEME, 1, [use opensuse color to display step bar and fonts.])
+fi
 
 AC_ARG_ENABLE(upstart-monitoring, AS_HELP_STRING([--enable-upstart-monitoring],[listen for messages on the Upstart D-Bus interface]),enable_upstart_monitoring=$enableval,enable_upstart_monitoring=no)
 if test x$enable_upstart_monitoring = xyes; then

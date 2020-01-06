@@ -83,12 +83,22 @@ ply_text_step_bar_draw (ply_text_step_bar_t *step_bar)
 
         cur = step_bar->percent_done * step_bar->number_of_columns;
         for (i = 0; i < step_bar->number_of_columns; i++) {
+#ifdef PLY_ENABLE_OPENSUSE_COLOR_THEME
+		if (i == cur)
+                        ply_text_display_set_foreground_color (step_bar->display,
+                                                               PLY_TERMINAL_COLOR_LEMON);
+                else
+                        ply_text_display_set_foreground_color (step_bar->display,
+                                                               PLY_TERMINAL_COLOR_PINE);
+
+#else
                 if (i == cur)
                         ply_text_display_set_foreground_color (step_bar->display,
                                                                PLY_TERMINAL_COLOR_WHITE);
                 else
                         ply_text_display_set_foreground_color (step_bar->display,
                                                                PLY_TERMINAL_COLOR_BROWN);
+#endif
 
                 /* U+25A0 BLACK SQUARE */
                 ply_text_display_write (step_bar->display, "%s", "\xe2\x96\xa0");

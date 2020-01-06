@@ -178,6 +178,15 @@ view_start_animation (view_t *view)
         ply_terminal_set_color_hex_value (terminal,
                                           PLY_TERMINAL_COLOR_BROWN,
                                           0x979a9b);
+        ply_terminal_set_color_hex_value (terminal,
+                                          PLY_TERMINAL_COLOR_LEMON,
+                                          0x40ff00);
+        ply_terminal_set_color_hex_value (terminal,
+                                          PLY_TERMINAL_COLOR_SHAMROCK,
+                                          0x20a000);
+        ply_terminal_set_color_hex_value (terminal,
+                                          PLY_TERMINAL_COLOR_PINE,
+                                          0x106000);
 
         ply_text_display_set_background_color (view->display,
                                                PLY_TERMINAL_COLOR_BLACK);
