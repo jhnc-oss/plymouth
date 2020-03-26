@@ -56,3 +56,8 @@ ProgressBarShowPercentComplete=true
 UseProgressBar=true
 _Title=Upgrading Firmware...
 _SubTitle=Do not turn off your computer
+
+[integrity-check]
+UseFirmwareBackground=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true

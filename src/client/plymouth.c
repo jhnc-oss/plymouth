@@ -788,6 +788,7 @@ on_change_mode_request (state_t    *state,
         bool updates = false;
         bool system_upgrade = false;
         bool firmware_upgrade = false;
+        bool integrity_check = false;
         const char *mode = NULL;
 
         ply_command_parser_get_command_options (state->command_parser,
@@ -798,6 +799,7 @@ on_change_mode_request (state_t    *state,
                                                 "updates", &updates,
                                                 "system-upgrade", &system_upgrade,
                                                 "firmware-upgrade", &firmware_upgrade,
+                                                "integrity-check", &integrity_check,
                                                 NULL);
 
         if (boot_up)
@@ -812,6 +814,8 @@ on_change_mode_request (state_t    *state,
                 mode = "system-upgrade";
         else if (firmware_upgrade)
                 mode = "firmware-upgrade";
+        else if (integrity_check)
+                mode = "integrity-check";
 
         if (mode) {
                 ply_boot_client_change_mode (state->client, mode,
@@ -906,6 +910,8 @@ main (int    argc,
                                         "system-upgrade", "Upgrading the OS to a new version",
                                         PLY_COMMAND_OPTION_TYPE_FLAG,
                                         "firmware-upgrade", "Upgrading firmware to a new version",
+                                        PLY_COMMAND_OPTION_TYPE_FLAG,
+                                        "integrity-check", "Checking filesystem or installation media integrity",
                                         PLY_COMMAND_OPTION_TYPE_FLAG,
                                         NULL);
 
