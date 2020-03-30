@@ -2068,7 +2068,7 @@ main (int    argc,
         state_t state = { 0 };
         int exit_code;
         bool should_help = false;
-        bool no_boot_log = false;
+        bool no_boot_log = true;
         bool no_daemon = false;
         bool debug = false;
         bool attach_to_session;
