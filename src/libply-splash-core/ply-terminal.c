@@ -954,6 +954,8 @@ ply_terminal_activate_vt (ply_terminal_t *terminal)
         if (terminal->is_active)
                 return true;
 
+        ply_terminal_watch_for_vt_changes (terminal);
+
         if (!set_active_vt (terminal, terminal->vt_number)) {
                 ply_trace ("unable to set active vt to %d: %m",
                            terminal->vt_number);
@@ -1008,6 +1010,13 @@ ply_terminal_deactivate_vt (ply_terminal_t *terminal)
         } else {
                 ply_trace ("terminal for vt %d is inactive", terminal->vt_number);
         }
+
+        /* Due to stopping watching for changes,
+         * do what on_leave_vt callback does,
+         * except for ioctl call
+         */
+        terminal->is_active = false;
+        do_active_vt_changed (terminal);
 
         if (!deallocate_vt (terminal, old_vt_number)) {
                 ply_trace ("couldn't deallocate vt %d: %m", old_vt_number);

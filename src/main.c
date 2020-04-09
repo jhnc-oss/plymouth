@@ -130,7 +130,7 @@ static void attach_splash_to_devices (state_t           *state,
 static bool attach_to_running_session (state_t *state);
 static void detach_from_running_session (state_t *state);
 static void on_escape_pressed (state_t *state);
-static void dump_details_and_quit_splash (state_t *state);
+static void dump_details_and_quit_splash (state_t *state, int keep_terminal_fd);
 static void update_display (state_t *state);
 
 static void on_error_message (ply_buffer_t *debug_buffer,
@@ -920,7 +920,7 @@ on_show_splash (state_t *state)
 
         if (plymouth_should_ignore_show_splash_calls (state)) {
                 ply_trace ("show splash called while ignoring show splash calls");
-                dump_details_and_quit_splash (state);
+                dump_details_and_quit_splash (state, true);
                 return;
         }
 
@@ -1113,7 +1113,7 @@ load_devices (state_t                   *state,
 }
 
 static void
-quit_splash (state_t *state)
+quit_splash (state_t *state, int keep_terminal_fd)
 {
         ply_trace ("quitting splash");
         if (state->boot_splash != NULL) {
@@ -1126,9 +1126,15 @@ quit_splash (state_t *state)
 
         if (state->local_console_terminal != NULL) {
                 if (!state->should_retain_splash) {
-                        ply_trace ("Not retaining splash, so deallocating VT");
+                        if (!keep_terminal_fd) {
+                            ply_trace ("Not retaining splash, so deallocating VT");
+                        }
+
                         ply_terminal_deactivate_vt (state->local_console_terminal);
-                        ply_terminal_close (state->local_console_terminal);
+
+                        if (!keep_terminal_fd) {
+                            ply_terminal_close (state->local_console_terminal);
+                        }
                 }
         }
 
@@ -1155,13 +1161,13 @@ hide_splash (state_t *state)
 }
 
 static void
-dump_details_and_quit_splash (state_t *state)
+dump_details_and_quit_splash (state_t *state, int keep_terminal_fd)
 {
         state->showing_details = false;
         toggle_between_splash_and_details (state);
 
         hide_splash (state);
-        quit_splash (state);
+        quit_splash (state, keep_terminal_fd);
 }
 
 static void
@@ -1174,7 +1180,7 @@ on_hide_splash (state_t *state)
                 return;
 
         ply_trace ("hiding boot splash");
-        dump_details_and_quit_splash (state);
+        dump_details_and_quit_splash (state, true);
 }
 
 static void
@@ -1251,7 +1257,7 @@ on_boot_splash_idle (state_t *state)
                 }
 
                 ply_trace ("quitting splash");
-                quit_splash (state);
+                quit_splash (state, false);
                 ply_trace ("quitting program");
                 quit_program (state);
         } else if (state->deactivate_trigger != NULL) {
@@ -1372,7 +1378,7 @@ on_quit (state_t       *state,
         if (state->is_inactive && !retain_splash) {
                 /* We've been deactivated and X failed to start
                  */
-                dump_details_and_quit_splash (state);
+                dump_details_and_quit_splash (state, false);
                 quit_program (state);
         } else if (state->boot_splash != NULL) {
                 if (!state->splash_is_becoming_idle) {

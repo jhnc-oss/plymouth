@@ -1578,6 +1578,16 @@ handle_change_event (ply_renderer_backend_t *backend)
         return ret;
 }
 
+static void
+activate_vt (ply_renderer_backend_t *backend)
+{
+        assert (backend != NULL);
+
+        if ((backend->terminal != NULL) && (!ply_terminal_is_active (backend->terminal))) {
+                ply_terminal_activate_vt (backend->terminal);
+        }
+}
+
 static bool
 map_to_device (ply_renderer_backend_t *backend)
 {
@@ -1869,6 +1879,7 @@ ply_renderer_backend_get_interface (void)
                 .get_panel_properties         = get_panel_properties,
                 .get_capslock_state           = get_capslock_state,
                 .get_keymap                   = get_keymap,
+                .activate_vt                  = activate_vt,
         };
 
         return &plugin_interface;

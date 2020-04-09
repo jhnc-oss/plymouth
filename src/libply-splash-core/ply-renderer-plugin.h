@@ -76,6 +76,7 @@ typedef struct
                                      int                         *scale);
         bool (*get_capslock_state)(ply_renderer_backend_t *backend);
         const char * (*get_keymap)(ply_renderer_backend_t *backend);
+        void (*activate_vt)(ply_renderer_backend_t *backend);
 } ply_renderer_plugin_interface_t;
 
 #endif /* PLY_RENDERER_PLUGIN_H */

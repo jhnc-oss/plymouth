@@ -208,8 +208,13 @@ ply_renderer_map_to_device (ply_renderer_t *renderer)
         assert (renderer != NULL);
         assert (renderer->plugin_interface != NULL);
 
-        if (renderer->is_mapped)
+        if (renderer->is_mapped) {
+                if (renderer->plugin_interface->activate_vt != NULL) {
+                        renderer->plugin_interface->activate_vt (renderer->backend);
+                }
+
                 return true;
+        }
 
         renderer->is_mapped = renderer->plugin_interface->map_to_device (renderer->backend);
 
