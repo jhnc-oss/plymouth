@@ -2,15 +2,15 @@
 
 NAMESPACE="Ply"
 AUTHOR="YOUR NAME <youremail@here.com>"
-#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 uppercase ()
 {
-  echo "${1}" | tr 'a-z' 'A-Z'
+  echo "${1}" | tr '[:lower:]' '[:upper:]'
 }
 
 lowercase ()
 {
-  echo "${1}" | tr 'A-Z' 'a-z'
+  echo "${1}" | tr '[:upper:]' '[:lower:]'
 }
 
 change_character ()
@@ -23,29 +23,31 @@ delete_character ()
   echo "${1}" | tr -d "${2}"
 }
 
-#-----------------------------------------------------------------------------
-MACRO_NAMESPACE="$(change_character $(uppercase ${NAMESPACE}) '-' '_')"
-METHOD_NAMESPACE="$(change_character $(lowercase ${NAMESPACE}) '-' '_')"
+#-----------------------------------------------------------------------------
+MACRO_NAMESPACE="$(change_character "$(uppercase "${NAMESPACE}")" '-' '_')"
+METHOD_NAMESPACE="$(change_character "$(lowercase "${NAMESPACE}")" '-' '_')"
 
-OBJECT_NAME="$(delete_character ${1} '-')"
-MACRO_OBJECT_NAME="$(change_character $(uppercase ${1}) '-' '_')"
-METHOD_OBJECT_NAME="$(change_character $(lowercase ${1}) '-' '_')"
-FULL_OBJECT_NAME="$(delete_character ${NAMESPACE} '-')${OBJECT_NAME}"
-SHORT_OBJECT_NAME="$(lowercase $(echo ${1} | awk -F- '{print $NF}'))"
+OBJECT_NAME="$(delete_character "${1}" '-')"
+MACRO_OBJECT_NAME="$(change_character "$(uppercase "${1}")" '-' '_')"
+METHOD_OBJECT_NAME="$(change_character "$(lowercase "${1}")" '-' '_')"
+FULL_OBJECT_NAME="$(delete_character "${NAMESPACE}" '-')""${OBJECT_NAME}"
+SHORT_OBJECT_NAME="$(lowercase "$(echo "${1}" | awk -F- '{print $NF}')")"
 
-HEADER_FILENAME="$(lowercase ${NAMESPACE}-${1}).h"
-HEADER_GUARD="$(change_character $(change_character $(uppercase ${HEADER_FILENAME}) '-' '_') '.' '_')" 
+HEADER_FILENAME="$(lowercase "${NAMESPACE}"-"${1}")".h
+HEADER_GUARD="$(change_character "$(change_character "$(uppercase "${HEADER_FILENAME}")" '-' '_')" '.' '_')"
 
-SOURCE_FILENAME="$(lowercase ${NAMESPACE}-${1}).c"
+SOURCE_FILENAME="$(lowercase "${NAMESPACE}"-"${1}")".c
 
-MACRO_PREFIX="${MACRO_NAMESPACE}_${MACRO_OBJECT_NAME}"
-METHOD_PREFIX="${METHOD_NAMESPACE}_${METHOD_OBJECT_NAME}"
+MACRO_PREFIX="${MACRO_NAMESPACE}"_"${MACRO_OBJECT_NAME}"
+METHOD_PREFIX="${METHOD_NAMESPACE}"_"${METHOD_OBJECT_NAME}"
 
-ERROR_QUARK="${METHOD_NAMESPACE}-$(lowercase ${1})"
-HUMAN_READABLE_NAME=$(change_character $(lowercase ${1}) '-' ' ')
+ERROR_QUARK="${METHOD_NAMESPACE}"-"$(lowercase "${1}")"
+HUMAN_READABLE_NAME="$(change_character "$(lowercase "${1}")" '-' ' ')"
 
-#-----------------------------------------------------------------------------
-cat <<  > ${HEADER_FILENAME}
+declare -x HUMAN_READABLE_NAME # Variable HUMAN_READABLE_NAME appears unused in this script.
+
+#-----------------------------------------------------------------------------
+cat << EOF > "${HEADER_FILENAME}"
 /* vim: ts=4 sw=2 expandtab autoindent cindent
  * ${HEADER_FILENAME} - ${2}
  *
@@ -64,10 +66,11 @@ cat <<  > ${HEADER_FILENAME}
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.  
+ * 02111-1307, USA.
  *
  * Written By: ${AUTHOR}
  */
+
 #ifndef ${HEADER_GUARD}
 #define ${HEADER_GUARD}
 
@@ -121,9 +124,10 @@ ${FULL_OBJECT_NAME} *${METHOD_PREFIX}_new (void) G_GNUC_MALLOC;
 
 G_END_DECLS
 #endif /* ${HEADER_GUARD} */
-
-#-----------------------------------------------------------------------------
-cat <<  > ${SOURCE_FILENAME}
+EOF
+
+#-----------------------------------------------------------------------------
+cat << EOF  > "${SOURCE_FILENAME}"
 /* vim: ts=4 sw=2 expandtab autoindent cindent
  * ${SOURCE_FILENAME} - ${2}
  *
@@ -142,10 +146,11 @@ cat <<  > ${SOURCE_FILENAME}
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.  
+ * 02111-1307, USA.
  *
  * Written by: ${AUTHOR}
  */
+
 #include "config.h"
 #include "${HEADER_FILENAME}"
 
@@ -202,7 +207,7 @@ ${METHOD_PREFIX}_class_init (${FULL_OBJECT_NAME}Class *${SHORT_OBJECT_NAME}_clas
   object_class = G_OBJECT_CLASS (${SHORT_OBJECT_NAME}_class);
 
   object_class->finalize = ${METHOD_PREFIX}_finalize;
-  
+
 #if 0
   ${METHOD_PREFIX}_class_install_properties (${SHORT_OBJECT_NAME}_class);
   ${METHOD_PREFIX}_class_install_signals (${SHORT_OBJECT_NAME}_class);
@@ -250,7 +255,7 @@ ${METHOD_PREFIX}_class_install_properties (${FULL_OBJECT_NAME}Class *${SHORT_OBJ
 static void
 ${METHOD_PREFIX}_init (${FULL_OBJECT_NAME} *${SHORT_OBJECT_NAME})
 {
-  ${SHORT_OBJECT_NAME}->priv = G_TYPE_INSTANCE_GET_PRIVATE (${SHORT_OBJECT_NAME}, 
+  ${SHORT_OBJECT_NAME}->priv = G_TYPE_INSTANCE_GET_PRIVATE (${SHORT_OBJECT_NAME},
                                                             ${MACRO_NAMESPACE}_TYPE_${MACRO_OBJECT_NAME},
                                                             ${FULL_OBJECT_NAME}Private);
 
@@ -261,7 +266,7 @@ ${METHOD_PREFIX}_finalize (GObject *object)
 {
   ${FULL_OBJECT_NAME} *${SHORT_OBJECT_NAME};
   GObjectClass *parent_class;
-  
+
   ${SHORT_OBJECT_NAME} = ${MACRO_PREFIX} (object);
 
   parent_class = G_OBJECT_CLASS (${METHOD_PREFIX}_parent_class);
@@ -273,7 +278,7 @@ ${METHOD_PREFIX}_finalize (GObject *object)
 }
 
 #if 0
-static void 
+static void
 ${METHOD_PREFIX}_set_property (GObject      *object,
                                guint         prop_id,
                                const GValue *value,
@@ -284,16 +289,16 @@ ${METHOD_PREFIX}_set_property (GObject      *object,
   switch (prop_id)
     {
       case PROP_BAR:
-        ${METHOD_PREFIX}_set_bar (${SHORT_OBJECT_NAME}, 
+        ${METHOD_PREFIX}_set_bar (${SHORT_OBJECT_NAME},
                                   g_value_get_int (value));
         break;
-      
+
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
 }
 
-static void 
+static void
 ${METHOD_PREFIX}_get_property (GObject    *object,
                                guint       prop_id,
                                GValue     *value,
@@ -304,10 +309,10 @@ ${METHOD_PREFIX}_get_property (GObject    *object,
   switch (prop_id)
     {
       case PROP_BAR:
-            g_value_set_int (value, 
+            g_value_set_int (value,
                              ${METHOD_PREFIX}_get_bar (${SHORT_OBJECT_NAME}));
         break;
-      
+
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -366,8 +371,8 @@ main (int    argc,
   ${FULL_OBJECT_NAME} *${SHORT_OBJECT_NAME};
   int exit_code;
 
-  g_log_set_always_fatal (G_LOG_LEVEL_ERROR 
-                          | G_LOG_LEVEL_CRITICAL 
+  g_log_set_always_fatal (G_LOG_LEVEL_ERROR
+                          | G_LOG_LEVEL_CRITICAL
 			  | G_LOG_LEVEL_WARNING);
 
   g_type_init ();
@@ -381,9 +386,10 @@ main (int    argc,
   return exit_code;
 }
 #endif /* ${MACRO_PREFIX}_ENABLE_TEST */
-
+EOF
 
-uncrustify -c $(dirname $0)/default.cfg ${HEADER_FILENAME}
-mv ${HEADER_FILENAME}.uncrustify ${HEADER_FILENAME}
-uncrustify -c $(dirname $0)/default.cfg ${SOURCE_FILENAME}
-mv ${SOURCE_FILENAME}.uncrustify ${SOURCE_FILENAME}
+uncrustify -c "$(dirname "${0}")"/default.cfg "${HEADER_FILENAME}"
+mv "${HEADER_FILENAME}".uncrustify "${HEADER_FILENAME}"
+uncrustify -c "$(dirname "${0}")"/default.cfg "${SOURCE_FILENAME}"
+mv "${SOURCE_FILENAME}".uncrustify "${SOURCE_FILENAME}"
+
