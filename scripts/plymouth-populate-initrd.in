@@ -118,7 +118,7 @@ inst_dir() {
             inst_symlink "$_file"
         else
             # create directory
-            ( umask 0755 ; mkdir -p "${initdir}/$_file" ) || return 1
+            ( umask 0022 ; mkdir -p "${initdir}/$_file" ) || return 1
             [[ -e "$PLYMOUTH_SYSROOT$_file" ]] && chmod --reference="$PLYMOUTH_SYSROOT$_file" "${initdir}/$_file"
             chmod u+w "${initdir}/$_file"
         fi
