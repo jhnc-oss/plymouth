@@ -401,19 +401,23 @@ view_set_bgrt_background (view_t *view)
 {
         ply_pixel_buffer_rotation_t panel_rotation = PLY_PIXEL_BUFFER_ROTATE_UPRIGHT;
         ply_pixel_buffer_rotation_t bgrt_rotation = PLY_PIXEL_BUFFER_ROTATE_UPRIGHT;
-        int x_offset, y_offset, sysfs_x_offset, sysfs_y_offset, width, height;
+        int sysfs_x_offset = 0, sysfs_y_offset = 0;
+        int x_offset, y_offset, width, height;
         int panel_width = 0, panel_height = 0, panel_scale = 1;
         int screen_width, screen_height, screen_scale;
         ply_pixel_buffer_t *bgrt_buffer;
         bool have_panel_props;
 
-        if (!view->plugin->background_bgrt_image)
+        if (view->plugin->background_bgrt_image == NULL && view->plugin->background_bgrt_fallback_image == NULL)
                 return;
 
         if (!get_bgrt_sysfs_info(&sysfs_x_offset, &sysfs_y_offset,
                                  &bgrt_rotation)) {
                 ply_trace ("get bgrt sysfs info failed");
-                return;
+
+                if (view->plugin->background_bgrt_fallback_image == NULL) {
+                        return;
+                }
         }
 
         screen_width = ply_pixel_display_get_width (view->display);
@@ -1245,6 +1249,9 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
         if (plugin->background_tile_image != NULL)
                 ply_image_free (plugin->background_tile_image);
 
+        if (plugin->background_bgrt_image == plugin->background_bgrt_fallback_image)
+                plugin->background_bgrt_fallback_image = NULL;
+
         if (plugin->background_bgrt_image != NULL)
                 ply_image_free (plugin->background_bgrt_image);
 
@@ -1666,7 +1673,6 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                         ply_trace ("loading background bgrt fallback image");
                         if (ply_image_load (plugin->background_bgrt_fallback_image)) {
                                 plugin->background_bgrt_image = plugin->background_bgrt_fallback_image;
-                                plugin->background_bgrt_fallback_image = NULL;
                         } else  {
                                 ply_image_free (plugin->background_bgrt_image);
                                 plugin->background_bgrt_image = NULL;
