@@ -408,7 +408,7 @@ view_set_bgrt_background (view_t *view)
         ply_pixel_buffer_t *bgrt_buffer;
         bool have_panel_props;
 
-        if (view->plugin->background_bgrt_image == view->plugin->background_bgrt_fallback_image == NULL)
+        if (view->plugin->background_bgrt_image == NULL && view->plugin->background_bgrt_fallback_image == NULL)
                 return;
 
         if (!get_bgrt_sysfs_info(&sysfs_x_offset, &sysfs_y_offset,
