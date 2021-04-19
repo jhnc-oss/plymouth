@@ -1,25 +1,23 @@
 #!/bin/bash
 
-[ -z "$DESTDIR" ] || exit 0
+[[ -z $DESTDIR ]] || exit 0
 
-[ -z "$PLYMOUTH_LIBEXECDIR" ] && PLYMOUTH_LIBEXECDIR="@PLYMOUTH_LIBEXECDIR@"
-[ -z "$PLYMOUTH_DATADIR" ] && PLYMOUTH_DATADIR="@PLYMOUTH_DATADIR@"
-[ -z "$PLYMOUTH_POPULATE_INITRD" ] && PLYMOUTH_POPULATE_INITRD="${PLYMOUTH_LIBEXECDIR}/plymouth/plymouth-populate-initrd"
-[ -z "$PLYMOUTH_DESTDIR" ] && PLYMOUTH_DESTDIR="/boot"
-[ -z "$PLYMOUTH_IMAGE_FILE" ] && PLYMOUTH_IMAGE_FILE="${PLYMOUTH_DESTDIR}/initrd-plymouth.img"
+[[ -z $PLYMOUTH_LIBEXECDIR ]] && PLYMOUTH_LIBEXECDIR='@PLYMOUTH_LIBEXECDIR@'
+[[ -z $PLYMOUTH_DATADIR ]] && PLYMOUTH_DATADIR='@PLYMOUTH_DATADIR@'
+[[ -z $PLYMOUTH_POPULATE_INITRD ]] && PLYMOUTH_POPULATE_INITRD="${PLYMOUTH_LIBEXECDIR}"'/plymouth/plymouth-populate-initrd'
+[[ -z $PLYMOUTH_DESTDIR ]] && PLYMOUTH_DESTDIR='/boot'
+[[ -z $PLYMOUTH_IMAGE_FILE ]] && PLYMOUTH_IMAGE_FILE="${PLYMOUTH_DESTDIR}"'/initrd-plymouth.img'
 
-PLYMOUTH_INITRD_DIR="$(mktemp --tmpdir -d plymouth-XXXXXXX)"
+PLYMOUTH_INITRD_DIR="$(mktemp --tmpdir -d plymouth-XXXXXXX)" || exit 1
 
-$PLYMOUTH_POPULATE_INITRD -t "$PLYMOUTH_INITRD_DIR"
-
-if [ $? -eq 0 ]; then
-    command -v pigz &>/dev/null && gzip=pigz || gzip=gzip
-    (cd $PLYMOUTH_INITRD_DIR;
+if "$PLYMOUTH_POPULATE_INITRD" -t "${PLYMOUTH_INITRD_DIR:?}" ; then
+    if command -v pigz &>/dev/null ; then gzip='pigz' ; else gzip='gzip' ; fi
+    (cd "$PLYMOUTH_INITRD_DIR" || exit 1;
         # FIXME: might make sense to add a flag to plymouth-populate-initrd to
         #        skip these from the start
-        rm -f lib*/{ld*,libc*,libdl*,libm*,libz*,libpthread*}
-        find | cpio -Hnewc -o | $gzip -9 > $PLYMOUTH_IMAGE_FILE
+        rm -f ./lib*/{ld*,libc*,libdl*,libm*,libz*,libpthread*}
+        find . | cpio -Hnewc -o | "$gzip" -9 > "$PLYMOUTH_IMAGE_FILE"
     )
 fi
 
-rm -rf $PLYMOUTH_INITRD_DIR
+rm -rf "$PLYMOUTH_INITRD_DIR"
