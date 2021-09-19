@@ -57,6 +57,18 @@ ply_rectangle_contains_point (ply_rectangle_t *rectangle,
         return true;
 }
 
+long
+ply_rectangle_get_x (ply_rectangle_t *rectangle)
+{
+        return (long) rectangle->x;
+}
+
+long
+ply_rectangle_get_y (ply_rectangle_t *rectangle)
+{
+        return (long) rectangle->y;
+}
+
 bool
 ply_rectangle_is_empty (ply_rectangle_t *rectangle)
 {

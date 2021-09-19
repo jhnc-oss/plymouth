@@ -636,7 +636,7 @@ view_load (view_t *view)
                 view->watermark_area.y = screen_height * plugin->watermark_vertical_alignment - ply_image_get_height (plugin->watermark_image) * plugin->watermark_vertical_alignment;
                 ply_trace ("using %ldx%ld watermark centered at %ldx%ld for %ldx%ld screen",
                            view->watermark_area.width, view->watermark_area.height,
-                           view->watermark_area.x, view->watermark_area.y,
+                           ply_rectangle_get_x (&view->watermark_area), ply_rectangle_get_y (&view->watermark_area),
                            screen_width, screen_height);
         }
 
