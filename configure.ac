@@ -333,6 +333,7 @@ AC_CONFIG_FILES([Makefile po/Makefile.in
 	   scripts/plymouth-populate-initrd
 	   scripts/plymouth-set-default-theme
            scripts/Makefile
+           systemd-units/plygetty@.service
            systemd-units/plymouth-halt.service
            systemd-units/plymouth-kexec.service
            systemd-units/plymouth-poweroff.service

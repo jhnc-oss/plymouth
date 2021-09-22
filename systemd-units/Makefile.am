@@ -1,4 +1,5 @@
 systemd_unit_templates =                                                     \
+        plygetty@.service.in                                                 \
         plymouth-switch-root.service.in                                      \
         plymouth-switch-root-initramfs.service.in                            \
         plymouth-start.service.in                                            \
@@ -17,6 +18,9 @@ systemdunitdir=$(SYSTEMD_UNIT_DIR)
 systemdunit_DATA = $(systemd_unit_templates:.in=)
 
 install-data-hook:
+	(cd $(DESTDIR)$(SYSTEMD_UNIT_DIR) &&                                 \
+		rm -f autovt@.service &&                                     \
+		$(LN_S) plygetty@.service autovt@.service)
 	$(MKDIR_P) -m 0755                                                   \
 		$(DESTDIR)$(SYSTEMD_UNIT_DIR)/initrd-switch-root.target.wants\
 		$(DESTDIR)$(SYSTEMD_UNIT_DIR)/sysinit.target.wants           \
@@ -59,6 +63,9 @@ install-data-hook:
 		$(LN_S) ../plymouth-switch-root-initramfs.service)
 
 uninstall-hook:
+	(cd $(DESTDIR)$(SYSTEMD_UNIT_DIR) &&                                 \
+		rm -f autovt@.service plygetty@.service &&                   \
+		$(LN_S) getty@.service autovt@.service)
 	(cd $(DESTDIR)$(SYSTEMD_UNIT_DIR)/initrd-switch-root.target.wants && \
 		rm -f plymouth-start.service plymouth-switch-root.service)
 	(cd $(DESTDIR)$(SYSTEMD_UNIT_DIR)/sysinit.target.wants &&            \
