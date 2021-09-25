@@ -63,13 +63,13 @@ convert_abs_rel() {
     # corner case #2 - own dir link
     [[ "${1%/*}" == "$2" ]] && { echo "."; return; }
 
-    IFS="/" __current=($1)
-    IFS="/" __absolute=($2)
+    IFS="/" __current=("$1")
+    IFS="/" __absolute=("$2")
 
     __abssize=${#__absolute[@]}
     __cursize=${#__current[@]}
 
-    while [[ ${__absolute[__level]} == ${__current[__level]} ]]
+    while [[ ${__absolute[__level]} == "${__current[__level]}" ]]
     do
         (( __level++ ))
         if (( __level > __abssize || __level > __cursize ))
@@ -119,7 +119,7 @@ inst_dir() {
             inst_symlink "$_file"
         else
             # create directory
-            mkdir -m 0755 -p "${initdir}/$_file" || return 1
+            ( umask 0022 ; mkdir -p "${initdir}/$_file" ) || return 1
             [[ -e "$PLYMOUTH_SYSROOT$_file" ]] && chmod --reference="$PLYMOUTH_SYSROOT$_file" "${initdir}/$_file"
             chmod u+w "${initdir}/$_file"
         fi
@@ -161,13 +161,14 @@ inst_simple() {
 rev_lib_symlinks() {
     [[ ! $1 ]] && return 0
 
-    local fn="$1" orig="$(readlink -f "$1")" links=''
+    local fn orig links
+    fn="$1" ; orig="$(readlink -f "$1")" ; links=''
 
     [[ ${fn} =~ .*\.so\..* ]] || return 1
 
     until [[ ${fn##*.} == so ]]; do
         fn="${fn%.*}"
-        [[ -L $PLYMOUTH_SYSROOT${fn} && $(readlink -f "$PLYMOUTH_SYSROOT${fn}") == ${orig} ]] && links+=" ${fn}"
+        [[ -L $PLYMOUTH_SYSROOT${fn} && $(readlink -f "$PLYMOUTH_SYSROOT${fn}") == "${orig}" ]] && links+=" ${fn}"
     done
 
     echo "${links}"
@@ -193,7 +194,7 @@ inst_library() {
             _dest=$(readlink -f "$PLYMOUTH_SYSROOT${_dest%/*}")/${_dest##*/}
             _dest=${_dest#$PLYMOUTH_SYSROOT}
         fi
-        ln -sfn $(convert_abs_rel "${_dest}" "${_reallib}") "${initdir}/${_dest}"
+        ln -sfn "$(convert_abs_rel "${_dest}" "${_reallib}")" "${initdir}/${_dest}"
     else
         inst_simple "$_src" "$_dest"
     fi
@@ -271,7 +272,7 @@ inst_script() {
     local _line _shebang_regex
     read -r -n 80 _line <"$PLYMOUTH_SYSROOT$_bin"
     # If debug is set, clean unprintable chars to prevent messing up the term
-    [[ $debug ]] && _line=$(echo -n "$_line" | tr -c -d '[:print:][:space:]')
+    [[ $debug ]] && _line=$(echo -n "$_line" | tr -c -d '[:print:][:space:]') # $debug is referenced but not assigned.
     _shebang_regex='(#! *)(/[^ ]+).*'
     [[ $_line =~ $_shebang_regex ]] || return 1
     inst "${BASH_REMATCH[2]}" && inst_simple "$_bin" "$@"
@@ -294,7 +295,7 @@ inst_symlink() {
     fi
     [[ ! -e $initdir/${_target%/*} ]] && inst_dir "${_target%/*}"
     [[ -d ${_target%/*} ]] && _target=$(readlink -f ${_target%/*})/${_target##*/}
-    ln -sfn $(convert_abs_rel "${_target}" "${_realsrc}") "$initdir/$_target"
+    ln -sfn "$(convert_abs_rel "${_target}" "${_realsrc}")" "$initdir/$_target"
 }
 
 # general purpose installation function
@@ -305,7 +306,7 @@ inst() {
     case $# in
         1) ;;
         2) [[ ! $initdir && -d $2 ]] && export initdir=$2
-            [[ $initdir = $2 ]] && set $1;;
+            [[ $initdir = "$2" ]] && set $1;;
         3) [[ -z $initdir ]] && export initdir=$2
             set $1 $3;;
         *) dfatal "inst only takes 1 or 2 or 3 arguments"
@@ -325,7 +326,7 @@ inst_hook() {
         dfatal "Cannot install a hook ($3) that does not exist."
         dfatal "Aborting initrd creation."
         exit 1
-    elif ! strstr "$hookdirs" "$1"; then
+    elif ! strstr "$hookdirs" "$1"; then                        # $hookdirs is referenced but not assigned.
         dfatal "No such hook type $1. Aborting initrd creation."
         exit 1
     fi
@@ -459,36 +460,36 @@ if [ -d "${PLYMOUTH_SYSROOT}${PLYMOUTH_THEME_DIR}" ]; then
      inst_recur "${PLYMOUTH_THEME_DIR}"
 fi
 
-if [ "${PLYMOUTH_IMAGE_DIR}" != "${PLYMOUTH_THEME_DIR}" -a -d "${PLYMOUTH_SYSROOT}${PLYMOUTH_IMAGE_DIR}" ]; then
+if [[ "${PLYMOUTH_IMAGE_DIR}" != "${PLYMOUTH_THEME_DIR}" ]] && [[ -d "${PLYMOUTH_SYSROOT}${PLYMOUTH_IMAGE_DIR}" ]]; then
      inst_recur "${PLYMOUTH_IMAGE_DIR}"
 fi
 
 if [ -L ${PLYMOUTH_SYSROOT}${PLYMOUTH_DATADIR}/plymouth/themes/default.plymouth ]; then
-    cp -a ${PLYMOUTH_SYSROOT}${PLYMOUTH_DATADIR}/plymouth/themes/default.plymouth $INITRDDIR${PLYMOUTH_DATADIR}/plymouth/themes
+    cp -a ${PLYMOUTH_SYSROOT}${PLYMOUTH_DATADIR}/plymouth/themes/default.plymouth ${INITRDDIR}${PLYMOUTH_DATADIR}/plymouth/themes
 fi
 
-if [ -n "$SYSTEMD_UNIT_DIR" -a -d "${PLYMOUTH_SYSROOT}$SYSTEMD_UNIT_DIR" ]; then
-    inst $SYSTEMD_UNIT_DIR/systemd-ask-password-plymouth.path $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/systemd-ask-password-plymouth.service $INITRDDIR
+if [[ -n "$SYSTEMD_UNIT_DIR" ]] && [[ -d "${PLYMOUTH_SYSROOT}$SYSTEMD_UNIT_DIR" ]]; then
+    inst $SYSTEMD_UNIT_DIR/systemd-ask-password-plymouth.path "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/systemd-ask-password-plymouth.service "$INITRDDIR"
 
-    inst $SYSTEMD_UNIT_DIR/plymouth-switch-root.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/plymouth-start.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/plymouth-quit.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/plymouth-quit-wait.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/plymouth-reboot.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/plymouth-kexec.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/plymouth-poweroff.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/plymouth-halt.service $INITRDDIR
+    inst $SYSTEMD_UNIT_DIR/plymouth-switch-root.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/plymouth-start.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/plymouth-quit.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/plymouth-quit-wait.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/plymouth-reboot.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/plymouth-kexec.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/plymouth-poweroff.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/plymouth-halt.service "$INITRDDIR"
 
-    inst $SYSTEMD_UNIT_DIR/initrd-switch-root.target.wants/plymouth-switch-root.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/initrd-switch-root.target.wants/plymouth-start.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/sysinit.target.wants/plymouth-start.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/multi-user.target.wants/plymouth-quit.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/multi-user.target.wants/plymouth-quit-wait.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/reboot.target.wants/plymouth-reboot.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/kexec.target.wants/plymouth-kexec.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/poweroff.target.wants/plymouth-poweroff.service $INITRDDIR
-    inst $SYSTEMD_UNIT_DIR/halt.target.wants/plymouth-halt.service $INITRDDIR
+    inst $SYSTEMD_UNIT_DIR/initrd-switch-root.target.wants/plymouth-switch-root.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/initrd-switch-root.target.wants/plymouth-start.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/sysinit.target.wants/plymouth-start.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/multi-user.target.wants/plymouth-quit.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/multi-user.target.wants/plymouth-quit-wait.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/reboot.target.wants/plymouth-reboot.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/kexec.target.wants/plymouth-kexec.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/poweroff.target.wants/plymouth-poweroff.service "$INITRDDIR"
+    inst $SYSTEMD_UNIT_DIR/halt.target.wants/plymouth-halt.service "$INITRDDIR"
 fi
 
 # vim:ts=8:sw=4:sts=4:et
