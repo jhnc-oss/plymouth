@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/sh 
 
-cd $(dirname $0)
+cd "$(dirname "$0")" || exit
 autoreconf --install --symlink -Wno-portability
-if test -z "$NOCONFIGURE"; then
-   exec ./configure $@
+if [ -z "$NOCONFIGURE" ]; then
+    exec ./configure "$@"
 fi
