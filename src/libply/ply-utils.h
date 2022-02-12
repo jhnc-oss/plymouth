@@ -1,5 +1,6 @@
 /* ply-utils.h - random useful functions and macros
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2007 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written By: Ray Strode <rstrode@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #ifndef PLY_UTILS_H
 #define PLY_UTILS_H
@@ -131,6 +133,10 @@ void ply_kernel_command_line_override (const char *command_line);
 char *ply_kernel_command_line_get_key_value (const char *key);
 
 double ply_strtod (const char *str);
+
+void ply_path_split_base_and_ext (const char *filepath,
+                                  char      **filepath_no_ext,
+                                  char      **extension);
 
 #endif
 

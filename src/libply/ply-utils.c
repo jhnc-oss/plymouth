@@ -1,5 +1,6 @@
 /* ply-utils.c -  random useful functions and macros
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2007 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: Ray Strode <rstrode@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include <config.h>
 
@@ -1009,6 +1011,30 @@ double ply_strtod (const char *str)
         setlocale (LC_NUMERIC, old_locale);
 
         return ret;
+}
+
+void
+ply_path_split_base_and_ext (const char *filepath, char **filepath_no_ext, char **extension)
+{
+        const char *tmp_extension, *current_char_ptr;
+
+        assert (filepath != NULL);
+
+        tmp_extension = NULL;
+        current_char_ptr = filepath;
+
+        while (*current_char_ptr) {
+                if (*current_char_ptr == '.')
+                        tmp_extension = current_char_ptr;
+                current_char_ptr++;
+        }
+        if (tmp_extension == NULL)
+                // Point at the null byte at the end of filepath_base.
+                tmp_extension = current_char_ptr;
+
+        *filepath_no_ext = calloc (tmp_extension - filepath + 1, sizeof(char));
+        strncpy (*filepath_no_ext, filepath, tmp_extension - filepath);
+        *extension = strdup (tmp_extension);
 }
 
 /* vim: set ts=4 sw=4 expandtab autoindent cindent cino={.5s,(0: */
