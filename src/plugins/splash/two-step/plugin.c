@@ -1,5 +1,6 @@
 /*
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2009-2019 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,7 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: William Jon McCann, Hans de Goede <hdegoede@redhat.com>
- *
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include "config.h"
 
@@ -645,8 +646,8 @@ view_load (view_t *view)
         if (!ply_entry_load (view->entry))
                 return false;
 
-        ply_keymap_icon_load (view->keymap_icon);
-        ply_capslock_icon_load (view->capslock_icon);
+        ply_keymap_icon_load (view->keymap_icon, screen_scale);
+        ply_capslock_icon_load (view->capslock_icon, screen_scale);
 
         view_load_end_animation (view);
 

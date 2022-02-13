@@ -1,5 +1,6 @@
 /* keymap-icon - Shows a keyboard-icon + the current keymap as text, e.g. "us"
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2019 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: Hans de Goede <hdegoede@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include "config.h"
 
@@ -138,12 +140,13 @@ ply_keymap_icon_free (ply_keymap_icon_t *keymap_icon)
 }
 
 bool
-ply_keymap_icon_load (ply_keymap_icon_t *keymap_icon)
+ply_keymap_icon_load (ply_keymap_icon_t *keymap_icon,
+                      int                device_scale)
 {
         ply_image_t *keymap_image = NULL;
         ply_image_t *icon_image;
         char *filename;
-        bool success;
+        ply_image_lasof_res_t result;
 
         /* Bail if we did not find the keymap metadata */
         if (keymap_icon->keymap_offset == -1)
@@ -154,19 +157,25 @@ ply_keymap_icon_load (ply_keymap_icon_t *keymap_icon)
 
         asprintf (&filename, "%s/keyboard.png", keymap_icon->image_dir);
         icon_image = ply_image_new (filename);
-        success = ply_image_load (icon_image);
-        ply_trace ("loading '%s': %s", filename, success ? "success" : "failed");
+        result = ply_image_load_at_scale_or_fallback (icon_image, device_scale);
+        ply_trace ("loading '%s' at scale %d: %s",
+                   filename,
+                   device_scale,
+                   ply_image_lasof_res_desc_string (result));
         free (filename);
 
-        if (success) {
+        if (result != PLY_IMAGE_LOAD_FAILED) {
                 asprintf (&filename, "%s/keymap-render.png", keymap_icon->image_dir);
                 keymap_image = ply_image_new (filename);
-                success = ply_image_load (keymap_image);
-                ply_trace ("loading '%s': %s", filename, success ? "success" : "failed");
+                result = ply_image_load_at_scale_or_fallback (keymap_image, device_scale);
+                ply_trace ("loading '%s' at scale %d: %s",
+                           filename,
+                           device_scale,
+                           ply_image_lasof_res_desc_string (result));
                 free (filename);
         }
 
-        if (!success) {
+        if (result == PLY_IMAGE_LOAD_FAILED) {
                 ply_image_free (keymap_image);
                 ply_image_free (icon_image);
                 return false;
