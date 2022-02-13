@@ -16,6 +16,7 @@ libply_splash_graphics_HEADERS = \
                                  ply-keymap-metadata.h                        \
                                  ply-label.h                                  \
                                  ply-label-plugin.h                           \
+                                 ply-multiscale-image.h                       \
                                  ply-progress-animation.h                     \
                                  ply-progress-bar.h                           \
                                  ply-throbber.h
@@ -38,6 +39,7 @@ libply_splash_graphics_la_SOURCES = \
                                     ply-image.c                               \
                                     ply-keymap-icon.c                         \
                                     ply-label.c                               \
+                                    ply-multiscale-image.c                    \
                                     ply-progress-animation.c                  \
                                     ply-progress-bar.c                        \
                                     ply-throbber.c
