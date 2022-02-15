@@ -1,5 +1,6 @@
 /* fade-throbber.c - boot splash plugin
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2007, 2008, 2009 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: Ray Strode <rstrode@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include "config.h"
 
@@ -47,6 +49,7 @@
 #include "ply-list.h"
 #include "ply-logger.h"
 #include "ply-image.h"
+#include "ply-multiscale-image.h"
 #include "ply-key-file.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
@@ -92,9 +95,9 @@ struct _ply_boot_splash_plugin
 {
         ply_event_loop_t              *loop;
         ply_boot_splash_mode_t         mode;
-        ply_image_t                   *logo_image;
-        ply_image_t                   *star_image;
-        ply_image_t                   *lock_image;
+        ply_multiscale_image_t        *logo_image;
+        ply_multiscale_image_t        *star_image;
+        ply_multiscale_image_t        *lock_image;
         char                          *image_dir;
         ply_list_t                    *views;
 
@@ -127,8 +130,8 @@ view_show_prompt (view_t     *view,
                 screen_width = ply_pixel_display_get_width (view->display);
                 screen_height = ply_pixel_display_get_height (view->display);
 
-                view->lock_area.width = ply_image_get_width (plugin->lock_image);
-                view->lock_area.height = ply_image_get_height (plugin->lock_image);
+                view->lock_area.width = ply_multiscale_image_get_width (plugin->lock_image);
+                view->lock_area.height = ply_multiscale_image_get_height (plugin->lock_image);
 
                 entry_width = ply_entry_get_width (view->entry);
                 entry_height = ply_entry_get_height (view->entry);
@@ -161,7 +164,6 @@ view_hide_prompt (view_t *view)
         ply_label_hide (view->label);
 }
 
-
 static ply_boot_splash_plugin_t *
 create_plugin (ply_key_file_t *key_file)
 {
@@ -172,15 +174,15 @@ create_plugin (ply_key_file_t *key_file)
         plugin = calloc (1, sizeof(ply_boot_splash_plugin_t));
         plugin->start_time = 0.0;
 
-        plugin->logo_image = ply_image_new (PLYMOUTH_LOGO_FILE);
+        plugin->logo_image = ply_multiscale_image_new (PLYMOUTH_LOGO_FILE);
         image_dir = ply_key_file_get_value (key_file, "fade-throbber", "ImageDir");
 
         asprintf (&image_path, "%s/star.png", image_dir);
-        plugin->star_image = ply_image_new (image_path);
+        plugin->star_image = ply_multiscale_image_new (image_path);
         free (image_path);
 
         asprintf (&image_path, "%s/lock.png", image_dir);
-        plugin->lock_image = ply_image_new (image_path);
+        plugin->lock_image = ply_multiscale_image_new (image_path);
         free (image_path);
 
         plugin->image_dir = image_dir;
@@ -416,9 +418,9 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
         }
 
         free_views (plugin);
-        ply_image_free (plugin->logo_image);
-        ply_image_free (plugin->star_image);
-        ply_image_free (plugin->lock_image);
+        ply_multiscale_image_free (plugin->logo_image);
+        ply_multiscale_image_free (plugin->star_image);
+        ply_multiscale_image_free (plugin->lock_image);
         free (plugin);
 }
 
@@ -436,8 +438,8 @@ view_animate_at_time (view_t *view,
 
         plugin = view->plugin;
 
-        logo_width = ply_image_get_width (plugin->logo_image);
-        logo_height = ply_image_get_height (plugin->logo_image);
+        logo_width = ply_multiscale_image_get_width (plugin->logo_image);
+        logo_height = ply_multiscale_image_get_height (plugin->logo_image);
 
         screen_width = ply_pixel_display_get_width (view->display);
         screen_height = ply_pixel_display_get_height (view->display);
@@ -445,8 +447,8 @@ view_animate_at_time (view_t *view,
         logo_x = (screen_width / 2) - (logo_width / 2);
         logo_y = (screen_height / 2) - (logo_height / 2);
 
-        star_width = ply_image_get_width (plugin->star_image);
-        star_height = ply_image_get_height (plugin->star_image);
+        star_width = ply_multiscale_image_get_width (plugin->star_image);
+        star_height = ply_multiscale_image_get_height (plugin->star_image);
 
         node = ply_list_get_first_node (view->stars);
         while (node != NULL) {
@@ -647,7 +649,6 @@ draw_normal_view (view_t             *view,
         ply_list_node_t *node;
         ply_rectangle_t logo_area;
         ply_rectangle_t star_area;
-        uint32_t *logo_data, *star_data;
         unsigned long screen_width, screen_height;
 
         plugin = view->plugin;
@@ -655,9 +656,10 @@ draw_normal_view (view_t             *view,
         if (!plugin->is_animating)
                 return;
 
-        logo_area.width = ply_image_get_width (plugin->logo_image);
-        logo_area.height = ply_image_get_height (plugin->logo_image);
-        logo_data = ply_image_get_data (plugin->logo_image);
+        int device_scale = ply_pixel_buffer_get_device_scale (pixel_buffer);
+
+        logo_area.width = ply_multiscale_image_get_width (plugin->logo_image);
+        logo_area.height = ply_multiscale_image_get_height (plugin->logo_image);
 
         screen_width = ply_pixel_display_get_width (view->display);
         screen_height = ply_pixel_display_get_height (view->display);
@@ -665,9 +667,8 @@ draw_normal_view (view_t             *view,
         logo_area.x = (screen_width / 2) - (logo_area.width / 2);
         logo_area.y = (screen_height / 2) - (logo_area.height / 2);
 
-        star_data = ply_image_get_data (plugin->star_image);
-        star_area.width = ply_image_get_width (plugin->star_image);
-        star_area.height = ply_image_get_height (plugin->star_image);
+        star_area.width = ply_multiscale_image_get_width (plugin->star_image);
+        star_area.height = ply_multiscale_image_get_height (plugin->star_image);
 
         node = ply_list_get_first_node (view->stars);
         while (node != NULL) {
@@ -679,17 +680,19 @@ draw_normal_view (view_t             *view,
 
                 star_area.x = star->x;
                 star_area.y = star->y;
-                ply_pixel_buffer_fill_with_argb32_data_at_opacity (pixel_buffer,
-                                                                   &star_area,
-                                                                   star_data,
-                                                                   star->opacity);
+                ply_pixel_buffer_fill_with_buffer_at_opacity (pixel_buffer,
+                                                              ply_multiscale_image_get_buffer (plugin->star_image, device_scale),
+                                                              star_area.x,
+                                                              star_area.y,
+                                                              star->opacity);
                 node = next_node;
         }
 
-        ply_pixel_buffer_fill_with_argb32_data_at_opacity (pixel_buffer,
-                                                           &logo_area,
-                                                           logo_data,
-                                                           view->logo_opacity);
+        ply_pixel_buffer_fill_with_buffer_at_opacity (pixel_buffer,
+                                                      ply_multiscale_image_get_buffer (plugin->logo_image, device_scale),
+                                                      logo_area.x,
+                                                      logo_area.y,
+                                                      view->logo_opacity);
 }
 
 static void
@@ -701,7 +704,6 @@ draw_prompt_view (view_t             *view,
                   int                 height)
 {
         ply_boot_splash_plugin_t *plugin;
-        uint32_t *lock_data;
 
         plugin = view->plugin;
 
@@ -712,10 +714,10 @@ draw_prompt_view (view_t             *view,
                              pixel_buffer,
                              x, y, width, height);
 
-        lock_data = ply_image_get_data (plugin->lock_image);
-        ply_pixel_buffer_fill_with_argb32_data (pixel_buffer,
-                                                &view->lock_area,
-                                                lock_data);
+        ply_pixel_buffer_fill_with_buffer (pixel_buffer,
+                                           ply_multiscale_image_get_buffer (plugin->lock_image, ply_pixel_buffer_get_device_scale (pixel_buffer)),
+                                           view->lock_area.x,
+                                           view->lock_area.y);
 }
 
 static void
@@ -801,15 +803,15 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
         plugin->mode = mode;
 
         ply_trace ("loading logo image");
-        if (!ply_image_load (plugin->logo_image))
+        if (!ply_multiscale_image_load (plugin->logo_image))
                 return false;
 
         ply_trace ("loading star image");
-        if (!ply_image_load (plugin->star_image))
+        if (!ply_multiscale_image_load (plugin->star_image))
                 return false;
 
         ply_trace ("loading lock image");
-        if (!ply_image_load (plugin->lock_image))
+        if (!ply_multiscale_image_load (plugin->lock_image))
                 return false;
 
         ply_event_loop_watch_for_exit (loop, (ply_event_loop_exit_handler_t)
@@ -846,15 +848,15 @@ view_add_star (view_t *view)
 
         screen_width = ply_pixel_display_get_width (view->display);
         screen_height = ply_pixel_display_get_height (view->display);
-        width = ply_image_get_width (plugin->logo_image);
-        height = ply_image_get_height (plugin->logo_image);
+        width = ply_multiscale_image_get_width (plugin->logo_image);
+        height = ply_multiscale_image_get_height (plugin->logo_image);
         logo_area.x = (screen_width / 2) - (width / 2);
         logo_area.y = (screen_height / 2) - (height / 2);
         logo_area.width = width;
         logo_area.height = height;
 
-        width = ply_image_get_width (plugin->star_image);
-        height = ply_image_get_height (plugin->star_image);
+        width = ply_multiscale_image_get_width (plugin->star_image);
+        height = ply_multiscale_image_get_height (plugin->star_image);
 
         node = NULL;
         do {
