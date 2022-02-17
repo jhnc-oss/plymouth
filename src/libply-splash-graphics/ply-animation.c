@@ -1,5 +1,6 @@
 /* animation.c - boot animation
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2009 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: William Jon McCann <jmccann@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include "config.h"
 
@@ -60,6 +62,7 @@ struct _ply_animation
         ply_event_loop_t    *loop;
         char                *image_dir;
         char                *frames_prefix;
+        int                  device_scale;
 
         ply_pixel_display_t *display;
         ply_trigger_t       *stop_trigger;
@@ -74,10 +77,10 @@ struct _ply_animation
 
 static void ply_animation_stop_now (ply_animation_t *animation);
 
-
 ply_animation_t *
 ply_animation_new (const char *image_dir,
-                   const char *frames_prefix)
+                   const char *frames_prefix,
+                   int         device_scale)
 {
         ply_animation_t *animation;
 
@@ -89,6 +92,7 @@ ply_animation_new (const char *image_dir,
         animation->frames = ply_array_new (PLY_ARRAY_ELEMENT_TYPE_POINTER);
         animation->frames_prefix = strdup (frames_prefix);
         animation->image_dir = strdup (image_dir);
+        animation->device_scale = device_scale;
         animation->frame_number = 0;
         animation->is_stopped = true;
         animation->stop_requested = false;
@@ -199,14 +203,16 @@ on_timeout (ply_animation_t *animation)
 
 static bool
 ply_animation_add_frame (ply_animation_t *animation,
-                         const char      *filename)
+                         const char      *filename,
+                         int              device_scale)
 {
         ply_image_t *image;
         ply_pixel_buffer_t *frame;
 
         image = ply_image_new (filename);
 
-        if (!ply_image_load (image)) {
+        // Filenames passed in already refer to image versions at correct scale.
+        if (!ply_image_load_assuming_scale (image, device_scale)) {
                 ply_image_free (image);
                 return false;
         }
@@ -228,7 +234,10 @@ ply_animation_add_frames (ply_animation_t *animation)
         int number_of_entries;
         int number_of_frames;
         int i;
-        bool load_finished;
+        bool load_at_scale, load_finished;
+        int filename_suffix_len;
+        char *at_scale_suffix;
+        const char *filename_suffix;
 
         entries = NULL;
 
@@ -237,19 +246,49 @@ ply_animation_add_frames (ply_animation_t *animation)
         if (number_of_entries <= 0)
                 return false;
 
+        // TODO: scale always 1
+
+        at_scale_suffix = NULL;
+        load_at_scale = false;
+        if (animation->device_scale != 1) {
+                filename_suffix_len =
+                        asprintf (&at_scale_suffix, "@%d.png", animation->device_scale);
+                filename_suffix = at_scale_suffix;
+                for (i = 0; i < number_of_entries; i++) {
+                        if (strncmp (entries[i]->d_name,
+                                     animation->frames_prefix,
+                                     strlen (animation->frames_prefix)) == 0 &&
+                            (strlen (entries[i]->d_name) > (unsigned long) filename_suffix_len) &&
+                            strcmp (entries[i]->d_name + strlen (entries[i]->d_name) -
+                                    filename_suffix_len,
+                                    filename_suffix) == 0) {
+                                load_at_scale = true;
+                                break;
+                        }
+                }
+        }
+
+        if (!load_at_scale) {
+                filename_suffix_len = 4;
+                filename_suffix = ".png";
+        }
+
         load_finished = false;
         for (i = 0; i < number_of_entries; i++) {
                 if (strncmp (entries[i]->d_name,
                              animation->frames_prefix,
                              strlen (animation->frames_prefix)) == 0
-                    && (strlen (entries[i]->d_name) > 4)
-                    && strcmp (entries[i]->d_name + strlen (entries[i]->d_name) - 4, ".png") == 0) {
+                    && (strlen (entries[i]->d_name) > (unsigned long) filename_suffix_len)
+                    && strcmp (entries[i]->d_name + strlen (entries[i]->d_name) - filename_suffix_len, filename_suffix) == 0
+                    && (load_at_scale || !strchr (entries[i]->d_name, '@'))) {
                         char *filename;
 
                         filename = NULL;
                         asprintf (&filename, "%s/%s", animation->image_dir, entries[i]->d_name);
 
-                        if (!ply_animation_add_frame (animation, filename))
+                        if (!ply_animation_add_frame (animation,
+                                                      filename,
+                                                      load_at_scale ? animation->device_scale : 1))
                                 goto out;
 
                         free (filename);
@@ -280,6 +319,10 @@ out:
                 }
         }
         free (entries);
+        if (at_scale_suffix != NULL) {
+                filename_suffix = NULL;
+                free (at_scale_suffix);
+        }
 
         return ply_array_get_size (animation->frames) > 0;
 }

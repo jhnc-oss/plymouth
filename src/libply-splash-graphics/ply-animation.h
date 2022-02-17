@@ -1,5 +1,6 @@
 /* animation.h - simple animation
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2009 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written By: William Jon McCann <jmccann@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #ifndef ANIMATION_H
 #define ANIMATION_H
@@ -34,7 +36,8 @@ typedef struct _ply_animation ply_animation_t;
 
 #ifndef PLY_HIDE_FUNCTION_DECLARATIONS
 ply_animation_t *ply_animation_new (const char *image_dir,
-                                    const char *frames_prefix);
+                                    const char *frames_prefix,
+                                    int         device_scale);
 void ply_animation_free (ply_animation_t *animation);
 
 bool ply_animation_load (ply_animation_t *animation);

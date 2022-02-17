@@ -269,6 +269,7 @@ view_load_end_animation (view_t *view)
 {
         ply_boot_splash_plugin_t *plugin = view->plugin;
         const char *animation_prefix;
+        int device_scale;
 
         if (!plugin->mode_settings[plugin->mode].use_end_animation)
                 return;
@@ -292,9 +293,12 @@ view_load_end_animation (view_t *view)
                 return;
         }
 
+        device_scale = ply_pixel_display_get_device_scale (view->display);
+
         ply_trace ("trying prefix: %s", animation_prefix);
         view->end_animation = ply_animation_new (plugin->animation_dir,
-                                                 animation_prefix);
+                                                 animation_prefix,
+                                                 device_scale);
 
         if (ply_animation_load (view->end_animation))
                 return;
@@ -302,14 +306,16 @@ view_load_end_animation (view_t *view)
 
         ply_trace ("now trying more general prefix: animation-");
         view->end_animation = ply_animation_new (plugin->animation_dir,
-                                                 "animation-");
+                                                 "animation-",
+                                                 device_scale);
         if (ply_animation_load (view->end_animation))
                 return;
         ply_animation_free (view->end_animation);
 
         ply_trace ("now trying old compat prefix: throbber-");
         view->end_animation = ply_animation_new (plugin->animation_dir,
-                                                 "throbber-");
+                                                 "throbber-",
+                                                 device_scale);
         if (ply_animation_load (view->end_animation)) {
                 /* files named throbber- are for end animation, so
                  * there's no throbber */
