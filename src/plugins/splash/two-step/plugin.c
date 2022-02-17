@@ -50,6 +50,7 @@
 #include "ply-list.h"
 #include "ply-logger.h"
 #include "ply-image.h"
+#include "ply-multiscale-image.h"
 #include "ply-key-file.h"
 #include "ply-keymap-icon.h"
 #include "ply-trigger.h"
@@ -134,14 +135,14 @@ struct _ply_boot_splash_plugin
         ply_boot_splash_mode_t              mode;
         mode_settings_t                     mode_settings[PLY_BOOT_SPLASH_MODE_COUNT];
         char                               *font;
-        ply_image_t                        *lock_image;
-        ply_image_t                        *box_image;
-        ply_image_t                        *corner_image;
-        ply_image_t                        *header_image;
-        ply_image_t                        *background_tile_image;
+        ply_multiscale_image_t             *lock_image;
+        ply_multiscale_image_t             *box_image;
+        ply_multiscale_image_t             *corner_image;
+        ply_multiscale_image_t             *header_image;
+        ply_multiscale_image_t             *background_tile_image;
         ply_image_t                        *background_bgrt_image;
-        ply_image_t                        *background_bgrt_fallback_image;
-        ply_image_t                        *watermark_image;
+        ply_multiscale_image_t             *background_bgrt_fallback_image;
+        ply_multiscale_image_t             *watermark_image;
         ply_list_t                         *views;
 
         ply_boot_splash_display_type_t      state;
@@ -581,7 +582,8 @@ view_set_bgrt_fallback_background (view_t *view)
         screen_height = ply_pixel_display_get_height (view->display);
         screen_scale = ply_pixel_display_get_device_scale (view->display);
 
-        image_buffer = ply_image_get_buffer (view->plugin->background_bgrt_fallback_image);
+        image_buffer = ply_multiscale_image_get_buffer (view->plugin->background_bgrt_fallback_image,
+                                                        screen_scale);
 
         width = ply_pixel_buffer_get_width (image_buffer);
         height = ply_pixel_buffer_get_height (image_buffer);
@@ -632,16 +634,22 @@ view_load (view_t *view)
                         ply_pixel_buffer_fill_with_hex_color (view->background_buffer, NULL,
                                                               plugin->background_start_color);
 
-                buffer = ply_pixel_buffer_tile (ply_image_get_buffer (plugin->background_tile_image), screen_width, screen_height);
+                buffer = ply_pixel_buffer_tile (ply_multiscale_image_get_buffer (plugin->background_tile_image, screen_scale),
+                                                screen_width,
+                                                screen_height);
                 ply_pixel_buffer_fill_with_buffer (view->background_buffer, buffer, 0, 0);
                 ply_pixel_buffer_free (buffer);
         }
 
         if (plugin->watermark_image != NULL) {
-                view->watermark_area.width = ply_image_get_width (plugin->watermark_image);
-                view->watermark_area.height = ply_image_get_height (plugin->watermark_image);
-                view->watermark_area.x = screen_width * plugin->watermark_horizontal_alignment - ply_image_get_width (plugin->watermark_image) * plugin->watermark_horizontal_alignment;
-                view->watermark_area.y = screen_height * plugin->watermark_vertical_alignment - ply_image_get_height (plugin->watermark_image) * plugin->watermark_vertical_alignment;
+                view->watermark_area.width = ply_multiscale_image_get_width (plugin->watermark_image);
+                view->watermark_area.height = ply_multiscale_image_get_height (plugin->watermark_image);
+                view->watermark_area.x = screen_width * plugin->watermark_horizontal_alignment
+                                         - ply_multiscale_image_get_width (plugin->watermark_image)
+                                         * plugin->watermark_horizontal_alignment;
+                view->watermark_area.y = screen_height * plugin->watermark_vertical_alignment
+                                         - ply_multiscale_image_get_height (plugin->watermark_image)
+                                         * plugin->watermark_vertical_alignment;
                 ply_trace ("using %ldx%ld watermark centered at %ldx%ld for %ldx%ld screen",
                            view->watermark_area.width, view->watermark_area.height,
                            view->watermark_area.x, view->watermark_area.y,
@@ -921,15 +929,15 @@ view_show_prompt (view_t     *view,
         screen_height = ply_pixel_display_get_height (view->display);
 
         if (ply_entry_is_hidden (view->entry)) {
-                view->lock_area.width = ply_image_get_width (plugin->lock_image);
-                view->lock_area.height = ply_image_get_height (plugin->lock_image);
+                view->lock_area.width = ply_multiscale_image_get_width (plugin->lock_image);
+                view->lock_area.height = ply_multiscale_image_get_height (plugin->lock_image);
 
                 entry_width = ply_entry_get_width (view->entry);
                 entry_height = ply_entry_get_height (view->entry);
 
                 if (plugin->box_image) {
-                        view->box_area.width = ply_image_get_width (plugin->box_image);
-                        view->box_area.height = ply_image_get_height (plugin->box_image);
+                        view->box_area.width = ply_multiscale_image_get_width (plugin->box_image);
+                        view->box_area.height = ply_multiscale_image_get_height (plugin->box_image);
                         view->box_area.x = (screen_width - view->box_area.width) * plugin->dialog_horizontal_alignment;
                         view->box_area.y = (screen_height - view->box_area.height) * plugin->dialog_vertical_alignment;
                         view->dialog_area = view->box_area;
@@ -1067,27 +1075,27 @@ create_plugin (ply_key_file_t *key_file)
         ply_trace ("Using '%s' as working directory", image_dir);
 
         asprintf (&image_path, "%s/lock.png", image_dir);
-        plugin->lock_image = ply_image_new (image_path);
+        plugin->lock_image = ply_multiscale_image_new (image_path);
         free (image_path);
 
         asprintf (&image_path, "%s/box.png", image_dir);
-        plugin->box_image = ply_image_new (image_path);
+        plugin->box_image = ply_multiscale_image_new (image_path);
         free (image_path);
 
         asprintf (&image_path, "%s/corner-image.png", image_dir);
-        plugin->corner_image = ply_image_new (image_path);
+        plugin->corner_image = ply_multiscale_image_new (image_path);
         free (image_path);
 
         asprintf (&image_path, "%s/header-image.png", image_dir);
-        plugin->header_image = ply_image_new (image_path);
+        plugin->header_image = ply_multiscale_image_new (image_path);
         free (image_path);
 
         asprintf (&image_path, "%s/background-tile.png", image_dir);
-        plugin->background_tile_image = ply_image_new (image_path);
+        plugin->background_tile_image = ply_multiscale_image_new (image_path);
         free (image_path);
 
         asprintf (&image_path, "%s/watermark.png", image_dir);
-        plugin->watermark_image = ply_image_new (image_path);
+        plugin->watermark_image = ply_multiscale_image_new (image_path);
         free (image_path);
 
         plugin->animation_dir = image_dir;
@@ -1192,7 +1200,7 @@ create_plugin (ply_key_file_t *key_file)
                 plugin->background_bgrt_image = ply_image_new ("/sys/firmware/acpi/bgrt/image");
 
                 asprintf (&image_path, "%s/bgrt-fallback.png", image_dir);
-                plugin->background_bgrt_fallback_image = ply_image_new (image_path);
+                plugin->background_bgrt_fallback_image = ply_multiscale_image_new (image_path);
                 free (image_path);
         }
 
@@ -1276,28 +1284,28 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
                 detach_from_event_loop (plugin);
         }
 
-        ply_image_free (plugin->lock_image);
+        ply_multiscale_image_free (plugin->lock_image);
 
         if (plugin->box_image != NULL)
-                ply_image_free (plugin->box_image);
+                ply_multiscale_image_free (plugin->box_image);
 
         if (plugin->corner_image != NULL)
-                ply_image_free (plugin->corner_image);
+                ply_multiscale_image_free (plugin->corner_image);
 
         if (plugin->header_image != NULL)
-                ply_image_free (plugin->header_image);
+                ply_multiscale_image_free (plugin->header_image);
 
         if (plugin->background_tile_image != NULL)
-                ply_image_free (plugin->background_tile_image);
+                ply_multiscale_image_free (plugin->background_tile_image);
 
         if (plugin->background_bgrt_image != NULL)
                 ply_image_free (plugin->background_bgrt_image);
 
         if (plugin->background_bgrt_fallback_image != NULL)
-                ply_image_free (plugin->background_bgrt_fallback_image);
+                ply_multiscale_image_free (plugin->background_bgrt_fallback_image);
 
         if (plugin->watermark_image != NULL)
-                ply_image_free (plugin->watermark_image);
+                ply_multiscale_image_free (plugin->watermark_image);
 
         for (i = 0; i < PLY_BOOT_SPLASH_MODE_COUNT; i++) {
                 free (plugin->mode_settings[i].title);
@@ -1458,6 +1466,8 @@ draw_background (view_t             *view,
         area.width = width;
         area.height = height;
 
+        int device_scale = ply_pixel_buffer_get_device_scale (pixel_buffer);
+
         /* When using the firmware logo as background and we should not use
          * it for this mode, use solid black as background.
          */
@@ -1486,10 +1496,10 @@ draw_background (view_t             *view,
                                                       plugin->background_start_color);
 
         if (plugin->watermark_image != NULL) {
-                uint32_t *data;
-
-                data = ply_image_get_data (plugin->watermark_image);
-                ply_pixel_buffer_fill_with_argb32_data (pixel_buffer, &view->watermark_area, data);
+                ply_pixel_buffer_fill_with_buffer (pixel_buffer,
+                                                   ply_multiscale_image_get_buffer (plugin->watermark_image, device_scale),
+                                                   view->watermark_area.x,
+                                                   view->watermark_area.y);
         }
 }
 
@@ -1503,7 +1513,6 @@ on_draw (view_t             *view,
 {
         ply_boot_splash_plugin_t *plugin;
         ply_rectangle_t screen_area;
-        ply_rectangle_t image_area;
 
         plugin = view->plugin;
 
@@ -1511,15 +1520,15 @@ on_draw (view_t             *view,
 
         ply_pixel_buffer_get_size (pixel_buffer, &screen_area);
 
+        int device_scale = ply_pixel_buffer_get_device_scale (pixel_buffer);
+
         if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_QUESTION_ENTRY ||
             plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY) {
-                uint32_t *box_data, *lock_data;
-
                 if (plugin->box_image) {
-                        box_data = ply_image_get_data (plugin->box_image);
-                        ply_pixel_buffer_fill_with_argb32_data (pixel_buffer,
-                                                                &view->box_area,
-                                                                box_data);
+                        ply_pixel_buffer_fill_with_buffer (pixel_buffer,
+                                                           ply_multiscale_image_get_buffer (plugin->box_image, device_scale),
+                                                           view->box_area.x,
+                                                           view->box_area.y);
                 }
 
                 ply_entry_draw_area (view->entry,
@@ -1535,10 +1544,10 @@ on_draw (view_t             *view,
                                      pixel_buffer,
                                      x, y, width, height);
 
-                lock_data = ply_image_get_data (plugin->lock_image);
-                ply_pixel_buffer_fill_with_argb32_data (pixel_buffer,
-                                                        &view->lock_area,
-                                                        lock_data);
+                ply_pixel_buffer_fill_with_buffer (pixel_buffer,
+                                                   ply_multiscale_image_get_buffer (plugin->lock_image, device_scale),
+                                                   view->lock_area.x,
+                                                   view->lock_area.y);
         } else {
                 if (plugin->mode_settings[plugin->mode].use_progress_bar)
                         ply_progress_bar_draw_area (view->progress_bar, pixel_buffer,
@@ -1562,17 +1571,15 @@ on_draw (view_t             *view,
                                                  x, y, width, height);
 
                 if (plugin->corner_image != NULL) {
-                        image_area.width = ply_image_get_width (plugin->corner_image);
-                        image_area.height = ply_image_get_height (plugin->corner_image);
-                        image_area.x = screen_area.width - image_area.width - 20;
-                        image_area.y = screen_area.height - image_area.height - 20;
-
-                        ply_pixel_buffer_fill_with_argb32_data (pixel_buffer, &image_area, ply_image_get_data (plugin->corner_image));
+                        ply_pixel_buffer_fill_with_buffer (
+                                pixel_buffer,
+                                ply_multiscale_image_get_buffer (plugin->corner_image, device_scale),
+                                screen_area.width - ply_multiscale_image_get_width (plugin->corner_image) - 20,
+                                screen_area.height - ply_multiscale_image_get_height (plugin->corner_image) - 20);
                 }
 
                 if (plugin->header_image != NULL) {
                         long sprite_height;
-
 
                         if (view->progress_animation != NULL)
                                 sprite_height = ply_progress_animation_get_height (view->progress_animation);
@@ -1583,12 +1590,12 @@ on_draw (view_t             *view,
                                 sprite_height = MAX (ply_throbber_get_height (view->throbber),
                                                      sprite_height);
 
-                        image_area.width = ply_image_get_width (plugin->header_image);
-                        image_area.height = ply_image_get_height (plugin->header_image);
-                        image_area.x = screen_area.width / 2.0 - image_area.width / 2.0;
-                        image_area.y = plugin->animation_vertical_alignment * screen_area.height - sprite_height / 2.0 - image_area.height;
-
-                        ply_pixel_buffer_fill_with_argb32_data (pixel_buffer, &image_area, ply_image_get_data (plugin->header_image));
+                        ply_pixel_buffer_fill_with_buffer (pixel_buffer,
+                                                           ply_multiscale_image_get_buffer (plugin->header_image, device_scale),
+                                                           screen_area.width / 2.0
+                                                           - ply_multiscale_image_get_width (plugin->header_image) / 2.0,
+                                                           plugin->animation_vertical_alignment * screen_area.height - sprite_height / 2.0
+                                                           - ply_multiscale_image_get_height (plugin->header_image));
                 }
                 ply_label_draw_area (view->title_label,
                                      pixel_buffer,
@@ -1665,14 +1672,14 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
         plugin->mode = mode;
 
         ply_trace ("loading lock image");
-        if (!ply_image_load (plugin->lock_image))
+        if (!ply_multiscale_image_load (plugin->lock_image))
                 return false;
 
         if (plugin->box_image != NULL) {
                 ply_trace ("loading box image");
 
-                if (!ply_image_load (plugin->box_image)) {
-                        ply_image_free (plugin->box_image);
+                if (!ply_multiscale_image_load (plugin->box_image)) {
+                        ply_multiscale_image_free (plugin->box_image);
                         plugin->box_image = NULL;
                 }
         }
@@ -1680,8 +1687,8 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
         if (plugin->corner_image != NULL) {
                 ply_trace ("loading corner image");
 
-                if (!ply_image_load (plugin->corner_image)) {
-                        ply_image_free (plugin->corner_image);
+                if (!ply_multiscale_image_load (plugin->corner_image)) {
+                        ply_multiscale_image_free (plugin->corner_image);
                         plugin->corner_image = NULL;
                 }
         }
@@ -1689,16 +1696,16 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
         if (plugin->header_image != NULL) {
                 ply_trace ("loading header image");
 
-                if (!ply_image_load (plugin->header_image)) {
-                        ply_image_free (plugin->header_image);
+                if (!ply_multiscale_image_load (plugin->header_image)) {
+                        ply_multiscale_image_free (plugin->header_image);
                         plugin->header_image = NULL;
                 }
         }
 
         if (plugin->background_tile_image != NULL) {
                 ply_trace ("loading background tile image");
-                if (!ply_image_load (plugin->background_tile_image)) {
-                        ply_image_free (plugin->background_tile_image);
+                if (!ply_multiscale_image_load (plugin->background_tile_image)) {
+                        ply_multiscale_image_free (plugin->background_tile_image);
                         plugin->background_tile_image = NULL;
                 }
         }
@@ -1716,16 +1723,16 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
 
         if (plugin->background_bgrt_fallback_image != NULL) {
                 ply_trace ("loading background bgrt fallback image");
-                if (!ply_image_load (plugin->background_bgrt_fallback_image)) {
-                        ply_image_free (plugin->background_bgrt_fallback_image);
+                if (!ply_multiscale_image_load (plugin->background_bgrt_fallback_image)) {
+                        ply_multiscale_image_free (plugin->background_bgrt_fallback_image);
                         plugin->background_bgrt_fallback_image = NULL;
                 }
         }
 
         if (plugin->watermark_image != NULL) {
                 ply_trace ("loading watermark image");
-                if (!ply_image_load (plugin->watermark_image)) {
-                        ply_image_free (plugin->watermark_image);
+                if (!ply_multiscale_image_load (plugin->watermark_image)) {
+                        ply_multiscale_image_free (plugin->watermark_image);
                         plugin->watermark_image = NULL;
                 }
         }
