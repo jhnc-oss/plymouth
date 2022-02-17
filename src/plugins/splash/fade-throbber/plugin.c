@@ -934,6 +934,7 @@ show_message (ply_boot_splash_plugin_t *plugin,
 {
         ply_trace ("Showing message '%s'", message);
         ply_list_node_t *node;
+
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
                 ply_list_node_t *next_node;
