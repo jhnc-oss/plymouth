@@ -39,7 +39,7 @@
 #define CLAMP(a, b, c) (MIN (MAX ((a), (b)), (c)))
 #endif
 
-#define PLY_NUMBER_OF_ELEMENTS(arr) (sizeof (arr) / sizeof ((arr)[0]))
+#define PLY_NUMBER_OF_ELEMENTS(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 #define PLY_UTF8_CHARACTER_SIZE_MAX 4
 
@@ -130,7 +130,7 @@ bool ply_kernel_command_line_has_argument (const char *argument);
 void ply_kernel_command_line_override (const char *command_line);
 char *ply_kernel_command_line_get_key_value (const char *key);
 
-double ply_strtod(const char *str);
+double ply_strtod (const char *str);
 
 #endif
 
