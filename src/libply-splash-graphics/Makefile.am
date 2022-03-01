@@ -12,6 +12,7 @@ libply_splash_graphics_HEADERS = \
                                  ply-capslock-icon.h                          \
                                  ply-entry.h                                  \
                                  ply-image.h                                  \
+                                 ply-image-sequence.h                         \
                                  ply-keymap-icon.h                            \
                                  ply-keymap-metadata.h                        \
                                  ply-label.h                                  \
@@ -37,6 +38,7 @@ libply_splash_graphics_la_SOURCES = \
                                     ply-capslock-icon.c                       \
                                     ply-entry.c                               \
                                     ply-image.c                               \
+                                    ply-image-sequence.c                      \
                                     ply-keymap-icon.c                         \
                                     ply-label.c                               \
                                     ply-multiscale-image.c                    \

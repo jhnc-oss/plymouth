@@ -1,5 +1,6 @@
 /* throbber.c - boot throbber
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2007, 2008 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: Ray Strode <rstrode@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include "config.h"
 
@@ -41,6 +43,7 @@
 #include <wchar.h>
 
 #include "ply-throbber.h"
+#include "ply-image-sequence.h"
 #include "ply-event-loop.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
@@ -61,28 +64,27 @@
 
 struct _ply_throbber
 {
-        ply_array_t         *frames;
-        ply_event_loop_t    *loop;
-        char                *image_dir;
-        char                *frames_prefix;
+        ply_image_sequence_t *frame_sequence;
+        ply_event_loop_t     *loop;
 
-        ply_pixel_display_t *display;
-        ply_rectangle_t      frame_area;
-        ply_trigger_t       *stop_trigger;
+        ply_pixel_display_t  *display;
+        ply_trigger_t        *stop_trigger;
 
-        long                 x, y;
-        long                 width, height;
-        double               start_time, now;
+        long                  x, y;
+        long                  width, height;
+        double                start_time, now;
 
-        int                  frame_number;
-        uint32_t             is_stopped : 1;
+        int                   frame_number;
+        uint32_t              is_stopped : 1;
 };
 
-static void ply_throbber_stop_now (ply_throbber_t *throbber, bool redraw);
+static void ply_throbber_stop_now (ply_throbber_t *throbber,
+                                   bool            redraw);
 
 ply_throbber_t *
 ply_throbber_new (const char *image_dir,
-                  const char *frames_prefix)
+                  const char *frames_prefix,
+                  int         device_scale)
 {
         ply_throbber_t *throbber;
 
@@ -91,32 +93,13 @@ ply_throbber_new (const char *image_dir,
 
         throbber = calloc (1, sizeof(ply_throbber_t));
 
-        throbber->frames = ply_array_new (PLY_ARRAY_ELEMENT_TYPE_POINTER);
-        throbber->frames_prefix = strdup (frames_prefix);
-        throbber->image_dir = strdup (image_dir);
+        throbber->frame_sequence = ply_image_sequence_new (image_dir, frames_prefix, device_scale);
         throbber->is_stopped = true;
         throbber->width = 0;
         throbber->height = 0;
-        throbber->frame_area.width = 0;
-        throbber->frame_area.height = 0;
-        throbber->frame_area.x = 0;
-        throbber->frame_area.y = 0;
         throbber->frame_number = 0;
 
         return throbber;
-}
-
-static void
-ply_throbber_remove_frames (ply_throbber_t *throbber)
-{
-        int i;
-        ply_pixel_buffer_t **frames;
-
-        frames = (ply_pixel_buffer_t **) ply_array_steal_pointer_elements (throbber->frames);
-        for (i = 0; frames[i] != NULL; i++) {
-                ply_pixel_buffer_free (frames[i]);
-        }
-        free (frames);
 }
 
 void
@@ -128,11 +111,8 @@ ply_throbber_free (ply_throbber_t *throbber)
         if (!throbber->is_stopped)
                 ply_throbber_stop_now (throbber, false);
 
-        ply_throbber_remove_frames (throbber);
-        ply_array_free (throbber->frames);
+        ply_image_sequence_free (throbber->frame_sequence);
 
-        free (throbber->frames_prefix);
-        free (throbber->image_dir);
         free (throbber);
 }
 
@@ -141,12 +121,11 @@ animate_at_time (ply_throbber_t *throbber,
                  double          time)
 {
         int number_of_frames;
-        ply_pixel_buffer_t *const *frames;
         bool should_continue;
         double percent_in_sequence;
         int last_frame_number;
 
-        number_of_frames = ply_array_get_size (throbber->frames);
+        number_of_frames = ply_image_sequence_get_number_of_frames (throbber->frame_sequence);
 
         if (number_of_frames == 0)
                 return true;
@@ -161,20 +140,16 @@ animate_at_time (ply_throbber_t *throbber,
                  * frame and loop around. Clamp it to the last frame.
                  */
                 if (last_frame_number > throbber->frame_number)
-                      throbber->frame_number = number_of_frames - 1;
+                        throbber->frame_number = number_of_frames - 1;
 
                 if (throbber->frame_number == number_of_frames - 1)
                         should_continue = false;
         }
 
-        frames = (ply_pixel_buffer_t *const *) ply_array_get_pointer_elements (throbber->frames);
-        ply_pixel_buffer_get_size (frames[throbber->frame_number], &throbber->frame_area);
-        throbber->frame_area.x = throbber->x;
-        throbber->frame_area.y = throbber->y;
         ply_pixel_display_draw_area (throbber->display,
                                      throbber->x, throbber->y,
-                                     throbber->frame_area.width,
-                                     throbber->frame_area.height);
+                                     ply_image_sequence_get_width (throbber->frame_sequence),
+                                     ply_image_sequence_get_height (throbber->frame_sequence));
 
         return should_continue;
 }
@@ -208,92 +183,10 @@ on_timeout (ply_throbber_t *throbber)
         }
 }
 
-static bool
-ply_throbber_add_frame (ply_throbber_t *throbber,
-                        const char     *filename)
-{
-        ply_image_t *image;
-        ply_pixel_buffer_t *frame;
-
-        image = ply_image_new (filename);
-
-        if (!ply_image_load (image)) {
-                ply_image_free (image);
-                return false;
-        }
-
-        frame = ply_image_convert_to_pixel_buffer (image);
-
-        ply_array_add_pointer_element (throbber->frames, frame);
-
-        throbber->width = MAX (throbber->width, (long) ply_pixel_buffer_get_width (frame));
-        throbber->height = MAX (throbber->height, (long) ply_pixel_buffer_get_height (frame));
-
-        return true;
-}
-
-static bool
-ply_throbber_add_frames (ply_throbber_t *throbber)
-{
-        struct dirent **entries;
-        int number_of_entries;
-        int i;
-        bool load_finished;
-
-        entries = NULL;
-
-        number_of_entries = scandir (throbber->image_dir, &entries, NULL, versionsort);
-
-        if (number_of_entries <= 0)
-                return false;
-
-        load_finished = false;
-        for (i = 0; i < number_of_entries; i++) {
-                if (strncmp (entries[i]->d_name,
-                             throbber->frames_prefix,
-                             strlen (throbber->frames_prefix)) == 0
-                    && (strlen (entries[i]->d_name) > 4)
-                    && strcmp (entries[i]->d_name + strlen (entries[i]->d_name) - 4, ".png") == 0) {
-                        char *filename;
-
-                        filename = NULL;
-                        asprintf (&filename, "%s/%s", throbber->image_dir, entries[i]->d_name);
-
-                        if (!ply_throbber_add_frame (throbber, filename))
-                                goto out;
-
-                        free (filename);
-                }
-
-                free (entries[i]);
-                entries[i] = NULL;
-        }
-        load_finished = true;
-
-out:
-        if (!load_finished) {
-                ply_throbber_remove_frames (throbber);
-
-                while (entries[i] != NULL) {
-                        free (entries[i]);
-                        i++;
-                }
-        }
-        free (entries);
-
-        return (ply_array_get_size (throbber->frames) > 0);
-}
-
 bool
 ply_throbber_load (ply_throbber_t *throbber)
 {
-        if (ply_array_get_size (throbber->frames) != 0)
-                ply_throbber_remove_frames (throbber);
-
-        if (!ply_throbber_add_frames (throbber))
-                return false;
-
-        return true;
+        return ply_image_sequence_load (throbber->frame_sequence);
 }
 
 bool
@@ -332,8 +225,8 @@ ply_throbber_stop_now (ply_throbber_t *throbber, bool redraw)
                 ply_pixel_display_draw_area (throbber->display,
                                              throbber->x,
                                              throbber->y,
-                                             throbber->frame_area.width,
-                                             throbber->frame_area.height);
+                                             ply_image_sequence_get_width (throbber->frame_sequence),
+                                             ply_image_sequence_get_height (throbber->frame_sequence));
         }
 
         if (throbber->loop != NULL) {
@@ -380,16 +273,14 @@ ply_throbber_draw_area (ply_throbber_t     *throbber,
                         unsigned long       width,
                         unsigned long       height)
 {
-        ply_pixel_buffer_t *const *frames;
-
         if (throbber->is_stopped)
                 return;
 
-        frames = (ply_pixel_buffer_t *const *) ply_array_get_pointer_elements (throbber->frames);
-        ply_pixel_buffer_fill_with_buffer (buffer,
-                                           frames[throbber->frame_number],
-                                           throbber->x,
-                                           throbber->y);
+        ply_image_sequence_draw_area (throbber->frame_sequence,
+                                      throbber->frame_number,
+                                      buffer,
+                                      throbber->x, throbber->y,
+                                      width, height);
 }
 
 long

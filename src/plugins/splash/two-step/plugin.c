@@ -227,7 +227,8 @@ view_new (ply_boot_splash_plugin_t *plugin,
                                      plugin->progress_bar_bg_color);
 
         view->throbber = ply_throbber_new (plugin->animation_dir,
-                                           "throbber-");
+                                           "throbber-",
+                                           ply_pixel_display_get_device_scale (view->display));
 
         view->label = ply_label_new ();
         ply_label_set_font (view->label, plugin->font);
