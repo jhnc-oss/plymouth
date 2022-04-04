@@ -249,6 +249,25 @@ ply_renderer_buffer_new (ply_renderer_backend_t *backend,
         return buffer;
 }
 
+#ifndef DRM_IOCTL_MODE_CLOSEFB
+#define DRM_IOCTL_MODE_CLOSEFB DRM_IOWR(0xCF, unsigned int)
+#endif
+
+static void
+close_drm_fb (ply_renderer_backend_t *backend,
+              uint32_t fb_id)
+{
+        int ret;
+
+        /* First try to close the FB without disabling the plane/CRTC. Fallback
+         * to RMFB on older kernels. */
+        ret = drmIoctl (backend->device_fd, DRM_IOCTL_MODE_CLOSEFB, &fb_id);
+        if (ret != -EOPNOTSUPP)
+                return;
+
+        drmModeRmFB (backend->device_fd, fb_id);
+}
+
 static void
 ply_renderer_buffer_free (ply_renderer_backend_t *backend,
                           ply_renderer_buffer_t  *buffer)
@@ -256,7 +275,7 @@ ply_renderer_buffer_free (ply_renderer_backend_t *backend,
         struct drm_mode_destroy_dumb destroy_dumb_buffer_request;
 
         if (buffer->added_fb)
-                drmModeRmFB (backend->device_fd, buffer->id);
+                close_drm_fb (backend, buffer->id);
 
         if (buffer->map_address != MAP_FAILED) {
                 munmap (buffer->map_address, buffer->map_size);
