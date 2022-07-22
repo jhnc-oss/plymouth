@@ -1,5 +1,6 @@
 /* keymap-icon - Shows a keyboard-icon + the current keymap as text, e.g. "us"
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2019 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: Hans de Goede <hdegoede@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #ifndef KEYMAP_ICON_H
 #define KEYMAP_ICON_H
@@ -36,7 +38,8 @@ ply_keymap_icon_t *ply_keymap_icon_new (ply_pixel_display_t *display,
                                         const char          *image_dir);
 void ply_keymap_icon_free (ply_keymap_icon_t *keymap_icon);
 
-bool ply_keymap_icon_load (ply_keymap_icon_t *keymap_icon);
+bool ply_keymap_icon_load (ply_keymap_icon_t *keymap_icon,
+                           int                device_scale);
 bool ply_keymap_icon_show (ply_keymap_icon_t *keymap_icon,
                            long               x,
                            long               y);

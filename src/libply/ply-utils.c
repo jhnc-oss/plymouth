@@ -1,5 +1,6 @@
 /* ply-utils.c -  random useful functions and macros
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2007 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: Ray Strode <rstrode@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include <config.h>
 
@@ -412,9 +414,8 @@ ply_set_fd_as_blocking (int fd)
 
         flags = fcntl (fd, F_GETFL);
 
-        if (flags == -1) {
+        if (flags == -1)
                 return false;
-        }
 
         if (flags & O_NONBLOCK) {
                 flags &= ~O_NONBLOCK;
@@ -856,8 +857,8 @@ out:
 void
 ply_set_device_scale (int device_scale)
 {
-    overridden_device_scale = device_scale;
-    ply_trace ("Device scale is set to %d", device_scale);
+        overridden_device_scale = device_scale;
+        ply_trace ("Device scale is set to %d", device_scale);
 }
 
 /* The minimum resolution at which we turn on a device-scale of 2 */
@@ -894,11 +895,11 @@ ply_get_device_scale (uint32_t width,
                 return 1;
 
         if (width_mm > 0 && height_mm > 0) {
-                dpi_x = (double)width / (width_mm / 25.4);
-                dpi_y = (double)height / (height_mm / 25.4);
+                dpi_x = (double) width / (width_mm / 25.4);
+                dpi_y = (double) height / (height_mm / 25.4);
                 /* We don't completely trust these values so both
-                   must be high, and never pick higher ratio than
-                   2 automatically */
+                 * must be high, and never pick higher ratio than
+                 * 2 automatically */
                 if (dpi_x > HIDPI_LIMIT && dpi_y > HIDPI_LIMIT)
                         device_scale = 2;
         }
@@ -954,7 +955,7 @@ ply_get_kernel_command_line (void)
 const char *
 ply_kernel_command_line_get_string_after_prefix (const char *prefix)
 {
-        const char *command_line = ply_get_kernel_command_line();
+        const char *command_line = ply_get_kernel_command_line ();
         char *argument;
 
         if (!command_line)
@@ -997,7 +998,7 @@ ply_kernel_command_line_get_key_value (const char *key)
         if (value == NULL || value[0] == '\0')
                 return NULL;
 
-        return strndup(value, strcspn (value, " \n"));
+        return strndup (value, strcspn (value, " \n"));
 }
 
 void
@@ -1008,17 +1009,41 @@ ply_kernel_command_line_override (const char *command_line)
         kernel_command_line_is_set = true;
 }
 
-double ply_strtod(const char *str)
+double ply_strtod (const char *str)
 {
         char *old_locale;
         double ret;
 
         /* Ensure strtod uses '.' as decimal separator, as we use this in our cfg files. */
-        old_locale = setlocale(LC_NUMERIC, "C");
-        ret = strtod(str, NULL);
-        setlocale(LC_NUMERIC, old_locale);
+        old_locale = setlocale (LC_NUMERIC, "C");
+        ret = strtod (str, NULL);
+        setlocale (LC_NUMERIC, old_locale);
 
         return ret;
+}
+
+void
+ply_path_split_base_and_ext (const char *filepath, char **filepath_no_ext, char **extension)
+{
+        const char *tmp_extension, *current_char_ptr;
+
+        assert (filepath != NULL);
+
+        tmp_extension = NULL;
+        current_char_ptr = filepath;
+
+        while (*current_char_ptr) {
+                if (*current_char_ptr == '.')
+                        tmp_extension = current_char_ptr;
+                current_char_ptr++;
+        }
+        if (tmp_extension == NULL)
+                // Point at the null byte at the end of filepath_base.
+                tmp_extension = current_char_ptr;
+
+        *filepath_no_ext = calloc (tmp_extension - filepath + 1, sizeof(char));
+        strncpy (*filepath_no_ext, filepath, tmp_extension - filepath);
+        *extension = strdup (tmp_extension);
 }
 
 /* vim: set ts=4 sw=4 expandtab autoindent cindent cino={.5s,(0: */

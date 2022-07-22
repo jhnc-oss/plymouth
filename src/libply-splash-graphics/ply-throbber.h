@@ -1,5 +1,6 @@
 /* throbber.h - simple throbber animation
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2008 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written By: Ray Strode <rstrode@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #ifndef THROBBER_H
 #define THROBBER_H
@@ -35,7 +37,8 @@ typedef struct _ply_throbber ply_throbber_t;
 
 #ifndef PLY_HIDE_FUNCTION_DECLARATIONS
 ply_throbber_t *ply_throbber_new (const char *image_dir,
-                                  const char *frames_prefix);
+                                  const char *frames_prefix,
+                                  int         device_scale);
 void ply_throbber_free (ply_throbber_t *throbber);
 
 bool ply_throbber_load (ply_throbber_t *throbber);

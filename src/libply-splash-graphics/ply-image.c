@@ -1,5 +1,6 @@
 /* ply-image.c - png file loader
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2006, 2007 Red Hat, Inc.
  * Copyright (C) 2003 University of Southern California
  *
@@ -24,6 +25,7 @@
  *             Kristian Høgsberg <krh@redhat.com>
  *             Ray Strode <rstrode@redhat.com>
  *             Carl D. Worth <cworth@cworth.org>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include "config.h"
 #include "ply-image.h"
@@ -35,6 +37,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -55,17 +58,19 @@ struct _ply_image
         ply_pixel_buffer_t *buffer;
 };
 
-struct bmp_file_header {
+struct bmp_file_header
+{
         uint16_t id;
         uint32_t file_size;
         uint32_t reserved;
         uint32_t bitmap_offset;
 } __attribute__((__packed__));
 
-struct bmp_dib_header {
+struct bmp_dib_header
+{
         uint32_t dib_header_size;
-        int32_t width;
-        int32_t height;
+        int32_t  width;
+        int32_t  height;
         uint16_t planes;
         uint16_t bpp;
         uint32_t compression;
@@ -136,7 +141,7 @@ transform_to_argb32 (png_struct   *png,
 }
 
 static bool
-ply_image_load_png (ply_image_t *image, FILE *fp)
+ply_image_load_png (ply_image_t *image, FILE *fp, int device_scale)
 {
         png_struct *png;
         png_info *info;
@@ -194,6 +199,7 @@ ply_image_load_png (ply_image_t *image, FILE *fp)
 
         rows = malloc (height * sizeof(png_byte *));
         image->buffer = ply_pixel_buffer_new (width, height);
+        ply_pixel_buffer_set_device_scale (image->buffer, device_scale);
 
         bytes = ply_pixel_buffer_get_argb32_data (image->buffer);
 
@@ -211,7 +217,7 @@ ply_image_load_png (ply_image_t *image, FILE *fp)
 }
 
 static bool
-ply_image_load_bmp (ply_image_t *image, FILE *fp)
+ply_image_load_bmp (ply_image_t *image, FILE *fp, int device_scale)
 {
         uint32_t x, y, src_y, width, height, bmp_pitch, *dst;
         struct bmp_file_header file_header;
@@ -242,11 +248,12 @@ ply_image_load_bmp (ply_image_t *image, FILE *fp)
 
         if (fseek (fp, file_header.bitmap_offset, SEEK_SET) != 0)
                 goto out;
-        
+
         if (fread (buf, 1, bmp_pitch * height, fp) != bmp_pitch * height)
                 goto out;
 
         image->buffer = ply_pixel_buffer_new (width, height);
+        ply_pixel_buffer_set_device_scale (image->buffer, device_scale);
         dst = ply_pixel_buffer_get_argb32_data (image->buffer);
 
         for (y = 0; y < height; y++) {
@@ -276,6 +283,12 @@ out:
 bool
 ply_image_load (ply_image_t *image)
 {
+        return ply_image_load_assuming_scale (image, 1);
+}
+
+bool
+ply_image_load_assuming_scale (ply_image_t *image, int device_scale)
+{
         uint8_t header[16];
         bool ret = false;
         FILE *fp;
@@ -294,15 +307,72 @@ ply_image_load (ply_image_t *image)
                 goto out;
 
         if (memcmp (header, png_header, sizeof(png_header)) == 0)
-                ret = ply_image_load_png (image, fp);
+                ret = ply_image_load_png (image, fp, device_scale);
 
-        else if (((struct bmp_file_header *)header)->id == 0x4d42 &&
-                 ((struct bmp_file_header *)header)->reserved == 0)
-                ret = ply_image_load_bmp (image, fp);
+        else if (((struct bmp_file_header *) header)->id == 0x4d42 &&
+                 ((struct bmp_file_header *) header)->reserved == 0)
+                ret = ply_image_load_bmp (image, fp, device_scale);
 
 out:
         fclose (fp);
         return ret;
+}
+
+bool
+ply_image_load_at_scale (ply_image_t *image, int device_scale)
+{
+        char *filepath_base, *filepath_no_ext, *extension;
+
+        if (device_scale == 1)
+                return ply_image_load (image);
+
+        filepath_base = image->filename;
+        image->filename = NULL;
+
+        ply_path_split_base_and_ext (filepath_base, &filepath_no_ext, &extension);
+
+        asprintf (&image->filename, "%s@%d%s", filepath_no_ext, device_scale, extension);
+
+        if (ply_image_load_assuming_scale (image, device_scale)) {
+                free (filepath_base);
+                free (filepath_no_ext);
+                free (extension);
+                return true;
+        } else {
+                free (image->filename);
+                free (filepath_no_ext);
+                free (extension);
+                image->filename = filepath_base;
+                filepath_base = NULL;
+                return false;
+        }
+}
+
+ply_image_lasof_res_t
+ply_image_load_at_scale_or_fallback (ply_image_t *image, int device_scale)
+{
+        if (ply_image_load_at_scale (image, device_scale))
+                return PLY_IMAGE_LOADED_AT_SCALE;
+        else if (ply_image_load (image))
+                return PLY_IMAGE_LOADED_FALLBACK;
+        else
+                return PLY_IMAGE_LOAD_FAILED;
+}
+
+const char *
+ply_image_lasof_res_desc_string (ply_image_lasof_res_t result)
+{
+        switch (result) {
+        case PLY_IMAGE_LOAD_FAILED:
+                return "failed loading at scale and fallback";
+        case PLY_IMAGE_LOADED_FALLBACK:
+                return "loaded fallback";
+        case PLY_IMAGE_LOADED_AT_SCALE:
+                return "successfully loaded at scale";
+        }
+
+        assert (((void) "unexpected/invalid enum variant", false));
+        __builtin_unreachable ();
 }
 
 uint32_t *

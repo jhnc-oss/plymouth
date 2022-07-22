@@ -1,5 +1,6 @@
 /* capslock-icon - Show an image when capslock is active
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2019 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: Hans de Goede <hdegoede@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #ifndef CAPSLOCK_ICON_H
 #define CAPSLOCK_ICON_H
@@ -35,7 +37,8 @@ typedef struct _ply_capslock_icon ply_capslock_icon_t;
 ply_capslock_icon_t *ply_capslock_icon_new (const char *image_dir);
 void ply_capslock_icon_free (ply_capslock_icon_t *capslock_icon);
 
-bool ply_capslock_icon_load (ply_capslock_icon_t *capslock_icon);
+bool ply_capslock_icon_load (ply_capslock_icon_t *capslock_icon,
+                             int                  device_scale);
 bool ply_capslock_icon_show (ply_capslock_icon_t *capslock_icon,
                              ply_event_loop_t    *loop,
                              ply_pixel_display_t *display,

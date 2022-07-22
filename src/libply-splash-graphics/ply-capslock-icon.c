@@ -1,5 +1,6 @@
 /* capslock-icon - Show an image when capslock is active
  *
+ * Copyright (C) 2022 Hans Christian Schmitz
  * Copyright (C) 2019 Red Hat, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,6 +19,7 @@
  * 02111-1307, USA.
  *
  * Written by: Hans de Goede <hdegoede@redhat.com>
+ *             Hans Christian Schmitz <git@hcsch.eu>
  */
 #include "config.h"
 
@@ -114,7 +116,7 @@ on_timeout (void             *user_data,
         bool old_is_on = capslock_icon->is_on;
 
         ply_capslock_icon_update_state (capslock_icon);
-        
+
         if (capslock_icon->is_on != old_is_on)
                 ply_capslock_icon_draw (capslock_icon);
 
@@ -132,16 +134,24 @@ ply_capslock_stop_polling (ply_capslock_icon_t *capslock_icon)
 }
 
 bool
-ply_capslock_icon_load (ply_capslock_icon_t *capslock_icon)
+ply_capslock_icon_load (ply_capslock_icon_t *capslock_icon, int device_scale)
 {
         ply_image_t *image;
+        ply_image_lasof_res_t result;
 
         if (capslock_icon->buffer)
                 return true;
 
         image = ply_image_new (capslock_icon->image_name);
 
-        if (!ply_image_load (image)) {
+        result = ply_image_load_at_scale_or_fallback (image, device_scale);
+
+        ply_trace ("loading '%s' at scale %d: %s",
+                   capslock_icon->image_name,
+                   device_scale,
+                   ply_image_lasof_res_desc_string (result));
+
+        if (result == PLY_IMAGE_LOAD_FAILED) {
                 ply_image_free (image);
                 return false;
         }
@@ -211,7 +221,7 @@ ply_capslock_icon_draw_area (ply_capslock_icon_t *capslock_icon,
                 return;
 
         ply_capslock_icon_update_state (capslock_icon);
-        
+
         if (!capslock_icon->is_on)
                 return;
 
