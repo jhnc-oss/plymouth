@@ -31,8 +31,8 @@ typedef struct _ply_rectangle ply_rectangle_t;
 
 struct _ply_rectangle
 {
-        long          x;
-        long          y;
+        double        x;
+        double        y;
         unsigned long width;
         unsigned long height;
 };
@@ -94,6 +94,10 @@ typedef enum
 bool ply_rectangle_contains_point (ply_rectangle_t *rectangle,
                                    long             x,
                                    long             y);
+
+long ply_rectangle_get_x (ply_rectangle_t *rectangle);
+
+long ply_rectangle_get_y (ply_rectangle_t *rectangle);
 
 bool ply_rectangle_is_empty (ply_rectangle_t *rectangle);
 

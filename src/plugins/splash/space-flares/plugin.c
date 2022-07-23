@@ -1304,7 +1304,7 @@ on_draw (view_t             *view,
 
                         if (single_pixel) {
                                 uint32_t *image_data = ply_image_get_data (sprite->image);
-                                uint32_t overlay_pixel = image_data[(x - sprite_area.x) + (y - sprite_area.y) * sprite_area.width];
+                                uint32_t overlay_pixel = image_data[(x - ply_rectangle_get_x (&sprite_area)) + (y - ply_rectangle_get_y (&sprite_area)) * sprite_area.width];
                                 float alpha = (float) ((overlay_pixel >> 24) & 0xff) / 255 * sprite->opacity;
                                 float red = (float) ((overlay_pixel >> 16) & 0xff) / 255 * sprite->opacity;
                                 float green = (float) ((overlay_pixel >> 8) & 0xff) / 255 * sprite->opacity;

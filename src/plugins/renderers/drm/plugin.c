@@ -834,8 +834,8 @@ ply_renderer_head_flush_area (ply_renderer_head_t *head,
 
         shadow_buffer = ply_pixel_buffer_get_argb32_data (head->pixel_buffer);
 
-        dst = &map_address[area_to_flush->y * head->row_stride + area_to_flush->x * BYTES_PER_PIXEL];
-        src = (char *) &shadow_buffer[area_to_flush->y * head->area.width + area_to_flush->x];
+        dst = &map_address[ply_rectangle_get_y (area_to_flush) * head->row_stride + ply_rectangle_get_x (area_to_flush) * BYTES_PER_PIXEL];
+        src = (char *) &shadow_buffer[ply_rectangle_get_y (area_to_flush) * head->area.width + ply_rectangle_get_x (area_to_flush)];
 
         flush_area (src, head->area.width * 4, dst, head->row_stride, area_to_flush);
 }

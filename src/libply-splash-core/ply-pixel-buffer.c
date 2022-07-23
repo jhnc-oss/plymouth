@@ -555,7 +555,7 @@ ply_pixel_buffer_fill_with_gradient (ply_pixel_buffer_t *buffer,
                                 }
                         } else {
                                 uint32_t shaded_set[UNROLLED_PIXEL_COUNT];
-                                uint32_t *ptr = &buffer->bytes[y * buffer->area.width + cropped_area.x];
+                                uint32_t *ptr = &buffer->bytes[y * buffer->area.width + ply_rectangle_get_x (&cropped_area)];
                                 for (x = 0; x < UNROLLED_PIXEL_COUNT; x++) {
                                         shaded_set[x] = 0xff000000;
                                         RANDOMIZE (noise);
@@ -745,7 +745,7 @@ ply_pixel_buffer_fill_with_argb32_data_at_opacity_with_clip_and_scale (ply_pixel
         /* column, row are the point we want to write into, in
            pixel_buffer coordinate space (device pixels)
 
-           scale_factor * (column - fill_area->x), scale_factor * (row - fill_area->y)
+           scale_factor * column - fill_area->x, scale_factor * row - fill_area->y
            is the point we want to source from, in the data coordinate
            space */
         for (row = y; row < y + cropped_area.height; row++) {
@@ -753,8 +753,8 @@ ply_pixel_buffer_fill_with_argb32_data_at_opacity_with_clip_and_scale (ply_pixel
                         uint32_t pixel_value;
 
                         if (buffer->device_scale == scale)
-                                pixel_value = data[fill_area->width * (row - fill_area->y) +
-                                                   column - fill_area->x];
+                                pixel_value = data[fill_area->width * (row - ply_rectangle_get_y (fill_area)) +
+                                                   column - ply_rectangle_get_x (fill_area)];
                         else
                                 pixel_value = ply_pixels_interpolate (data,
                                                                       fill_area->width,
@@ -833,7 +833,7 @@ ply_pixel_buffer_copy_area (ply_pixel_buffer_t *canvas,
         unsigned long row;
 
         for (row = y; row < y + cropped_area->height; row++) {
-                memcpy (canvas->bytes + (cropped_area->y + row - y) * canvas->area.width + cropped_area->x,
+                memcpy (canvas->bytes + (ply_rectangle_get_y (cropped_area) + row - y) * canvas->area.width + ply_rectangle_get_x (cropped_area),
                         source->bytes + (row * source->area.width) + x,
                         cropped_area->width * 4);
         }
