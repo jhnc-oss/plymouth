@@ -47,7 +47,7 @@ function read_theme_name_from_file ()
         echo $(grep -v '^#' $1 2> /dev/null |
                awk '
                      BEGIN {
-                        RS="[[][[:blank:]]*[^[:space:]]+[:blank:]*[]\n]";
+                        RS="[[][[:blank:]]*[^[:space:]]+[[:blank:]]*[]\n]";
                         FS="[=[:space:]]+";
                         OFS="";
                         ORS=""
