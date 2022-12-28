@@ -3,6 +3,7 @@ systemd_unit_templates = [
   'plymouth-switch-root-initramfs.service.in',
   'plymouth-start.service.in',
   'plymouth-read-write.service.in',
+  'plymouth-deactivate.service.in',
   'plymouth-quit.service.in',
   'plymouth-quit-wait.service.in',
   'plymouth-reboot.service.in',
