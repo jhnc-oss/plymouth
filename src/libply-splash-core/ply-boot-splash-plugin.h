@@ -102,6 +102,11 @@ typedef struct
         bool (*validate_input) (ply_boot_splash_plugin_t *plugin,
                                 const char               *entry_text,
                                 const char               *add_text);
+        void (*attach_kmsg_messages)(ply_boot_splash_plugin_t *plugin,
+                                     ply_list_t               *kmsg_messages);
+        void (*unhide_kmsg_messages)(ply_boot_splash_plugin_t *plugin);
+        void (*update_kmsg_messages)(ply_boot_splash_plugin_t *plugin);
+        void (*hide_kmsg_messages)(ply_boot_splash_plugin_t *plugin);
 } ply_boot_splash_plugin_interface_t;
 
 #endif /* PLY_BOOT_SPLASH_PLUGIN_H */

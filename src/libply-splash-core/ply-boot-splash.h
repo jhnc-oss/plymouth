@@ -98,7 +98,12 @@ void ply_boot_splash_become_idle (ply_boot_splash_t                *splash,
                                   void                             *user_data);
 bool ply_boot_splash_uses_pixel_displays (ply_boot_splash_t *splash);
 
-
+bool ply_boot_splash_supports_kmsg_messages (ply_boot_splash_t *splash);
+void ply_boot_splash_attach_kmsg_messages (ply_boot_splash_t *splash,
+                                           ply_list_t        *kmsg_messages);
+void ply_boot_splash_unhide_kmsg_messages (ply_boot_splash_t *splash);
+void ply_boot_splash_update_kmsg_messages (ply_boot_splash_t *splash);
+void ply_boot_splash_hide_kmsg_messages (ply_boot_splash_t *splash);
 #endif
 
 #endif /* PLY_BOOT_SPLASH_H */
