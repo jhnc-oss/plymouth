@@ -65,6 +65,8 @@
 
 #include <linux/kd.h>
 
+#define KMSG_POLLS_PER_SECOND 4
+
 #ifndef FRAMES_PER_SECOND
 #define FRAMES_PER_SECOND 50
 #endif
@@ -90,6 +92,12 @@ struct _ply_boot_splash_plugin
         script_lib_string_data_t   *script_string_lib;
 
         uint32_t                    is_animating : 1;
+
+        char                       *monospace_font;
+        uint32_t                    has_new_kmsgs : 1;
+        uint32_t                    should_show_kmsg_messages : 1;
+        ply_list_t                 *kmsg_messages;
+        uint32_t                    kmsg_colors[LOG_PRIMASK + 1];
 };
 
 typedef struct
@@ -104,6 +112,12 @@ ply_boot_splash_plugin_interface_t *ply_boot_splash_plugin_get_interface (void);
 static void on_keyboard_input (ply_boot_splash_plugin_t *plugin,
                                const char               *keyboard_input,
                                size_t                    character_size);
+static void attach_kmsg_messages (ply_boot_splash_plugin_t *plugin,
+                                  ply_list_t               *kmsg_messages);
+static void display_kmsg_messages (ply_boot_splash_plugin_t *plugin);
+static void on_update_kmsg_messages (ply_boot_splash_plugin_t *plugin);
+static void hide_kmsg_messages (ply_boot_splash_plugin_t *plugin);
+static void unhide_kmsg_messages (ply_boot_splash_plugin_t *plugin);
 
 static void
 pause_displays (ply_boot_splash_plugin_t *plugin)
@@ -179,6 +193,49 @@ create_plugin (ply_key_file_t *key_file)
         plugin->script_env_vars = ply_list_new ();
         ply_key_file_foreach_entry (key_file, add_script_env_var, plugin->script_env_vars);
 
+        if (plugin->monospace_font == NULL)
+                plugin->monospace_font = strdup ("DejaVu Sans Mono Book 9");
+
+        plugin->kmsg_colors[LOG_EMERG] =
+                ply_key_file_get_long (key_file, "script",
+                                       "LogLevelEmergColor",
+                                       PLY_KMSG_VIEWER_LOG_EMERG_COLOR);
+
+        plugin->kmsg_colors[LOG_ALERT] =
+                ply_key_file_get_long (key_file, "script",
+                                       "LogLevelAlertColor",
+                                       PLY_KMSG_VIEWER_LOG_ALERT_COLOR);
+
+        plugin->kmsg_colors[LOG_CRIT] =
+                ply_key_file_get_long (key_file, "script",
+                                       "LogLevelCritColor",
+                                       PLY_KMSG_VIEWER_LOG_CRIT_COLOR);
+
+        plugin->kmsg_colors[LOG_ERR] =
+                ply_key_file_get_long (key_file, "script",
+                                       "LogLevelErrColor",
+                                       PLY_KMSG_VIEWER_LOG_ERR_COLOR);
+
+        plugin->kmsg_colors[LOG_WARNING] =
+                ply_key_file_get_long (key_file, "script",
+                                       "LogLevelWarningColor",
+                                       PLY_KMSG_VIEWER_LOG_WARNING_COLOR);
+
+        plugin->kmsg_colors[LOG_NOTICE] =
+                ply_key_file_get_long (key_file, "script",
+                                       "LogLevelNoticeColor",
+                                       PLY_KMSG_VIEWER_LOG_NOTICE_COLOR);
+
+        plugin->kmsg_colors[LOG_INFO] =
+                ply_key_file_get_long (key_file, "script",
+                                       "LogLevelInfoColor",
+                                       PLY_KMSG_VIEWER_LOG_INFO_COLOR);
+
+        plugin->kmsg_colors[LOG_DEBUG] =
+                ply_key_file_get_long (key_file, "script",
+                                       "LogLevelDebugColor",
+                                       PLY_KMSG_VIEWER_LOG_DEBUG_COLOR);
+
         plugin->displays = ply_list_new ();
         return plugin;
 }
@@ -194,6 +251,12 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
 
         if (plugin->loop != NULL) {
                 stop_animation (plugin);
+
+                ply_event_loop_stop_watching_for_timeout (plugin->loop,
+                                                          (ply_event_loop_timeout_handler_t)
+                                                          on_update_kmsg_messages, plugin);
+
+
                 ply_event_loop_stop_watching_for_exit (plugin->loop,
                                                        (ply_event_loop_exit_handler_t)
                                                        detach_from_event_loop,
@@ -212,6 +275,7 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
         ply_list_free (plugin->script_env_vars);
         free (plugin->script_filename);
         free (plugin->image_dir);
+        free (plugin->monospace_font);
         free (plugin);
 }
 
@@ -248,6 +312,7 @@ on_boot_progress (ply_boot_splash_plugin_t *plugin,
 static bool
 start_script_animation (ply_boot_splash_plugin_t *plugin)
 {
+        ply_list_t *displays;
         ply_list_node_t *node;
         script_obj_t *target_obj;
         script_obj_t *value_obj;
@@ -276,6 +341,30 @@ start_script_animation (ply_boot_splash_plugin_t *plugin)
                                                                  FRAMES_PER_SECOND);
         plugin->script_math_lib = script_lib_math_setup (plugin->script_state);
         plugin->script_string_lib = script_lib_string_setup (plugin->script_state);
+
+
+        displays = script_lib_get_displays (plugin->script_sprite_lib);
+        node = ply_list_get_first_node (displays);
+        while (node != NULL) {
+                script_lib_display_t *display;
+                ply_list_node_t *next_node;
+
+                display = ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (displays, node);
+
+                display->kmsg_viewer = ply_kmsg_viewer_new (display->pixel_display, plugin->monospace_font);
+                ply_kmsg_viewer_attach_kmsg_messages (display->kmsg_viewer, plugin->kmsg_messages);
+                ply_kmsg_viewer_set_priority_color (display->kmsg_viewer, LOG_EMERG, plugin->kmsg_colors[LOG_EMERG]);
+                ply_kmsg_viewer_set_priority_color (display->kmsg_viewer, LOG_ALERT, plugin->kmsg_colors[LOG_ALERT]);
+                ply_kmsg_viewer_set_priority_color (display->kmsg_viewer, LOG_CRIT, plugin->kmsg_colors[LOG_CRIT]);
+                ply_kmsg_viewer_set_priority_color (display->kmsg_viewer, LOG_ERR, plugin->kmsg_colors[LOG_ERR]);
+                ply_kmsg_viewer_set_priority_color (display->kmsg_viewer, LOG_WARNING, plugin->kmsg_colors[LOG_WARNING]);
+                ply_kmsg_viewer_set_priority_color (display->kmsg_viewer, LOG_NOTICE, plugin->kmsg_colors[LOG_NOTICE]);
+                ply_kmsg_viewer_set_priority_color (display->kmsg_viewer, LOG_INFO, plugin->kmsg_colors[LOG_INFO]);
+                ply_kmsg_viewer_set_priority_color (display->kmsg_viewer, LOG_DEBUG, plugin->kmsg_colors[LOG_DEBUG]);
+
+                node = next_node;
+        }
 
         ply_trace ("executing script file");
         script_return_t ret = script_execute (plugin->script_state,
@@ -418,6 +507,11 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
         plugin->loop = loop;
         plugin->mode = mode;
 
+        ply_event_loop_watch_for_timeout (loop,
+                                          1.0 / KMSG_POLLS_PER_SECOND,
+                                          (ply_event_loop_timeout_handler_t)
+                                          on_update_kmsg_messages, plugin);
+
         ply_event_loop_watch_for_exit (loop, (ply_event_loop_exit_handler_t)
                                        detach_from_event_loop,
                                        plugin);
@@ -453,6 +547,10 @@ hide_splash_screen (ply_boot_splash_plugin_t *plugin,
         if (plugin->loop != NULL) {
                 stop_animation (plugin);
 
+                ply_event_loop_stop_watching_for_timeout (plugin->loop,
+                                                          (ply_event_loop_timeout_handler_t)
+                                                          on_update_kmsg_messages, plugin);
+
                 ply_event_loop_stop_watching_for_exit (plugin->loop,
                                                        (ply_event_loop_exit_handler_t)
                                                        detach_from_event_loop,
@@ -481,7 +579,12 @@ display_normal (ply_boot_splash_plugin_t *plugin)
         pause_displays (plugin);
         script_lib_plymouth_on_display_normal (plugin->script_state,
                                                plugin->script_plymouth_lib);
-        unpause_displays (plugin);
+
+        if (plugin->should_show_kmsg_messages == false) {
+                unpause_displays (plugin);
+        } else {
+                pause_displays (plugin);
+        }
 }
 
 static void
@@ -558,6 +661,63 @@ hide_message (ply_boot_splash_plugin_t *plugin,
         unpause_displays (plugin);
 }
 
+static void
+attach_kmsg_messages (ply_boot_splash_plugin_t *plugin,
+                      ply_list_t               *kmsg_messages)
+{
+        plugin->kmsg_messages = kmsg_messages;
+}
+
+static void
+on_update_kmsg_messages (ply_boot_splash_plugin_t *plugin)
+{
+        if (plugin->loop != NULL) {
+                ply_event_loop_watch_for_timeout (plugin->loop,
+                                                  1.0 / KMSG_POLLS_PER_SECOND,
+                                                  (ply_event_loop_timeout_handler_t)
+                                                  on_update_kmsg_messages, plugin);
+        }
+
+        if (plugin->has_new_kmsgs == false)
+                return;
+
+        plugin->has_new_kmsgs = false;
+
+        if (plugin->should_show_kmsg_messages == false)
+                return;
+
+        display_kmsg_messages (plugin);
+}
+
+static void
+display_kmsg_messages (ply_boot_splash_plugin_t *plugin)
+{
+        pause_displays (plugin);
+        script_lib_kmsg_viewer_show (plugin->script_sprite_lib);
+        unpause_displays (plugin);
+}
+
+static void
+unhide_kmsg_messages (ply_boot_splash_plugin_t *plugin)
+{
+        plugin->should_show_kmsg_messages = true;
+        display_kmsg_messages (plugin);
+}
+
+static void
+hide_kmsg_messages (ply_boot_splash_plugin_t *plugin)
+{
+        plugin->should_show_kmsg_messages = false;
+        script_lib_kmsg_viewer_hide (plugin->script_sprite_lib);
+}
+
+static void
+update_kmsg_messages (ply_boot_splash_plugin_t *plugin)
+{
+        plugin->has_new_kmsgs = true;
+}
+
+
 ply_boot_splash_plugin_interface_t *
 ply_boot_splash_plugin_get_interface (void)
 {
@@ -583,6 +743,10 @@ ply_boot_splash_plugin_get_interface (void)
                 .display_message      = display_message,
                 .hide_message         = hide_message,
                 .validate_input       = validate_input,
+                .attach_kmsg_messages = attach_kmsg_messages,
+                .unhide_kmsg_messages = unhide_kmsg_messages,
+                .hide_kmsg_messages   = hide_kmsg_messages,
+                .update_kmsg_messages = update_kmsg_messages,
         };
 
         return &plugin_interface;

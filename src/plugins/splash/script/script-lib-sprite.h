@@ -25,6 +25,8 @@
 #include "script.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
+#include "ply-kmsg-reader.h"
+#include "ply-kmsg-viewer.h"
 
 typedef struct
 {
@@ -35,6 +37,8 @@ typedef struct
         uint32_t                   background_color_start;
         uint32_t                   background_color_end;
         bool                       full_refresh;
+
+        bool                       plugin_kmsg_messages_updating;
 } script_lib_sprite_data_t;
 
 typedef struct
@@ -43,6 +47,8 @@ typedef struct
         script_lib_sprite_data_t *data;
         int                       x;
         int                       y;
+
+        ply_kmsg_viewer_t        *kmsg_viewer;
 } script_lib_display_t;
 
 typedef struct
@@ -69,5 +75,8 @@ void script_lib_sprite_pixel_display_removed (script_lib_sprite_data_t *data,
                                               ply_pixel_display_t      *pixel_display);
 void script_lib_sprite_refresh (script_lib_sprite_data_t *data);
 void script_lib_sprite_destroy (script_lib_sprite_data_t *data);
+ply_list_t *script_lib_get_displays (script_lib_sprite_data_t *data);
+void script_lib_kmsg_viewer_show (script_lib_sprite_data_t *data);
+void script_lib_kmsg_viewer_hide (script_lib_sprite_data_t *data);
 
 #endif /* SCRIPT_LIB_SPRITE_H */
