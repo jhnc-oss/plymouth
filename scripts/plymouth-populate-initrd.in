@@ -572,6 +572,10 @@ if [ -f "${PLYMOUTH_PLUGIN_PATH}/label-freetype.so" ]; then
      ln -s "$font" $INITRDDIR/usr/share/fonts/Plymouth.ttf
 fi
 
+if [ -f "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" ]; then
+     inst "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf" $INITRDDIR
+fi
+
 if [ -L ${PLYMOUTH_SYSROOT}${PLYMOUTH_DATADIR}/plymouth/themes/default.plymouth ]; then
     cp -a ${PLYMOUTH_SYSROOT}${PLYMOUTH_DATADIR}/plymouth/themes/default.plymouth $INITRDDIR${PLYMOUTH_DATADIR}/plymouth/themes
 fi

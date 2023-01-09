@@ -495,6 +495,10 @@ static void script_lib_sprite_draw_area (script_lib_display_t *display,
                                                                         &clip_area,
                                                                         sprite->opacity);
         }
+
+        if (data->plugin_kmsg_messages_updating == false && display->kmsg_viewer != NULL) {
+                ply_kmsg_viewer_draw_area (display->kmsg_viewer, pixel_buffer, x, y, width, height);
+        }
 }
 
 static void
@@ -848,6 +852,7 @@ void script_lib_sprite_destroy (script_lib_sprite_data_t *data)
              node;
              node = ply_list_get_next_node (data->displays, node)) {
                 script_lib_display_t *display = ply_list_node_get_data (node);
+                ply_kmsg_viewer_free (display->kmsg_viewer);
                 ply_pixel_display_set_draw_handler (display->pixel_display, NULL, NULL);
         }
 
@@ -868,4 +873,60 @@ void script_lib_sprite_destroy (script_lib_sprite_data_t *data)
         script_obj_native_class_destroy (data->class);
         free (data);
         data = NULL;
+}
+
+ply_list_t *
+script_lib_get_displays (script_lib_sprite_data_t *data)
+{
+        return data->displays;
+}
+
+void
+script_lib_kmsg_viewer_show (script_lib_sprite_data_t *data)
+{
+        ply_list_node_t *node;
+
+        data->plugin_kmsg_messages_updating = true;
+
+        data->full_refresh = true;
+
+        node = ply_list_get_first_node (data->displays);
+        while (node != NULL) {
+                script_lib_display_t *display;
+                ply_list_node_t *next_node;
+
+                display = ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (data->displays, node);
+
+                ply_kmsg_viewer_show (display->kmsg_viewer, display->pixel_display);
+
+                node = next_node;
+        }
+
+        data->plugin_kmsg_messages_updating = false;
+}
+
+void
+script_lib_kmsg_viewer_hide (script_lib_sprite_data_t *data)
+{
+        ply_list_node_t *node;
+
+        data->plugin_kmsg_messages_updating = true;
+
+        data->full_refresh = true;
+
+        node = ply_list_get_first_node (data->displays);
+        while (node != NULL) {
+                script_lib_display_t *display;
+                ply_list_node_t *next_node;
+
+                display = ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (data->displays, node);
+
+                ply_kmsg_viewer_hide (display->kmsg_viewer);
+
+                node = next_node;
+        }
+
+        data->plugin_kmsg_messages_updating = false;
 }

@@ -8,6 +8,7 @@ libply_splash_graphics_sources = files(
   'ply-progress-animation.c',
   'ply-progress-bar.c',
   'ply-throbber.c',
+  'ply-kmsg-viewer.c',
 )
 
 libply_splash_graphics_deps = [
@@ -49,6 +50,7 @@ libply_splash_graphics_headers = files(
   'ply-progress-animation.h',
   'ply-progress-bar.h',
   'ply-throbber.h',
+  'ply-kmsg-viewer.h',
 )
 
 install_headers(libply_splash_graphics_headers,

@@ -61,6 +61,7 @@ struct _ply_boot_splash
         ply_keyboard_t                           *keyboard;
         ply_list_t                               *pixel_displays;
         ply_list_t                               *text_displays;
+        ply_list_t                               *kmsg_messages;
 
         char                                     *theme_path;
         char                                     *plugin_dir;
@@ -99,6 +100,7 @@ ply_boot_splash_new (const char   *theme_path,
         splash->boot_buffer = boot_buffer;
         splash->pixel_displays = ply_list_new ();
         splash->text_displays = ply_list_new ();
+        splash->kmsg_messages = ply_list_new ();
 
         return splash;
 }
@@ -157,6 +159,51 @@ ply_boot_splash_remove_pixel_display (ply_boot_splash_t   *splash,
 
         splash->plugin_interface->remove_pixel_display (splash->plugin, display);
         ply_list_remove_data (splash->pixel_displays, display);
+}
+
+
+bool
+ply_boot_splash_supports_kmsg_messages (ply_boot_splash_t *splash)
+{
+        return splash->plugin_interface->attach_kmsg_messages != NULL;
+}
+
+void
+ply_boot_splash_attach_kmsg_messages (ply_boot_splash_t *splash,
+                                      ply_list_t        *kmsg_messages)
+{
+        if (splash->plugin_interface->attach_kmsg_messages == NULL)
+                return;
+
+        splash->plugin_interface->attach_kmsg_messages (splash->plugin, kmsg_messages);
+        ply_list_append_data (splash->kmsg_messages, kmsg_messages);
+}
+
+void
+ply_boot_splash_unhide_kmsg_messages (ply_boot_splash_t *splash)
+{
+        if (splash->plugin_interface->unhide_kmsg_messages == NULL)
+                return;
+
+        splash->plugin_interface->unhide_kmsg_messages (splash->plugin);
+}
+
+void
+ply_boot_splash_hide_kmsg_messages (ply_boot_splash_t *splash)
+{
+        if (splash->plugin_interface->hide_kmsg_messages == NULL)
+                return;
+
+        splash->plugin_interface->hide_kmsg_messages (splash->plugin);
+}
+
+void
+ply_boot_splash_update_kmsg_messages (ply_boot_splash_t *splash)
+{
+        if (splash->plugin_interface->update_kmsg_messages == NULL)
+                return;
+
+        splash->plugin_interface->update_kmsg_messages (splash->plugin);
 }
 
 void
@@ -735,4 +782,3 @@ ply_boot_splash_uses_pixel_displays (ply_boot_splash_t *splash)
 {
         return splash->plugin_interface->add_pixel_display != NULL;
 }
-
