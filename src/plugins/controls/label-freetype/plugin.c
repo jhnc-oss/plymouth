@@ -184,9 +184,6 @@ size_control (ply_label_plugin_control_t *label)
         FT_Int width;
         const char *text = label->text;
 
-        if (label->is_hidden)
-                return;
-
         label->area.width = 0;
         label->area.height = 0;
 
@@ -216,11 +213,11 @@ trigger_redraw (ply_label_plugin_control_t *label,
 {
         ply_rectangle_t dirty_area = label->area;
 
-        if (label->is_hidden || label->display == NULL)
-                return;
-
         if (adjust_size)
                 size_control (label);
+
+        if (label->is_hidden || label->display == NULL)
+                return;
 
         ply_pixel_display_draw_area (label->display,
                                      dirty_area.x, dirty_area.y,
