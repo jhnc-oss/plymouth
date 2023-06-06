@@ -366,6 +366,7 @@ ply_boot_client_get_request_string (ply_boot_client_t         *client,
                                     size_t                    *request_size)
 {
         char *request_string;
+        uint16_t argument_size;
 
         assert (client != NULL);
         assert (request != NULL);
@@ -379,12 +380,14 @@ ply_boot_client_get_request_string (ply_boot_client_t         *client,
                 return request_string;
         }
 
-        assert (strlen (request->argument) <= UCHAR_MAX);
+        assert (strlen (request->argument) < USHRT_MAX);
+        argument_size = strlen (request->argument) + 1;
 
         request_string = NULL;
-        asprintf (&request_string, "%s\002%c%s", request->command,
-                  (char) (strlen (request->argument) + 1), request->argument);
-        *request_size = strlen (request_string) + 1;
+        asprintf (&request_string, "%s\002%c%c%s", request->command,
+                  (char) (argument_size & 0xff), (char) (argument_size >> 8),
+                  request->argument);
+        *request_size = strlen (request->command) + 1 + 2 + argument_size;
 
         return request_string;
 }
@@ -462,7 +465,7 @@ ply_boot_client_queue_request (ply_boot_client_t                 *client,
         assert (client != NULL);
         assert (client->loop != NULL);
         assert (request_command != NULL);
-        assert (request_argument == NULL || strlen (request_argument) <= UCHAR_MAX);
+        assert (request_argument == NULL || strlen (request_argument) <= USHRT_MAX);
 
         if (client->daemon_can_take_request_watch == NULL &&
             client->socket_fd >= 0) {

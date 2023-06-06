@@ -247,9 +247,9 @@ ply_boot_connection_read_request (ply_boot_connection_t *connection,
 
         *argument = NULL;
         if (header[1] == '\002') {
-                uint8_t argument_size;
+                uint16_t argument_size;
 
-                if (!ply_read (connection->fd, &argument_size, sizeof(uint8_t))) {
+                if (!ply_read (connection->fd, &argument_size, sizeof argument_size)) {
                         free (*command);
                         return false;
                 }
