@@ -29,6 +29,7 @@
 #include "ply-event-loop.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
+#include "ply-rich-text.h"
 
 typedef struct _ply_label ply_label_t;
 
@@ -60,6 +61,11 @@ bool ply_label_is_hidden (ply_label_t *label);
 
 void ply_label_set_text (ply_label_t *label,
                          const char  *text);
+
+void ply_label_set_rich_text (ply_label_t          *label,
+                              ply_rich_text_t      *rich_text,
+                              ply_rich_text_span_t *span);
+
 void ply_label_set_alignment (ply_label_t          *label,
                               ply_label_alignment_t alignment);
 void ply_label_set_width (ply_label_t *label,
