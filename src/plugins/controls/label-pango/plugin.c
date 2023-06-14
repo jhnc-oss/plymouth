@@ -43,6 +43,7 @@
 #include <cairo.h>
 #include <pango/pangocairo.h>
 
+#include "ply-terminal.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
 #include "ply-utils.h"
@@ -56,9 +57,10 @@ struct _ply_label_plugin_control
         ply_rectangle_t      area;
 
         char                *text;
-        char                *fontdesc;
+        char                *font;
 
         PangoAlignment       alignment;
+        PangoAttrList       *attribute_list;
         long                 width;
         float                red;
         float                green;
@@ -81,6 +83,7 @@ create_control (void)
         label->is_hidden = true;
         label->alignment = PANGO_ALIGN_LEFT;
         label->width = -1;
+        label->attribute_list = pango_attr_list_new ();
 
         return label;
 }
@@ -88,9 +91,19 @@ create_control (void)
 static void
 destroy_control (ply_label_plugin_control_t *label)
 {
+        GSList *attributes, *attribute;
+
         if (label == NULL)
                 return;
 
+        if (label->attribute_list) {
+                attributes = pango_attr_list_get_attributes (label->attribute_list);
+                for (attribute = attributes; attribute; attribute = attribute->next) {
+                        pango_attribute_destroy (attribute->data);
+                }
+                pango_attr_list_unref (label->attribute_list);
+                g_slist_free (attributes);
+        }
         free (label);
 }
 
@@ -208,11 +221,70 @@ remove_hexboxes_from_pango_layout (PangoLayout *pango_layout)
         ply_buffer_free (buffer);
 }
 
+void
+look_up_rgb_color_from_terminal_color (ply_terminal_color_t color,
+                                       uint16_t            *red,
+                                       uint16_t            *green,
+                                       uint16_t            *blue)
+{
+        switch (color) {
+        case PLY_TERMINAL_COLOR_BLACK:
+                *red = 0x0000;
+                *green = 0x0000;
+                *blue = 0x0000;
+                break;
+        /* Linux VT Color: 0xaa0000 */
+        case PLY_TERMINAL_COLOR_RED:
+                *red = 0xaa00;
+                *green = 0x0000;
+                *blue = 0x0000;
+                break;
+        /* Linux VT Color: 0x00aa00 */
+        case PLY_TERMINAL_COLOR_GREEN:
+                *red = 0x0000;
+                *green = 0xaa00;
+                *blue = 0x0000;
+                break;
+        /* Linux VT Color: 0xaa5500 */
+        case PLY_TERMINAL_COLOR_BROWN:
+                *red = 0xaa00;
+                *green = 0x5500;
+                *blue = 0x0000;
+                break;
+        /* Linux VT Color: 0x0000aa */
+        case PLY_TERMINAL_COLOR_BLUE:
+                *red = 0x0000;
+                *green = 0x0000;
+                *blue = 0xaa00;
+                break;
+        /* Linux VT Color: 0xaa00aa */
+        case PLY_TERMINAL_COLOR_MAGENTA:
+                *red = 0xaa00;
+                *green = 0x0000;
+                *blue = 0xaa00;
+                break;
+        /* Linux VT Color: 0x00aaaa */
+        case PLY_TERMINAL_COLOR_CYAN:
+                *red = 0x0000;
+                *green = 0xaa00;
+                *blue = 0xaa00;
+                break;
+        /* Linux VT Color: 0xaaaaaa */
+        case PLY_TERMINAL_COLOR_WHITE:
+        default:
+                *red = 0xaa00;
+                *green = 0xaa00;
+                *blue = 0xaa00;
+                break;
+        }
+}
+
 static PangoLayout *
 init_pango_text_layout (cairo_t       *cairo_context,
                         char          *text,
                         char          *font_description,
                         PangoAlignment alignment,
+                        PangoAttrList *attribute_list,
                         long           width)
 {
         PangoLayout *pango_layout;
@@ -233,6 +305,7 @@ init_pango_text_layout (cairo_t       *cairo_context,
                 pango_layout_set_width (pango_layout, width * PANGO_SCALE);
 
         pango_layout_set_text (pango_layout, text ?: "", -1);
+        pango_layout_set_attributes (pango_layout, attribute_list);
         pango_cairo_update_layout (cairo_context, pango_layout);
 
         return pango_layout;
@@ -257,7 +330,7 @@ size_control (ply_label_plugin_control_t *label,
 
         cairo_context = get_cairo_context_for_sizing (label);
 
-        pango_layout = init_pango_text_layout (cairo_context, label->text, label->fontdesc, label->alignment, label->width);
+        pango_layout = init_pango_text_layout (cairo_context, label->text, label->font, label->alignment, label->attribute_list, label->width);
 
         pango_layout_get_size (pango_layout, &text_width, &text_height);
         label->area.width = (long) ((double) text_width / PANGO_SCALE);
@@ -288,7 +361,7 @@ draw_control (ply_label_plugin_control_t *label,
 
         cairo_context = get_cairo_context_for_pixel_buffer (label, pixel_buffer, &center_x, &center_y);
 
-        pango_layout = init_pango_text_layout (cairo_context, label->text, label->fontdesc, label->alignment, label->width);
+        pango_layout = init_pango_text_layout (cairo_context, label->text, label->font, label->alignment, label->attribute_list, label->width);
         remove_hexboxes_from_pango_layout (pango_layout);
 
         pango_layout_get_size (pango_layout, &text_width, &text_height);
@@ -361,8 +434,24 @@ set_width_for_control (ply_label_plugin_control_t *label,
 }
 
 static void
-set_text_for_control (ply_label_plugin_control_t *label,
-                      const char                 *text)
+clear_text (ply_label_plugin_control_t *label)
+{
+        GSList *attributes, *attribute;
+
+        if (label->attribute_list) {
+                attributes = pango_attr_list_get_attributes (label->attribute_list);
+                for (attribute = attributes; attribute; attribute = attribute->next) {
+                        pango_attribute_destroy (attribute->data);
+                }
+                pango_attr_list_unref (label->attribute_list);
+                g_slist_free (attributes);
+                label->attribute_list = pango_attr_list_new ();
+        }
+}
+
+static void
+set_text (ply_label_plugin_control_t *label,
+          const char                 *text)
 {
         ply_rectangle_t dirty_area;
 
@@ -379,18 +468,240 @@ set_text_for_control (ply_label_plugin_control_t *label,
 }
 
 static void
+set_text_for_control (ply_label_plugin_control_t *label,
+                      const char                 *text)
+{
+        clear_text (label);
+        set_text (label, text);
+}
+
+static void
+stage_pango_attribute_for_list (PangoAttrList   *attribute_list,
+                                PangoAttribute **staged_attributes,
+                                PangoAttribute  *new_attribute)
+{
+        PangoAttrType attribute_type = new_attribute->klass->type;
+
+        if (staged_attributes[attribute_type] != NULL) {
+                if (!pango_attribute_equal (staged_attributes[attribute_type], new_attribute)) {
+                        pango_attr_list_insert (attribute_list, staged_attributes[attribute_type]);
+                        staged_attributes[attribute_type] = new_attribute;
+                } else {
+                        staged_attributes[attribute_type]->end_index = new_attribute->end_index;
+                        pango_attribute_destroy (new_attribute);
+                }
+        } else {
+                staged_attributes[attribute_type] = new_attribute;
+        }
+}
+
+static void
+flush_pango_attributes_to_list (PangoAttrList   *attribute_list,
+                                PangoAttribute **staged_attributes)
+{
+        for (size_t i = 0; i <= PANGO_ATTR_FONT_SCALE; i++) {
+                if (staged_attributes[i] == NULL)
+                        continue;
+
+                pango_attr_list_insert (attribute_list, staged_attributes[i]);
+                staged_attributes[i] = NULL;
+        }
+}
+
+static void
+set_rich_text_for_control (ply_label_plugin_control_t *label,
+                           ply_rich_text_t            *rich_text,
+                           ply_rich_text_span_t       *span)
+{
+        int i;
+        size_t start_index = 0;
+        size_t length;
+        char *string;
+        PangoAttribute *staged_attributes[PANGO_ATTR_FONT_SCALE + 1] = { NULL };
+        ply_rich_text_character_t **characters;
+
+        clear_text (label);
+        if (label->attribute_list) {
+                pango_attr_list_unref (label->attribute_list);
+                label->attribute_list = pango_attr_list_new ();
+        }
+
+        characters = ply_rich_text_get_characters (rich_text);
+        for (i = span->offset; characters[i] != NULL; i++) {
+                PangoAttribute *pango_attribute = NULL;
+                uint16_t foreground_red, background_red;
+                uint16_t foreground_green, background_green;
+                uint16_t foreground_blue, background_blue;
+
+                length = characters[i]->length;
+
+                PangoWeight bold_style = PANGO_WEIGHT_NORMAL;
+                PangoStyle italic_style = PANGO_STYLE_NORMAL;
+                PangoUnderline underline_style = PANGO_UNDERLINE_NONE;
+
+                ply_terminal_color_t foreground_color = PLY_TERMINAL_COLOR_DEFAULT;
+                ply_terminal_color_t background_color = PLY_TERMINAL_COLOR_DEFAULT;
+
+                if (!characters[i]->style.reverse_enabled) {
+                        foreground_color = characters[i]->style.foreground_color;
+                        background_color = characters[i]->style.background_color;
+                } else {
+                        foreground_color = characters[i]->style.background_color;
+                        background_color = characters[i]->style.foreground_color;
+
+                        /* if no background color is specified, the label is transparent.
+                         * When reversed, and the background color is default
+                         */
+                        if (background_color == PLY_TERMINAL_COLOR_DEFAULT) {
+                                background_color = PLY_TERMINAL_COLOR_WHITE;
+
+                                if (foreground_color == PLY_TERMINAL_COLOR_DEFAULT)
+                                        foreground_color = PLY_TERMINAL_COLOR_BLACK;
+                        }
+                }
+
+                /* Default to a black background when none is set so bright text is readable on bright backgrounds */
+                if (background_color == PLY_TERMINAL_COLOR_DEFAULT)
+                        background_color = PLY_TERMINAL_COLOR_BLACK;
+
+                look_up_rgb_color_from_terminal_color (foreground_color,
+                                                       &foreground_red,
+                                                       &foreground_green,
+                                                       &foreground_blue);
+
+                look_up_rgb_color_from_terminal_color (background_color,
+                                                       &background_red,
+                                                       &background_green,
+                                                       &background_blue);
+
+                if (characters[i]->style.bold_enabled && characters[i]->style.dim_enabled) {
+                        /* xterm subtracts 0x44 when bold and dim*/
+                        if (foreground_red > 0x4400) {
+                                foreground_red -= 0x4400;
+                        } else {
+                                foreground_red = 0;
+                        }
+
+                        if (foreground_green > 0x4400) {
+                                foreground_green -= 0x4400;
+                        } else {
+                                foreground_green = 0;
+                        }
+
+                        if (foreground_blue > 0x4400) {
+                                foreground_blue -= 0x4400;
+                        } else {
+                                foreground_blue = 0;
+                        }
+                        bold_style = PANGO_WEIGHT_SEMIBOLD;
+                } else {
+                        if (characters[i]->style.bold_enabled) {
+                                /* Linux VT adds 0x55 when bold */
+                                if (foreground_red + 0x55ff < 0xffff) {
+                                        foreground_red += 0x55ff;
+                                } else {
+                                        foreground_red = 0xffff;
+                                }
+
+                                if (foreground_green + 0x55ff < 0xffff) {
+                                        foreground_green += 0x55ff;
+                                } else {
+                                        foreground_green = 0xffff;
+                                }
+
+                                if (foreground_blue + 0x55ff < 0xffff) {
+                                        foreground_blue += 0x55ff;
+                                } else {
+                                        foreground_blue = 0xffff;
+                                }
+                                bold_style = PANGO_WEIGHT_BOLD;
+                        }
+
+                        if (characters[i]->style.dim_enabled) {
+                                /* xterm subtracts 0x23 when dim */
+                                if (foreground_red > 0x2300) {
+                                        foreground_red -= 0x2300;
+                                } else {
+                                        foreground_red = 0;
+                                }
+
+                                if (foreground_green > 0x2300) {
+                                        foreground_green -= 0x2300;
+                                } else {
+                                        foreground_green = 0;
+                                }
+
+                                if (foreground_blue > 0x2300) {
+                                        foreground_blue -= 0x2300;
+                                } else {
+                                        foreground_blue = 0;
+                                }
+                                bold_style = PANGO_WEIGHT_LIGHT;
+                        }
+                }
+
+                if (foreground_color != PLY_TERMINAL_COLOR_DEFAULT) {
+                        pango_attribute = pango_attr_foreground_new (foreground_red, foreground_green, foreground_blue);
+                        pango_attribute->start_index = start_index;
+                        pango_attribute->end_index = start_index + length;
+
+                        stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+                }
+
+                if (background_color != PLY_TERMINAL_COLOR_DEFAULT) {
+                        pango_attribute = pango_attr_background_new (background_red, background_green, background_blue);
+                        pango_attribute->start_index = start_index;
+                        pango_attribute->end_index = start_index + length;
+                        stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+                }
+
+                pango_attribute = pango_attr_weight_new (bold_style);
+                pango_attribute->start_index = start_index;
+                pango_attribute->end_index = start_index + length;
+                stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+
+
+                if (characters[i]->style.italic_enabled == true)
+                        italic_style = PANGO_STYLE_ITALIC;
+
+                pango_attribute = pango_attr_style_new (italic_style);
+                pango_attribute->start_index = start_index;
+                pango_attribute->end_index = start_index + length;
+                stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+
+                if (characters[i]->style.underline_enabled == true)
+                        underline_style = PANGO_UNDERLINE_SINGLE;
+
+                pango_attribute = pango_attr_underline_new (underline_style);
+                pango_attribute->start_index = start_index;
+                pango_attribute->end_index = start_index + length;
+                stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+
+                start_index += length;
+
+                if (i >= span->offset + span->range)
+                        break;
+        }
+        flush_pango_attributes_to_list (label->attribute_list, staged_attributes);
+
+        string = ply_rich_text_get_string (rich_text, span);
+        set_text (label, string);
+        free (string);
+}
+
+static void
 set_font_for_control (ply_label_plugin_control_t *label,
-                      const char                 *fontdesc)
+                      const char                 *font)
 {
         ply_rectangle_t dirty_area;
 
-        if (label->fontdesc != fontdesc) {
+        if (label->font != font) {
                 dirty_area = label->area;
-                free (label->fontdesc);
-                if (fontdesc)
-                        label->fontdesc = strdup (fontdesc);
+                free (label->font);
+                if (font)
+                        label->font = strdup (font);
                 else
-                        label->fontdesc = NULL;
+                        label->font = NULL;
                 size_control (label, false);
                 if (!label->is_hidden && label->display != NULL)
                         ply_pixel_display_draw_area (label->display,
@@ -489,6 +800,7 @@ ply_label_plugin_get_interface (void)
                 .draw_control              = draw_control,
                 .is_control_hidden         = is_control_hidden,
                 .set_text_for_control      = set_text_for_control,
+                .set_rich_text_for_control = set_rich_text_for_control,
                 .set_alignment_for_control = set_alignment_for_control,
                 .set_width_for_control     = set_width_for_control,
                 .set_font_for_control      = set_font_for_control,
@@ -499,4 +811,3 @@ ply_label_plugin_get_interface (void)
 
         return &plugin_interface;
 }
-
