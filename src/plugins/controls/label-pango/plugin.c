@@ -164,6 +164,50 @@ get_cairo_context_for_sizing (ply_label_plugin_control_t *label)
         return cairo_context;
 }
 
+void
+remove_hexboxes_from_pango_layout (PangoLayout *pango_layout)
+{
+        PangoLayoutIter *iter;
+        bool hexbox_removed = false;
+        ply_buffer_t *buffer = ply_buffer_new ();
+        const char *old_string = pango_layout_get_text (pango_layout);
+
+        iter = pango_layout_get_iter (pango_layout);
+
+        do {
+                PangoLayoutRun *run;
+                PangoGlyphItem *glyph_items;
+                PangoGlyphString *glyph_string;
+
+                run = pango_layout_iter_get_run_readonly (iter);
+                if (!run)
+                        continue;
+
+                glyph_items = (PangoGlyphItem *) run;
+                glyph_string = glyph_items->glyphs;
+
+                if (glyph_string->num_glyphs == 0)
+                        continue;
+
+                for (size_t i = 0; i < glyph_string->num_glyphs; i++) {
+                        if (glyph_string->glyphs[i].glyph & PANGO_GLYPH_UNKNOWN_FLAG) {
+                                hexbox_removed = true;
+                                ply_buffer_append (buffer, "%c", '?');
+                        } else {
+                                ply_buffer_append_bytes (buffer, old_string + glyph_items->item->offset, glyph_items->item->length);
+                        }
+                }
+        } while (pango_layout_iter_next_run (iter));
+        pango_layout_iter_free (iter);
+
+        if (hexbox_removed) {
+                const char *new_string = ply_buffer_get_bytes (buffer);
+                pango_layout_set_text (pango_layout, new_string, -1);
+        }
+
+        ply_buffer_free (buffer);
+}
+
 static PangoLayout *
 init_pango_text_layout (cairo_t       *cairo_context,
                         char          *text,
@@ -245,6 +289,7 @@ draw_control (ply_label_plugin_control_t *label,
         cairo_context = get_cairo_context_for_pixel_buffer (label, pixel_buffer, &center_x, &center_y);
 
         pango_layout = init_pango_text_layout (cairo_context, label->text, label->fontdesc, label->alignment, label->width);
+        remove_hexboxes_from_pango_layout (pango_layout);
 
         pango_layout_get_size (pango_layout, &text_width, &text_height);
         label->area.width = (long) ((double) text_width / PANGO_SCALE);
