@@ -137,7 +137,7 @@ struct _ply_boot_splash_plugin
         ply_image_t                        *box_image;
         ply_image_t                        *corner_image;
         ply_image_t                        *header_image;
-        ply_image_t                        *background_tile_image;
+        ply_image_t                        *background_image;
         ply_image_t                        *background_bgrt_image;
         ply_image_t                        *background_bgrt_fallback_image;
         ply_image_t                        *watermark_image;
@@ -616,7 +616,7 @@ view_load (view_t *view)
         if (!view->background_buffer && plugin->background_bgrt_fallback_image != NULL)
                 view_set_bgrt_fallback_background (view);
 
-        if (!view->background_buffer && plugin->background_tile_image != NULL) {
+        if (!view->background_buffer && plugin->background_image != NULL) {
                 ply_trace ("tiling background to %lux%lu", screen_width, screen_height);
 
                 /* Create a buffer at screen scale so that we only do the slow interpolating scale once */
@@ -632,9 +632,9 @@ view_load (view_t *view)
                                                               plugin->background_start_color);
 
                 if (plugin->background_image_is_scaled) {
-                        buffer = ply_pixel_buffer_resize (ply_image_get_buffer (plugin->background_tile_image), screen_width, screen_height);
+                        buffer = ply_pixel_buffer_resize (ply_image_get_buffer (plugin->background_image), screen_width, screen_height);
                 } else {
-                        buffer = ply_pixel_buffer_tile (ply_image_get_buffer (plugin->background_tile_image), screen_width, screen_height);
+                        buffer = ply_pixel_buffer_tile (ply_image_get_buffer (plugin->background_image), screen_width, screen_height);
                 }
 
                 ply_pixel_buffer_fill_with_buffer (view->background_buffer, buffer, 0, 0);
@@ -1097,8 +1097,14 @@ create_plugin (ply_key_file_t *key_file)
         plugin->header_image = ply_image_new (image_path);
         free (image_path);
 
-        asprintf (&image_path, "%s/background-tile.png", image_dir);
-        plugin->background_tile_image = ply_image_new (image_path);
+        asprintf (&image_path, "%s/background.png", image_dir);
+        if (!ply_file_exists (image_path)) {
+                free (image_path);
+                asprintf (&image_path, "%s/background-tile.png", image_dir);
+        }
+
+        plugin->background_image = ply_image_new (image_path);
+
         free (image_path);
 
         asprintf (&image_path, "%s/watermark.png", image_dir);
@@ -1320,8 +1326,8 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
         if (plugin->header_image != NULL)
                 ply_image_free (plugin->header_image);
 
-        if (plugin->background_tile_image != NULL)
-                ply_image_free (plugin->background_tile_image);
+        if (plugin->background_image != NULL)
+                ply_image_free (plugin->background_image);
 
         if (plugin->background_bgrt_image != NULL)
                 ply_image_free (plugin->background_bgrt_image);
@@ -1735,11 +1741,11 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                 }
         }
 
-        if (plugin->background_tile_image != NULL) {
-                ply_trace ("loading background tile image");
-                if (!ply_image_load (plugin->background_tile_image)) {
-                        ply_image_free (plugin->background_tile_image);
-                        plugin->background_tile_image = NULL;
+        if (plugin->background_image != NULL) {
+                ply_trace ("loading background image");
+                if (!ply_image_load (plugin->background_image)) {
+                        ply_image_free (plugin->background_image);
+                        plugin->background_image = NULL;
                 }
         }
 
