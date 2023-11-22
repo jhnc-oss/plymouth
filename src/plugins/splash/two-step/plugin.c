@@ -189,6 +189,7 @@ struct _ply_boot_splash_plugin
         uint32_t                            is_animating : 1;
         uint32_t                            is_idle : 1;
         uint32_t                            use_firmware_background : 1;
+        uint32_t                            background_image_is_scaled : 1;
         uint32_t                            dialog_clears_firmware_background : 1;
         uint32_t                            message_below_animation : 1;
 };
@@ -630,7 +631,12 @@ view_load (view_t *view)
                         ply_pixel_buffer_fill_with_hex_color (view->background_buffer, NULL,
                                                               plugin->background_start_color);
 
-                buffer = ply_pixel_buffer_tile (ply_image_get_buffer (plugin->background_tile_image), screen_width, screen_height);
+                if (plugin->background_image_is_scaled) {
+                        buffer = ply_pixel_buffer_resize (ply_image_get_buffer (plugin->background_tile_image), screen_width, screen_height);
+                } else {
+                        buffer = ply_pixel_buffer_tile (ply_image_get_buffer (plugin->background_tile_image), screen_width, screen_height);
+                }
+
                 ply_pixel_buffer_fill_with_buffer (view->background_buffer, buffer, 0, 0);
                 ply_pixel_buffer_free (buffer);
         }
@@ -1098,6 +1104,9 @@ create_plugin (ply_key_file_t *key_file)
         asprintf (&image_path, "%s/watermark.png", image_dir);
         plugin->watermark_image = ply_image_new (image_path);
         free (image_path);
+
+        plugin->background_image_is_scaled =
+                ply_key_file_get_bool (key_file, "two-step", "ScaleBackgroundWallpaper");
 
         if (!ply_kernel_command_line_has_argument ("secure_boot.warn_if_disabled=false") &&
             !ply_is_secure_boot_enabled ()) {
