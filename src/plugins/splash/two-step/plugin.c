@@ -1112,7 +1112,7 @@ create_plugin (ply_key_file_t *key_file)
         free (image_path);
 
         plugin->background_image_is_scaled =
-                ply_key_file_get_bool (key_file, "two-step", "ScaleBackgroundWallpaper");
+                ply_key_file_get_bool (key_file, "two-step", "ScaleBackgroundImage");
 
         if (!ply_kernel_command_line_has_argument ("secure_boot.warn_if_disabled=false") &&
             !ply_is_secure_boot_enabled ()) {
