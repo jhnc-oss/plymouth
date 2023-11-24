@@ -208,6 +208,8 @@ on_change_mode (state_t    *state,
                 state->mode = PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE;
         else if (strcmp (mode, "firmware-upgrade") == 0)
                 state->mode = PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE;
+        else if (strcmp (mode, "system-reset") == 0)
+                state->mode = PLY_BOOT_SPLASH_MODE_SYSTEM_RESET;
         else
                 return;
 
@@ -690,6 +692,7 @@ get_cache_file_for_mode (ply_boot_splash_mode_t mode)
         case PLY_BOOT_SPLASH_MODE_UPDATES:
         case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
+        case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
                 filename = NULL;
                 break;
         case PLY_BOOT_SPLASH_MODE_INVALID:
@@ -724,6 +727,7 @@ get_log_file_for_state (state_t *state)
         case PLY_BOOT_SPLASH_MODE_UPDATES:
         case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
+        case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
                 filename = _PATH_DEVNULL;
                 break;
         case PLY_BOOT_SPLASH_MODE_INVALID:
@@ -751,6 +755,7 @@ get_log_spool_file_for_mode (ply_boot_splash_mode_t mode)
         case PLY_BOOT_SPLASH_MODE_UPDATES:
         case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
+        case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
                 filename = NULL;
                 break;
         case PLY_BOOT_SPLASH_MODE_INVALID:
@@ -2313,6 +2318,8 @@ main (int    argc,
                         state.mode = PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE;
                 else if (strcmp (mode_string, "firmware-upgrade") == 0)
                         state.mode = PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE;
+                else if (strcmp (mode_string, "system-reset") == 0)
+                        state.mode = PLY_BOOT_SPLASH_MODE_SYSTEM_RESET;
                 else
                         state.mode = PLY_BOOT_SPLASH_MODE_BOOT_UP;
 
