@@ -997,6 +997,66 @@ int ply_guess_device_scale (uint32_t width,
         return get_device_scale (width, height, 0, 0, true);
 }
 
+void
+ply_get_kmsg_log_levels (int *current_log_level,
+                         int *default_log_level)
+{
+        static double last_update_time = 0;
+        static int cached_current_log_level = 0;
+        static int cached_default_log_level = 0;
+        char log_levels[4096] = "";
+        double current_time;
+        char *field, *fields;
+        int fd;
+
+        current_time = ply_get_timestamp ();
+
+        if ((current_time - last_update_time) < 1.0) {
+                *current_log_level = cached_current_log_level;
+                *default_log_level = cached_default_log_level;
+                return;
+        }
+
+        ply_trace ("opening /proc/sys/kernel/printk");
+        fd = open ("/proc/sys/kernel/printk", O_RDONLY);
+
+        if (fd < 0) {
+                ply_trace ("couldn't open it: %m");
+                return;
+        }
+
+        ply_trace ("reading kmsg log levels");
+        if (read (fd, log_levels, sizeof(log_levels) - 1) < 0) {
+                ply_trace ("couldn't read it: %m");
+                close (fd);
+                return;
+        }
+        close (fd);
+
+        field = strtok_r (log_levels, " \t", &fields);
+
+        if (field == NULL) {
+                ply_trace ("Couldn't parse current log level: %m");
+                return;
+        }
+
+        *current_log_level = atoi (field);
+
+        field = strtok_r (NULL, " \t", &fields);
+
+        if (field == NULL) {
+                ply_trace ("Couldn't parse default log level: %m");
+                return;
+        }
+
+        *default_log_level = atoi (field);
+
+        cached_current_log_level = *current_log_level;
+        cached_default_log_level = *default_log_level;
+
+        last_update_time = current_time;
+}
+
 static const char *
 ply_get_kernel_command_line (void)
 {
