@@ -42,3 +42,7 @@ UseAnimation=true
 [firmware-upgrade]
 UseProgressBar=true
 UseAnimation=true
+
+[system-reset]
+UseProgressBar=true
+UseAnimation=true

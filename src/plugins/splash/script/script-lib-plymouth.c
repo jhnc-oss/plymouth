@@ -84,6 +84,9 @@ static script_return_t plymouth_get_mode (script_state_t *state,
         case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
                 obj = script_obj_new_string ("firmware-upgrade");
                 break;
+        case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
+                obj = script_obj_new_string ("system-reset");
+                break;
         case PLY_BOOT_SPLASH_MODE_INVALID:
         default:
                 obj = script_obj_new_string ("unknown");
