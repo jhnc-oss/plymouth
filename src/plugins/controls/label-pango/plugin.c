@@ -188,7 +188,7 @@ init_pango_text_layout (cairo_t       *cairo_context,
         if (width >= 0)
                 pango_layout_set_width (pango_layout, width * PANGO_SCALE);
 
-        pango_layout_set_text (pango_layout, text, -1);
+        pango_layout_set_text (pango_layout, text ?: "", -1);
         pango_cairo_update_layout (cairo_context, pango_layout);
 
         return pango_layout;
@@ -321,7 +321,7 @@ set_text_for_control (ply_label_plugin_control_t *label,
 {
         ply_rectangle_t dirty_area;
 
-        if (label->text != text) {
+        if (strcmp (label->text ?: "", text ?: "") != 0) {
                 dirty_area = label->area;
                 free (label->text);
                 label->text = strdup (text);
