@@ -100,7 +100,7 @@ ply_label_load_plugin (ply_label_t *label)
 
         /* ...and the FreeType based one after that, it is not a complete substitute (yet). */
         if (label->module_handle == NULL)
-            label->module_handle = ply_open_module (PLYMOUTH_PLUGIN_PATH "label-freetype.so");
+                label->module_handle = ply_open_module (PLYMOUTH_PLUGIN_PATH "label-freetype.so");
 
         if (label->module_handle == NULL)
                 return false;
