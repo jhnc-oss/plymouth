@@ -55,6 +55,14 @@ typedef enum
         PLY_UNIX_SOCKET_TYPE_TRIMMED_ABSTRACT
 } ply_unix_socket_type_t;
 
+typedef struct
+{
+        const char *string;
+        ssize_t     character_range;
+        ssize_t     current_byte_offset;
+        ssize_t     number_characters_iterated;
+} ply_utf8_string_iterator_t;
+
 #ifndef PLY_HIDE_FUNCTION_DECLARATIONS
 
 #define ply_round_to_multiple(n, m) (((n) + (((m) - 1))) & ~((m) - 1))
@@ -117,6 +125,16 @@ int ply_utf8_character_get_size (const char *string,
 int ply_utf8_string_get_length (const char *string,
                                 size_t      n);
 
+size_t ply_utf8_string_get_byte_offset_from_character_offset (const char *string,
+                                                              size_t      character_offset);
+void ply_utf8_string_iterator_init (ply_utf8_string_iterator_t *iterator,
+                                    const char                 *string,
+                                    ssize_t                     starting_offset,
+                                    ssize_t                     range);
+bool ply_utf8_string_iterator_next (ply_utf8_string_iterator_t *iterator,
+                                    const char                **character,
+                                    size_t                     *size);
+
 char *ply_get_process_command_line (pid_t pid);
 pid_t ply_get_process_parent_pid (pid_t pid);
 
@@ -129,6 +147,9 @@ int ply_get_device_scale (uint32_t width,
 
 int ply_guess_device_scale (uint32_t width,
                             uint32_t height);
+
+void ply_get_kmsg_log_levels (int *current_log_level,
+                              int *default_log_level);
 
 const char *ply_kernel_command_line_get_string_after_prefix (const char *prefix);
 bool ply_kernel_command_line_has_argument (const char *argument);

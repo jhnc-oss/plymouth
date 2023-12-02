@@ -29,7 +29,7 @@ find -name '*.[ch]' -exec git diff -- {} \; >> before
 
 interdiff -B --no-revert-omitted before after > diff
 
-if [ -n "$(cat diff)" ]; then
+if [ -n "$(cat diff | grep -vE '^only in patch[12]:')" ]; then
     echo "Uncrustify found style abnormalities" 2>&1
     cat diff
     exit 1

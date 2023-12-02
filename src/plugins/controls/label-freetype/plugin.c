@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
+#include <wchar.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -39,6 +40,7 @@
 
 /* This is used if fontconfig (fc-match) is not available, like in the initrd. */
 #define FONT_FALLBACK "/usr/share/fonts/Plymouth.ttf"
+#define MONOSPACE_FONT_FALLBACK "/usr/share/fonts/Plymouth-monospace.ttf"
 
 struct _ply_label_plugin_control
 {
@@ -52,12 +54,15 @@ struct _ply_label_plugin_control
         FT_Face               face;
 
         char                 *text;
+        ply_rich_text_t      *rich_text;
+        ply_rich_text_span_t  span;
         float                 red;
         float                 green;
         float                 blue;
         float                 alpha;
 
         uint32_t              is_hidden : 1;
+        uint32_t              is_monospaced : 1;
 };
 
 ply_label_plugin_interface_t *ply_label_plugin_get_interface (void);
@@ -80,10 +85,45 @@ query_fc_match ()
         return fc_match_out;
 }
 
+/* Query fontconfig, if available, for the default monospace font. */
+static const char *
+query_fc_match_monospace ()
+{
+        FILE *fp;
+        static char fc_match_out[PATH_MAX];
+
+        fp = popen ("/usr/bin/fc-match -f %{file} monospace", "r");
+        if (!fp)
+                return NULL;
+
+        fgets (fc_match_out, sizeof(fc_match_out), fp);
+
+        pclose (fp);
+
+        return fc_match_out;
+}
+
+static FT_Error
+set_font_with_fallback (ply_label_plugin_control_t *label,
+                        const char                 *primary_font_path,
+                        const char                 *fallback_font_path)
+{
+        FT_Error error;
+        if (primary_font_path)
+                error = FT_New_Face (label->library, primary_font_path, 0, &label->face);
+
+        if (!fallback_font_path || error) {
+                printf ("label-ft: trying font fallback\n");
+                error = FT_New_Face (label->library, fallback_font_path, 0, &label->face);
+        }
+
+        return error;
+}
+
 static ply_label_plugin_control_t *
 create_control (void)
 {
-        FT_Error error;
+        int error;
         ply_label_plugin_control_t *label;
         const char *font_path;
 
@@ -100,19 +140,11 @@ create_control (void)
         }
 
         font_path = query_fc_match ();
-        if (font_path)
-                error = FT_New_Face (label->library, font_path, 0, &label->face);
-
-        if (!font_path || error) {
-                printf ("label-ft: trying font fallback\n");
-                font_path = FONT_FALLBACK;
-                error = FT_New_Face (label->library, font_path, 0, &label->face);
-
-                if (error) {
-                        FT_Done_FreeType (label->library);
-                        free (label);
-                        return NULL;
-                }
+        error = set_font_with_fallback (label, font_path, FONT_FALLBACK);
+        if (error) {
+                FT_Done_FreeType (label->library);
+                free (label);
+                return NULL;
         }
 
         /* 12pt/96dpi as default */
@@ -152,26 +184,44 @@ get_height_of_control (ply_label_plugin_control_t *label)
         return label->area.height;
 }
 
-static FT_Int
-width_of_line (ply_label_plugin_control_t *label,
-               const char                 *text)
+static bool
+load_character (ply_label_plugin_control_t *label,
+                const char                **text)
 {
         FT_Error error;
+        size_t character_size;
+        wchar_t character;
+        const char *input_text = *text;
+
+        character_size = mbrtowc (&character, input_text, PLY_UTF8_CHARACTER_SIZE_MAX, NULL);
+
+        if (character_size <= 0) {
+                character = (wchar_t) *input_text;
+                character_size = 1;
+        }
+
+        error = FT_Load_Char (label->face, (FT_ULong) character, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT);
+
+        *text = input_text + character_size;
+
+        return !error;
+}
+
+static FT_Int
+width_of_string (ply_label_plugin_control_t *label,
+                 const char                 *text)
+{
         FT_Int width = 0;
         FT_Int left_bearing = 0;
 
         while (*text != '\0' && *text != '\n') {
-                error = FT_Load_Char (label->face, *text, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT);
-
-                if (!error) {
+                if (load_character (label, &text)) {
                         width += label->face->glyph->advance.x >> 6;
                         left_bearing = label->face->glyph->bitmap_left;
                         /* We don't "go back" when drawing, so when left bearing is
                          * negative (like for 'j'), we simply add to the width. */
                         if (left_bearing < 0)
                                 width += -left_bearing;
-
-                        ++text;
                 }
         }
 
@@ -181,29 +231,65 @@ width_of_line (ply_label_plugin_control_t *label,
 static void
 size_control (ply_label_plugin_control_t *label)
 {
-        FT_Int width;
-        const char *text = label->text;
+        FT_Int character_width, line_width;
+        ply_rich_text_iterator_t rich_text_iterator;
+        ply_utf8_string_iterator_t utf8_string_iterator;
+        bool should_stop = false;
 
-        if (label->is_hidden)
+        if (label->rich_text == NULL && label->text == NULL) {
+                label->area.width = 0;
+                label->area.height = 0;
                 return;
+        }
 
+        if (label->rich_text != NULL) {
+                ply_rich_text_iterator_init (&rich_text_iterator,
+                                             label->rich_text,
+                                             &label->span);
+        } else {
+                ply_utf8_string_iterator_init (&utf8_string_iterator,
+                                               label->text,
+                                               0,
+                                               ply_utf8_string_get_length (label->text, strlen (label->text)));
+        }
         label->area.width = 0;
         label->area.height = 0;
 
+        line_width = 0;
+
         /* Go through each line */
-        while (text && *text) {
-                width = width_of_line (label, text);
-                if ((uint32_t) width > label->area.width)
-                        label->area.width = width;
+        do {
+                const char *current_character;
 
-                label->area.height += (label->face->size->metrics.ascender
-                                       - label->face->size->metrics.descender) >> 6;
+                if (label->rich_text != NULL) {
+                        ply_rich_text_character_t *rich_text_character;
+                        should_stop = !ply_rich_text_iterator_next (&rich_text_iterator,
+                                                                    &rich_text_character);
+                        if (!should_stop)
+                                current_character = rich_text_character->bytes;
+                } else {
+                        size_t character_size;
 
-                text = strchr (text, '\n');
-                /* skip newline character */
-                if (text)
-                        ++text;
-        }
+                        should_stop = !ply_utf8_string_iterator_next (&utf8_string_iterator,
+                                                                      &current_character,
+                                                                      &character_size);
+                }
+
+                if (!should_stop) {
+                        character_width = width_of_string (label, current_character);
+                        line_width += character_width;
+                }
+
+                if (should_stop || character_width == 0) {
+                        if ((uint32_t) line_width > label->area.width)
+                                label->area.width = line_width;
+
+                        line_width = 0;
+
+                        label->area.height += (label->face->size->metrics.ascender
+                                               - label->face->size->metrics.descender) >> 6;
+                }
+        } while (!should_stop);
 
         /* If centered, area.x is not the origin anymore */
         if ((long) label->area.width < label->width)
@@ -216,11 +302,11 @@ trigger_redraw (ply_label_plugin_control_t *label,
 {
         ply_rectangle_t dirty_area = label->area;
 
-        if (label->is_hidden || label->display == NULL)
-                return;
-
         if (adjust_size)
                 size_control (label);
+
+        if (label->is_hidden || label->display == NULL)
+                return;
 
         ply_pixel_display_draw_area (label->display,
                                      dirty_area.x, dirty_area.y,
@@ -233,7 +319,10 @@ draw_bitmap (ply_label_plugin_control_t *label,
              ply_rectangle_t             target_size,
              FT_Bitmap                  *source,
              FT_Int                      x_start,
-             FT_Int                      y_start)
+             FT_Int                      y_start,
+             uint8_t                     rs,
+             uint8_t                     gs,
+             uint8_t                     bs)
 {
         FT_Int x, y, xs, ys;
         FT_Int x_end = MIN (x_start + source->width, target_size.width);
@@ -243,10 +332,7 @@ draw_bitmap (ply_label_plugin_control_t *label,
             (uint32_t) y_start >= target_size.height)
                 return;
 
-        uint8_t rs, gs, bs, rd, gd, bd, ad;
-        rs = 255 * label->red;
-        gs = 255 * label->green;
-        bs = 255 * label->blue;
+        uint8_t rd, gd, bd, ad;
 
         for (y = y_start, ys = 0; y < y_end; ++y, ++ys) {
                 for (x = x_start, xs = 0; x < x_end; ++x, ++xs) {
@@ -274,6 +360,67 @@ draw_bitmap (ply_label_plugin_control_t *label,
 }
 
 static void
+look_up_rgb_color_from_terminal_color (ply_label_plugin_control_t *label,
+                                       ply_terminal_color_t        color,
+                                       uint8_t                    *red,
+                                       uint8_t                    *green,
+                                       uint8_t                    *blue)
+{
+        switch (color) {
+        case PLY_TERMINAL_COLOR_BLACK:
+                *red = 0x00;
+                *green = 0x00;
+                *blue = 0x00;
+                break;
+        /* Linux VT Color: 0xaa0000 */
+        case PLY_TERMINAL_COLOR_RED:
+                *red = 0xaa;
+                *green = 0x00;
+                *blue = 0x00;
+                break;
+        /* Linux VT Color: 0x00aa00 */
+        case PLY_TERMINAL_COLOR_GREEN:
+                *red = 0x00;
+                *green = 0xaa;
+                *blue = 0x00;
+                break;
+        /* Linux VT Color: 0xaa5500 */
+        case PLY_TERMINAL_COLOR_BROWN:
+                *red = 0xaa;
+                *green = 0x55;
+                *blue = 0x00;
+                break;
+        /* Linux VT Color: 0x0000aa */
+        case PLY_TERMINAL_COLOR_BLUE:
+                *red = 0x00;
+                *green = 0x00;
+                *blue = 0xaa;
+                break;
+        /* Linux VT Color: 0xaa00aa */
+        case PLY_TERMINAL_COLOR_MAGENTA:
+                *red = 0xaa;
+                *green = 0x00;
+                *blue = 0xaa;
+                break;
+        /* Linux VT Color: 0x00aaaa */
+        case PLY_TERMINAL_COLOR_CYAN:
+                *red = 0x00;
+                *green = 0xaa;
+                *blue = 0xaa;
+                break;
+        /* Linux VT Color: 0xaaaaaa */
+        case PLY_TERMINAL_COLOR_WHITE:
+                break;
+
+        default:
+                *red = 255 * label->red;
+                *green = 255 * label->green;
+                *blue = 255 * label->blue;
+                break;
+        }
+}
+
+static void
 draw_control (ply_label_plugin_control_t *label,
               ply_pixel_buffer_t         *pixel_buffer,
               long                        x,
@@ -281,14 +428,17 @@ draw_control (ply_label_plugin_control_t *label,
               unsigned long               width,
               unsigned long               height)
 {
-        FT_Error error;
         FT_Vector pen;
         FT_GlyphSlot slot;
-        const char *cur_c;
+        ply_rich_text_iterator_t rich_text_iterator;
+        ply_utf8_string_iterator_t utf8_string_iterator;
         uint32_t *target;
         ply_rectangle_t target_size;
-
         if (label->is_hidden)
+                return;
+
+        if (label->rich_text == NULL &&
+            label->text == NULL)
                 return;
 
         /* Check for overlap.
@@ -300,7 +450,16 @@ draw_control (ply_label_plugin_control_t *label,
 
         slot = label->face->glyph;
 
-        cur_c = label->text;
+        if (label->rich_text != NULL) {
+                ply_rich_text_iterator_init (&rich_text_iterator,
+                                             label->rich_text,
+                                             &label->span);
+        } else {
+                ply_utf8_string_iterator_init (&utf8_string_iterator,
+                                               label->text,
+                                               0,
+                                               ply_utf8_string_get_length (label->text, strlen (label->text)));
+        }
 
         target = ply_pixel_buffer_get_argb32_data (pixel_buffer);
         ply_pixel_buffer_get_size (pixel_buffer, &target_size);
@@ -315,50 +474,77 @@ draw_control (ply_label_plugin_control_t *label,
         pen.y += label->face->size->metrics.ascender;
 
         /* Go through each line */
-        while (*cur_c) {
+        do {
+                bool should_stop;
+                const char *current_character;
+                uint8_t red, green, blue;
+
+                FT_Int extraAdvance = 0, positiveBearingX = 0;
+                ply_rich_text_character_t *rich_text_character;
+
+                red = 255 * label->red;
+                green = 255 * label->green;
+                blue = 255 * label->blue;
+
+                if (label->rich_text != NULL) {
+                        should_stop = !ply_rich_text_iterator_next (&rich_text_iterator,
+                                                                    &rich_text_character);
+                        if (should_stop)
+                                break;
+
+                        current_character = rich_text_character->bytes;
+
+                        look_up_rgb_color_from_terminal_color (label,
+                                                               rich_text_character->style.foreground_color,
+                                                               &red,
+                                                               &green,
+                                                               &blue);
+                } else {
+                        size_t character_size;
+
+                        should_stop = !ply_utf8_string_iterator_next (&utf8_string_iterator,
+                                                                      &current_character,
+                                                                      &character_size);
+                }
+
+                if (*current_character == '\n')
+                        continue;
+
                 pen.x = label->area.x << 6;
 
                 /* Start at start position (alignment) */
                 if (label->alignment == PLY_LABEL_ALIGN_CENTER)
-                        pen.x += (label->area.width - width_of_line (label, cur_c)) << 5;
+                        pen.x += (label->area.width - width_of_string (label, current_character)) << 5;
                 else if (label->alignment == PLY_LABEL_ALIGN_RIGHT)
-                        pen.x += (label->area.width - width_of_line (label, cur_c)) << 6;
+                        pen.x += (label->area.width - width_of_string (label, current_character)) << 6;
 
-                while (*cur_c && *cur_c != '\n') {
-                        FT_Int extraAdvance = 0, positiveBearingX = 0;
-                        /* TODO: Unicode support. */
-                        error = FT_Load_Char (label->face, *cur_c,
-                                              FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT);
-                        if (error)
-                                continue;
+                if (!load_character (label, &current_character))
+                        continue;
 
-                        /* We consider negative left bearing an increment in size,
-                         * as we draw full character boxes and don't "go back" in
-                         * this plugin. Positive left bearing is treated as usual.
-                         * For definitions see
-                         * https://freetype.org/freetype2/docs/glyphs/glyphs-3.html
-                         */
-                        if (slot->bitmap_left < 0) {
-                                extraAdvance = -slot->bitmap_left;
-                        } else {
-                                positiveBearingX = slot->bitmap_left;
-                        }
-                        draw_bitmap (label, target, target_size, &slot->bitmap,
-                                     (pen.x >> 6) + positiveBearingX,
-                                     (pen.y >> 6) - slot->bitmap_top);
+                /* We consider negative left bearing an increment in size,
+                 * as we draw full character boxes and don't "go back" in
+                 * this plugin. Positive left bearing is treated as usual.
+                 * For definitions see
+                 * https://freetype.org/freetype2/docs/glyphs/glyphs-3.html
+                 */
+                if (slot->bitmap_left < 0)
+                        extraAdvance = -slot->bitmap_left;
+                else
+                        positiveBearingX = slot->bitmap_left;
 
-                        pen.x += slot->advance.x + extraAdvance;
-                        pen.y += slot->advance.y;
+                draw_bitmap (label, target, target_size, &slot->bitmap,
+                             (pen.x >> 6) + positiveBearingX,
+                             (pen.y >> 6) - slot->bitmap_top,
+                             red,
+                             green,
+                             blue);
 
-                        ++cur_c;
-                }
-                /* skip newline character */
-                if (*cur_c)
-                        ++cur_c;
+                pen.x += slot->advance.x + extraAdvance;
+                pen.y += slot->advance.y;
 
                 /* Next line */
                 pen.y += label->face->size->metrics.height;
-        }
+        } while (true);
 }
 
 static void
@@ -382,26 +568,71 @@ set_width_for_control (ply_label_plugin_control_t *label,
 }
 
 static void
+clear_text (ply_label_plugin_control_t *label)
+{
+        free (label->text);
+        label->text = NULL;
+
+        if (label->rich_text != NULL) {
+                ply_rich_text_drop_reference (label->rich_text);
+                label->rich_text = NULL;
+                label->span.offset = 0;
+                label->span.range = 0;
+        }
+}
+
+static void
 set_text_for_control (ply_label_plugin_control_t *label,
                       const char                 *text)
 {
         if (label->text != text) {
-                free (label->text);
+                clear_text (label);
                 label->text = strdup (text);
                 trigger_redraw (label, true);
         }
 }
 
 static void
+set_rich_text_for_control (ply_label_plugin_control_t *label,
+                           ply_rich_text_t            *rich_text,
+                           ply_rich_text_span_t       *span)
+{
+        clear_text (label);
+
+        label->rich_text = rich_text;
+        ply_rich_text_take_reference (rich_text);
+        label->span = *span;
+
+        trigger_redraw (label, true);
+}
+
+static void
 set_font_for_control (ply_label_plugin_control_t *label,
                       const char                 *fontdesc)
 {
-        /* Only able to set size */
+        /* Only able to set size and monospaced/nonmonospaced */
 
+        int error = 0;
         char *size_str_after;
-        const char *size_str;
+        const char *size_str, *font_path;
         unsigned long size;
         bool size_in_pixels;
+
+        if (strstr (fontdesc, "Mono") || strstr (fontdesc, "mono")) {
+                if (label->is_monospaced == false) {
+                        FT_Done_Face (label->face);
+                        font_path = query_fc_match_monospace ();
+                        error = set_font_with_fallback (label, font_path, MONOSPACE_FONT_FALLBACK);
+                }
+        } else {
+                if (label->is_monospaced == true) {
+                        FT_Done_Face (label->face);
+                        font_path = query_fc_match ();
+                        error = set_font_with_fallback (label, font_path, FONT_FALLBACK);
+                }
+        }
+        if (error)
+                FT_Done_Face (label->face);
 
         size = 25; /* Default, if not set. */
         size_in_pixels = false;
@@ -500,6 +731,7 @@ ply_label_plugin_get_interface (void)
                 .draw_control              = draw_control,
                 .is_control_hidden         = is_control_hidden,
                 .set_text_for_control      = set_text_for_control,
+                .set_rich_text_for_control = set_rich_text_for_control,
                 .set_alignment_for_control = set_alignment_for_control,
                 .set_width_for_control     = set_width_for_control,
                 .set_font_for_control      = set_font_for_control,

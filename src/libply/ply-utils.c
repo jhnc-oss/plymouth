@@ -776,6 +776,64 @@ ply_utf8_string_get_length (const char *string,
         return count;
 }
 
+size_t
+ply_utf8_string_get_byte_offset_from_character_offset (const char *string,
+                                                       size_t      character_offset)
+{
+        size_t byte_offset = 0;
+        size_t i;
+
+        for (i = 0; i < character_offset && string[byte_offset] != '\0'; i++) {
+                byte_offset += ply_utf8_character_get_size (string + byte_offset, PLY_UTF8_CHARACTER_SIZE_MAX);
+        }
+
+        return byte_offset;
+}
+
+void
+ply_utf8_string_iterator_init (ply_utf8_string_iterator_t *iterator,
+                               const char                 *string,
+                               ssize_t                     starting_offset,
+                               ssize_t                     range)
+{
+        size_t byte_offset;
+
+        iterator->character_range = range;
+        iterator->string = string;
+
+        byte_offset = ply_utf8_string_get_byte_offset_from_character_offset (string, starting_offset);
+        iterator->current_byte_offset = byte_offset;
+        iterator->number_characters_iterated = 0;
+}
+
+bool
+ply_utf8_string_iterator_next (ply_utf8_string_iterator_t *iterator,
+                               const char                **character,
+                               size_t                     *size)
+{
+        size_t size_of_current_character;
+
+        if (iterator->number_characters_iterated >= iterator->character_range)
+                return false;
+
+        if (iterator->string[iterator->current_byte_offset] == '\0')
+                return false;
+
+        size_of_current_character = ply_utf8_character_get_size (iterator->string + iterator->current_byte_offset,
+                                                                 PLY_UTF8_CHARACTER_SIZE_MAX);
+
+        if (size_of_current_character == 0)
+                return false;
+
+        *character = &iterator->string[iterator->current_byte_offset];
+        *size = size_of_current_character;
+
+        iterator->current_byte_offset += size_of_current_character;
+        iterator->number_characters_iterated++;
+
+        return true;
+}
+
 char *
 ply_get_process_command_line (pid_t pid)
 {
@@ -937,6 +995,66 @@ int ply_guess_device_scale (uint32_t width,
 {
         guess_device_scale = true;
         return get_device_scale (width, height, 0, 0, true);
+}
+
+void
+ply_get_kmsg_log_levels (int *current_log_level,
+                         int *default_log_level)
+{
+        static double last_update_time = 0;
+        static int cached_current_log_level = 0;
+        static int cached_default_log_level = 0;
+        char log_levels[4096] = "";
+        double current_time;
+        char *field, *fields;
+        int fd;
+
+        current_time = ply_get_timestamp ();
+
+        if ((current_time - last_update_time) < 1.0) {
+                *current_log_level = cached_current_log_level;
+                *default_log_level = cached_default_log_level;
+                return;
+        }
+
+        ply_trace ("opening /proc/sys/kernel/printk");
+        fd = open ("/proc/sys/kernel/printk", O_RDONLY);
+
+        if (fd < 0) {
+                ply_trace ("couldn't open it: %m");
+                return;
+        }
+
+        ply_trace ("reading kmsg log levels");
+        if (read (fd, log_levels, sizeof(log_levels) - 1) < 0) {
+                ply_trace ("couldn't read it: %m");
+                close (fd);
+                return;
+        }
+        close (fd);
+
+        field = strtok_r (log_levels, " \t", &fields);
+
+        if (field == NULL) {
+                ply_trace ("Couldn't parse current log level: %m");
+                return;
+        }
+
+        *current_log_level = atoi (field);
+
+        field = strtok_r (NULL, " \t", &fields);
+
+        if (field == NULL) {
+                ply_trace ("Couldn't parse default log level: %m");
+                return;
+        }
+
+        *default_log_level = atoi (field);
+
+        cached_current_log_level = *current_log_level;
+        cached_default_log_level = *default_log_level;
+
+        last_update_time = current_time;
 }
 
 static const char *
