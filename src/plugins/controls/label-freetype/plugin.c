@@ -181,26 +181,44 @@ get_height_of_control (ply_label_plugin_control_t *label)
         return label->area.height;
 }
 
+static bool
+load_character (ply_label_plugin_control_t *label,
+                const char                **text)
+{
+        FT_Error error;
+        size_t character_size;
+        wchar_t character;
+        const char *input_text = *text;
+
+        character_size = mbrtowc (&character, input_text, PLY_UTF8_CHARACTER_SIZE_MAX, NULL);
+
+        if (character_size <= 0) {
+                character = (wchar_t) *input_text;
+                character_size = 1;
+        }
+
+        error = FT_Load_Char (label->face, (FT_ULong) character, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT);
+
+        *text = input_text + character_size;
+
+        return !error;
+}
+
 static FT_Int
 width_of_line (ply_label_plugin_control_t *label,
                const char                 *text)
 {
-        FT_Error error;
         FT_Int width = 0;
         FT_Int left_bearing = 0;
 
         while (*text != '\0' && *text != '\n') {
-                error = FT_Load_Char (label->face, *text, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT);
-
-                if (!error) {
+                if (load_character (label, &text)) {
                         width += label->face->glyph->advance.x >> 6;
                         left_bearing = label->face->glyph->bitmap_left;
                         /* We don't "go back" when drawing, so when left bearing is
                          * negative (like for 'j'), we simply add to the width. */
                         if (left_bearing < 0)
                                 width += -left_bearing;
-
-                        ++text;
                 }
         }
 
@@ -352,10 +370,8 @@ draw_control (ply_label_plugin_control_t *label,
 
                 while (*cur_c && *cur_c != '\n') {
                         FT_Int extraAdvance = 0, positiveBearingX = 0;
-                        /* TODO: Unicode support. */
-                        error = FT_Load_Char (label->face, *cur_c,
-                                              FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT);
-                        if (error)
+
+                        if (!load_character (label, &cur_c))
                                 continue;
 
                         /* We consider negative left bearing an increment in size,
@@ -375,8 +391,6 @@ draw_control (ply_label_plugin_control_t *label,
 
                         pen.x += slot->advance.x + extraAdvance;
                         pen.y += slot->advance.y;
-
-                        ++cur_c;
                 }
                 /* skip newline character */
                 if (*cur_c)
