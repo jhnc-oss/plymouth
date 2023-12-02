@@ -151,6 +151,10 @@ ply_label_load_plugin (ply_label_t *label)
                 return false;
         }
 
+        if (label->font != NULL)
+                label->plugin_interface->set_font_for_control (label->control,
+                                                               label->font);
+
         if (label->text != NULL) {
                 if (label->rich_text == NULL) {
                         label->plugin_interface->set_text_for_control (label->control,
@@ -165,10 +169,6 @@ ply_label_load_plugin (ply_label_t *label)
                                                             label->alignment);
         label->plugin_interface->set_width_for_control (label->control,
                                                         label->width);
-        if (label->font != NULL)
-                label->plugin_interface->set_font_for_control (label->control,
-                                                               label->font);
-
         label->plugin_interface->set_color_for_control (label->control,
                                                         label->red,
                                                         label->green,
