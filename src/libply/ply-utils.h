@@ -55,6 +55,14 @@ typedef enum
         PLY_UNIX_SOCKET_TYPE_TRIMMED_ABSTRACT
 } ply_unix_socket_type_t;
 
+typedef struct
+{
+        const char *string;
+        ssize_t     character_range;
+        ssize_t     current_byte_offset;
+        ssize_t     number_characters_iterated;
+} ply_utf8_string_iterator_t;
+
 #ifndef PLY_HIDE_FUNCTION_DECLARATIONS
 
 #define ply_round_to_multiple(n, m) (((n) + (((m) - 1))) & ~((m) - 1))
@@ -116,6 +124,16 @@ int ply_utf8_character_get_size (const char *string,
                                  size_t      n);
 int ply_utf8_string_get_length (const char *string,
                                 size_t      n);
+
+size_t ply_utf8_string_get_byte_offset_from_character_offset (const char *string,
+                                                              size_t      character_offset);
+void ply_utf8_string_iterator_init (ply_utf8_string_iterator_t *iterator,
+                                    const char                 *string,
+                                    ssize_t                     starting_offset,
+                                    ssize_t                     range);
+bool ply_utf8_string_iterator_next (ply_utf8_string_iterator_t *iterator,
+                                    const char                **character,
+                                    size_t                     *size);
 
 char *ply_get_process_command_line (pid_t pid);
 pid_t ply_get_process_parent_pid (pid_t pid);

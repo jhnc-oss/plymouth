@@ -776,6 +776,64 @@ ply_utf8_string_get_length (const char *string,
         return count;
 }
 
+size_t
+ply_utf8_string_get_byte_offset_from_character_offset (const char *string,
+                                                       size_t      character_offset)
+{
+        size_t byte_offset = 0;
+        size_t i;
+
+        for (i = 0; i < character_offset && string[byte_offset] != '\0'; i++) {
+                byte_offset += ply_utf8_character_get_size (string + byte_offset, PLY_UTF8_CHARACTER_SIZE_MAX);
+        }
+
+        return byte_offset;
+}
+
+void
+ply_utf8_string_iterator_init (ply_utf8_string_iterator_t *iterator,
+                               const char                 *string,
+                               ssize_t                     starting_offset,
+                               ssize_t                     range)
+{
+        size_t byte_offset;
+
+        iterator->character_range = range;
+        iterator->string = string;
+
+        byte_offset = ply_utf8_string_get_byte_offset_from_character_offset (string, starting_offset);
+        iterator->current_byte_offset = byte_offset;
+        iterator->number_characters_iterated = 0;
+}
+
+bool
+ply_utf8_string_iterator_next (ply_utf8_string_iterator_t *iterator,
+                               const char                **character,
+                               size_t                     *size)
+{
+        size_t size_of_current_character;
+
+        if (iterator->number_characters_iterated >= iterator->character_range)
+                return false;
+
+        if (iterator->string[iterator->current_byte_offset] == '\0')
+                return false;
+
+        size_of_current_character = ply_utf8_character_get_size (iterator->string + iterator->current_byte_offset,
+                                                                 PLY_UTF8_CHARACTER_SIZE_MAX);
+
+        if (size_of_current_character == 0)
+                return false;
+
+        *character = &iterator->string[iterator->current_byte_offset];
+        *size = size_of_current_character;
+
+        iterator->current_byte_offset += size_of_current_character;
+        iterator->number_characters_iterated++;
+
+        return true;
+}
+
 char *
 ply_get_process_command_line (pid_t pid)
 {
