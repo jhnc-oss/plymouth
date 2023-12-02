@@ -52,6 +52,13 @@ typedef struct
         ssize_t range;
 } ply_rich_text_span_t;
 
+typedef struct
+{
+        ply_rich_text_t     *rich_text;
+        ply_rich_text_span_t span;
+        ssize_t              current_offset;
+} ply_rich_text_iterator_t;
+
 #ifndef PLY_HIDE_FUNCTION_DECLARATIONS
 ply_rich_text_t *ply_rich_text_new (void);
 void ply_rich_text_take_reference (ply_rich_text_t *rich_text);
@@ -76,6 +83,12 @@ void ply_rich_text_free (ply_rich_text_t *rich_text);
 
 ply_rich_text_character_t *ply_rich_text_character_new (void);
 void ply_rich_text_character_free (ply_rich_text_character_t *character);
+
+void ply_rich_text_iterator_init (ply_rich_text_iterator_t *iterator,
+                                  ply_rich_text_t          *rich_text,
+                                  ply_rich_text_span_t     *span);
+bool ply_rich_text_iterator_next (ply_rich_text_iterator_t   *iterator,
+                                  ply_rich_text_character_t **character);
 
 #endif //PLY_HIDE_FUNCTION_DECLARATIONS
 #endif //PLY_RICH_TEXT_H

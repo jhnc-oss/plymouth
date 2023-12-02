@@ -219,3 +219,36 @@ ply_rich_text_set_character (ply_rich_text_t                *rich_text,
         character->length = length;
         character->style = style;
 }
+
+void
+ply_rich_text_iterator_init (ply_rich_text_iterator_t *iterator,
+                             ply_rich_text_t          *rich_text,
+                             ply_rich_text_span_t     *span)
+{
+        iterator->rich_text = rich_text;
+        iterator->span = *span;
+        iterator->current_offset = span->offset;
+}
+
+bool
+ply_rich_text_iterator_next (ply_rich_text_iterator_t   *iterator,
+                             ply_rich_text_character_t **character)
+{
+        ply_rich_text_t *rich_text = iterator->rich_text;
+        ply_rich_text_span_t *span = &iterator->span;
+        ply_rich_text_character_t **characters = ply_rich_text_get_characters (rich_text);
+
+        if (iterator->current_offset >= span->offset + span->range) {
+                return false;
+        }
+
+        if (characters[iterator->current_offset] == NULL) {
+                return false;
+        }
+
+        *character = characters[iterator->current_offset];
+
+        iterator->current_offset++;
+
+        return true;
+}
