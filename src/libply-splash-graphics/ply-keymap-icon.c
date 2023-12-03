@@ -32,6 +32,7 @@
 #include "ply-logger.h"
 #include "ply-image.h"
 #include "ply-utils.h"
+#include "ply-label.h"
 
 #define SPACING 10
 
@@ -46,6 +47,8 @@ struct _ply_keymap_icon
         long                 x, y;
         unsigned long        width, height;
         bool                 is_hidden;
+        char                *keymap_name;
+        bool                 has_prerendered_text;
 };
 
 /* The keymap name we got from the renderer may contain a variant, e.g. it may
@@ -101,18 +104,20 @@ ply_keymap_icon_fill_keymap_info (ply_keymap_icon_t *keymap_icon)
                         compare_keymap = strdup (keymap_with_variant);
                 }
 
+                keymap_icon->keymap_name = compare_keymap;
+
                 if (strcmp (ply_keymap_metadata[i].name, compare_keymap) == 0) {
                         keymap_icon->keymap_offset = ply_keymap_metadata[i].offset;
                         keymap_icon->keymap_width = ply_keymap_metadata[i].width;
+                        keymap_icon->has_prerendered_text = true;
                         break;
                 }
         }
 
         if (keymap_icon->keymap_offset == -1)
-                ply_trace ("Error no pre-rendered text for '%s' keymap", keymap);
+                ply_trace ("Warning: no pre-rendered text for '%s' keymap", keymap);
 
         free (keymap);
-        free (compare_keymap);
 }
 
 ply_keymap_icon_t *
@@ -125,6 +130,7 @@ ply_keymap_icon_new (ply_pixel_display_t *display,
         keymap_icon->display = display;
         keymap_icon->image_dir = strdup (image_dir);
         keymap_icon->is_hidden = true;
+        keymap_icon->has_prerendered_text = false;
 
         ply_keymap_icon_fill_keymap_info (keymap_icon);
 
@@ -140,6 +146,7 @@ ply_keymap_icon_free (ply_keymap_icon_t *keymap_icon)
         ply_pixel_buffer_free (keymap_icon->icon_buffer);
         ply_pixel_buffer_free (keymap_icon->keymap_buffer);
 
+        free (keymap_icon->keymap_name);
         free (keymap_icon->image_dir);
         free (keymap_icon);
 }
@@ -147,14 +154,12 @@ ply_keymap_icon_free (ply_keymap_icon_t *keymap_icon)
 bool
 ply_keymap_icon_load (ply_keymap_icon_t *keymap_icon)
 {
+        ply_label_t *keymap_label;
         ply_image_t *keymap_image = NULL;
         ply_image_t *icon_image;
         char *filename;
+        int label_width, label_height;
         bool success;
-
-        /* Bail if we did not find the keymap metadata */
-        if (keymap_icon->keymap_offset == -1)
-                return false;
 
         if (keymap_icon->icon_buffer)
                 return true;
@@ -180,11 +185,23 @@ ply_keymap_icon_load (ply_keymap_icon_t *keymap_icon)
         }
 
         keymap_icon->icon_buffer = ply_image_convert_to_pixel_buffer (icon_image);
-        keymap_icon->keymap_buffer = ply_image_convert_to_pixel_buffer (keymap_image);
+        if (keymap_icon->has_prerendered_text) {
+                keymap_icon->keymap_buffer = ply_image_convert_to_pixel_buffer (keymap_image);
+                label_width = SPACING + ply_pixel_buffer_get_width (keymap_icon->keymap_buffer);
+                keymap_icon->width = ply_pixel_buffer_get_width (keymap_icon->icon_buffer) + SPACING + keymap_icon->keymap_width;
+        } else {
+                keymap_label = ply_label_new ();
+                ply_label_set_text (keymap_label, keymap_icon->keymap_name);
+                ply_label_set_font (keymap_label, "Default 14");
+                ply_label_show (keymap_label, keymap_icon->display, 0, 0);
+                label_width = ply_label_get_width (keymap_label);
+                label_height = ply_label_get_height (keymap_label);
+                keymap_icon->keymap_buffer = ply_pixel_buffer_new (label_width, label_height);
+                keymap_icon->width = ply_pixel_buffer_get_width (keymap_icon->icon_buffer) + SPACING + label_width;
+                ply_label_draw_area (keymap_label, keymap_icon->keymap_buffer, 0, 0, label_width, label_height);
+                ply_label_free (keymap_label);
+        }
 
-        keymap_icon->width =
-                ply_pixel_buffer_get_width (keymap_icon->icon_buffer) +
-                SPACING + keymap_icon->keymap_width;
         keymap_icon->height = MAX (
                 ply_pixel_buffer_get_height (keymap_icon->icon_buffer),
                 ply_pixel_buffer_get_height (keymap_icon->keymap_buffer));
@@ -261,12 +278,20 @@ ply_keymap_icon_draw_area (ply_keymap_icon_t  *keymap_icon,
          * so that the text we want lines out at the place we want it and set
          * the area we want to draw to as clip-area to only draw what we want.
          */
-        ply_pixel_buffer_fill_with_buffer_with_clip (
-                buffer,
-                keymap_icon->keymap_buffer,
-                keymap_area.x - keymap_icon->keymap_offset,
-                keymap_area.y,
-                &keymap_area);
+        if (keymap_icon->has_prerendered_text) {
+                ply_pixel_buffer_fill_with_buffer_with_clip (
+                        buffer,
+                        keymap_icon->keymap_buffer,
+                        keymap_area.x - keymap_icon->keymap_offset,
+                        keymap_area.y,
+                        &keymap_area);
+        } else {
+                ply_pixel_buffer_fill_with_buffer (
+                        buffer,
+                        keymap_icon->keymap_buffer,
+                        keymap_area.x - keymap_icon->keymap_offset,
+                        keymap_area.y);
+        }
 }
 
 unsigned long
