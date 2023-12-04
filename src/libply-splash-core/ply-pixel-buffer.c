@@ -22,7 +22,6 @@
  *             Kristian Høgsberg <krh@redhat.com>
  *             Ray Strode <rstrode@redhat.com>
  */
-#include "config.h"
 #include "ply-list.h"
 #include "ply-pixel-buffer.h"
 #include "ply-logger.h"

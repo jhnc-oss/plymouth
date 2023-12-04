@@ -22,7 +22,6 @@
  *             Kristian Høgsberg <krh@redhat.com>
  *             Ray Strode <rstrode@redhat.com>
  */
-#include "config.h"
 #include "ply-renderer.h"
 
 #include <assert.h>

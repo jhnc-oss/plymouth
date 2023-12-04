@@ -21,7 +21,6 @@
  * Written by: Charlie Brej <cbrej@cs.man.ac.uk>
  *             Ray Strode <rstrode@redhat.com>
  */
-#include "config.h"
 #include "ply-list.h"
 
 #include <assert.h>

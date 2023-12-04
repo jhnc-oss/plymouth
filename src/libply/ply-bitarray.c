@@ -19,7 +19,6 @@
  *
  * Written by: Charlie Brej <cbrej@cs.man.ac.uk>
  */
-#include "config.h"
 #include "ply-bitarray.h"
 
 #include <assert.h>

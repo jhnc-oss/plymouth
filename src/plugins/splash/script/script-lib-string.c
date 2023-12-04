@@ -20,7 +20,6 @@
  * Written by: Charlie Brej <cbrej@cs.man.ac.uk>
  */
 
-#include "config.h"
 
 #include "script.h"
 #include "script-parse.h"

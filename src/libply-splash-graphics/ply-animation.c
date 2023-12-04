@@ -19,7 +19,6 @@
  *
  * Written by: William Jon McCann <jmccann@redhat.com>
  */
-#include "config.h"
 
 #include <assert.h>
 #include <dirent.h>

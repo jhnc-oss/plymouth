@@ -20,7 +20,6 @@
  * Written by: Adam Jackson <ajax@redhat.com>
  *             Ray Strode <rstrode@redhat.com>
  */
-#include "config.h"
 
 #include <assert.h>
 #include <errno.h>

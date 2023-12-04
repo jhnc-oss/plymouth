@@ -19,7 +19,6 @@
  *
  * Written by: Colin Watson <cjwatson@ubuntu.com>
  */
-#include "config.h"
 #include "ply-upstart-monitor.h"
 
 #include <assert.h>

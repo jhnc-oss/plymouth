@@ -62,6 +62,7 @@ endif
 # Global C flags
 add_project_arguments([
     '-D_GNU_SOURCE',
+    '-include', 'config.h',
   ],
   language: 'c'
 )

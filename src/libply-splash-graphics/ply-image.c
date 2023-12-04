@@ -25,7 +25,6 @@
  *             Ray Strode <rstrode@redhat.com>
  *             Carl D. Worth <cworth@cworth.org>
  */
-#include "config.h"
 #include "ply-image.h"
 #include "ply-pixel-buffer.h"
 

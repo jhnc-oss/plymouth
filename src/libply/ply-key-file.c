@@ -21,7 +21,6 @@
  *
  * Written by: Ray Strode <rstrode@redhat.com>
  */
-#include "config.h"
 #include "ply-key-file.h"
 
 #include <assert.h>

@@ -21,7 +21,6 @@
  */
 #pragma weak ply_keyboard_get_capslock_state
 
-#include "config.h"
 
 #include "ply-boot-splash-plugin.h"
 #include "ply-utils.h"
