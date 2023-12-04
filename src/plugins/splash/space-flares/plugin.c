@@ -525,7 +525,6 @@ create_plugin (ply_key_file_t *key_file)
         ply_boot_splash_plugin_t *plugin;
         char *image_dir, *image_path;
 
-        srand ((int) ply_get_timestamp ());
         plugin = calloc (1, sizeof(ply_boot_splash_plugin_t));
 
         plugin->logo_image = ply_image_new (PLYMOUTH_LOGO_FILE);
@@ -965,12 +964,12 @@ static void
 flare_reset (flare_t *flare,
              int      index)
 {
-        flare->rotate_yz[index] = ((float) (rand () % 1000) / 1000) * 2 * M_PI;
-        flare->rotate_xy[index] = ((float) (rand () % 1000) / 1000) * 2 * M_PI;
-        flare->rotate_xz[index] = ((float) (rand () % 1000) / 1000) * 2 * M_PI;
-        flare->y_size[index] = ((float) (rand () % 1000) / 1000) * 0.8 + 0.2;
-        flare->increase_speed[index] = ((float) (rand () % 1000) / 1000) * 0.08 + 0.08;
-        flare->stretch[index] = (((float) (rand () % 1000) / 1000) * 0.1 + 0.3) * flare->y_size[index];
+        flare->rotate_yz[index] = ((float) (ply_get_random_number (0, 1000)) / 1000) * 2 * M_PI;
+        flare->rotate_xy[index] = ((float) (ply_get_random_number (0, 1000)) / 1000) * 2 * M_PI;
+        flare->rotate_xz[index] = ((float) (ply_get_random_number (0, 1000)) / 1000) * 2 * M_PI;
+        flare->y_size[index] = ((float) (ply_get_random_number (0, 1000)) / 1000) * 0.8 + 0.2;
+        flare->increase_speed[index] = ((float) (ply_get_random_number (0, 1000)) / 1000) * 0.08 + 0.08;
+        flare->stretch[index] = (((float) (ply_get_random_number (0, 1000)) / 1000) * 0.1 + 0.3) * flare->y_size[index];
         flare->z_offset_strength[index] = 0.1;
 }
 
@@ -1537,8 +1536,8 @@ view_setup_scene (view_t *view)
 
                 for (i = 0; i < star_bg->star_count; i++) {
                         do {
-                                x = rand () % screen_width;
-                                y = rand () % screen_height;
+                                x = ply_get_random_number (0, screen_width);
+                                y = ply_get_random_number (0, screen_height);
                         } while (image_data[x + y * screen_width] == 0xFFFFFFFF);
                         star_bg->star_refresh[i] = 0;
                         star_bg->star_x[i] = x;
@@ -1546,8 +1545,8 @@ view_setup_scene (view_t *view)
                         image_data[x + y * screen_width] = 0xFFFFFFFF;
                 }
                 for (i = 0; i < (int) (screen_width * screen_height) / 400; i++) {
-                        x = rand () % screen_width;
-                        y = rand () % screen_height;
+                        x = ply_get_random_number (0, screen_width);
+                        y = ply_get_random_number (0, screen_height);
                         image_data[x + y * screen_width] = star_bg_gradient_colour (x, y, screen_width, screen_height, true, ((float) x * y * 13 / 10000));
                 }
 
