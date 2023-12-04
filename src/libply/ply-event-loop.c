@@ -19,7 +19,6 @@
  *
  * Written by: Ray Strode <rstrode@redhat.com>
  */
-#include "config.h"
 #include "ply-event-loop.h"
 
 #include <assert.h>

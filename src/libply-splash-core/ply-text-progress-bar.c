@@ -22,7 +22,6 @@
  *             Ray Strode <rstrode@redhat.com>
  *             Soeren Sandmann <sandmann@redhat.com>
  */
-#include "config.h"
 
 #include <assert.h>
 #include <dirent.h>

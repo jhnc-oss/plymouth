@@ -23,7 +23,6 @@
  *             Peter Jones <pjones@redhat.com>
  *             Ray Strode <rstrode@redhat.com>
  */
-#include "config.h"
 
 #include <arpa/inet.h>
 #include <assert.h>

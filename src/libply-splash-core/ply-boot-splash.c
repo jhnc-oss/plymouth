@@ -20,7 +20,6 @@
  * Written by: Ray Strode <rstrode@redhat.com>
  *             Soeren Sandmann <sandmann@redhat.com>
  */
-#include "config.h"
 #include "ply-boot-splash.h"
 
 #include <assert.h>

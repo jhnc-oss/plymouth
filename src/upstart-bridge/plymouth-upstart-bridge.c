@@ -19,7 +19,6 @@
  *
  * Written by: Colin Watson <cjwatson@ubuntu.com>
  */
-#include "config.h"
 
 #include <stdbool.h>
 #include <signal.h>

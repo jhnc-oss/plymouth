@@ -21,7 +21,6 @@
  *             Will Woods <wwoods@redhat.com>
  *             Hans de Goede <hdegoede@redhat.com>
  */
-#include "config.h"
 
 #include <assert.h>
 #include <dirent.h>

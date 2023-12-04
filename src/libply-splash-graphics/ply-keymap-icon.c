@@ -19,7 +19,6 @@
  *
  * Written by: Hans de Goede <hdegoede@redhat.com>
  */
-#include "config.h"
 
 #include <stdbool.h>
 #include <stdio.h>

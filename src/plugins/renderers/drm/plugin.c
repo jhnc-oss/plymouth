@@ -24,7 +24,6 @@
  *             Ray Strode <rstrode@redhat.com>
  *             Hans de Goede <hdegoede@redhat.com>
  */
-#include "config.h"
 
 #include <arpa/inet.h>
 #include <assert.h>

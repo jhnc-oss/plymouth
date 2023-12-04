@@ -20,7 +20,6 @@
  * Written by: William Jon McCann, Hans de Goede <hdegoede@redhat.com>
  *
  */
-#include "config.h"
 
 #include <assert.h>
 #include <errno.h>

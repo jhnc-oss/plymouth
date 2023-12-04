@@ -23,7 +23,6 @@
  * Written by: Charlie Brej <cbrej@cs.man.ac.uk>
  *             Ray Strode <rstrode@redhat.com>
  */
-#include "config.h"
 #include "ply-region.h"
 
 #include <assert.h>

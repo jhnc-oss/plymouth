@@ -21,7 +21,6 @@
  * Written by: Ray Strode <rstrode@redhat.com>
  * Written by: Fabian Vogt <fvogt@suse.com>
  */
-#include "config.h"
 
 #include <stdio.h>
 #include <stdint.h>
