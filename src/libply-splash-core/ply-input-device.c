@@ -237,12 +237,14 @@ on_input (ply_input_device_t *input_device)
 
                 symbol = xkb_state_key_get_one_sym (input_device->keyboard_state, keycode);
 
-                updated_state = xkb_state_update_key (input_device->keyboard_state, keycode, xkb_key_direction);
+                if (key_state != PLY_KEY_HELD) {
+                        updated_state = xkb_state_update_key (input_device->keyboard_state, keycode, xkb_key_direction);
 
-                if ((updated_state & XKB_STATE_LEDS) != 0) {
-                        ply_trace ("Keyboard indicator lights need update");
-                        input_device->leds_state_invalid = true;
-                        ply_trigger_pull (input_device->leds_changed_trigger, input_device);
+                        if ((updated_state & XKB_STATE_LEDS) != 0) {
+                                ply_trace ("Keyboard indicator lights need update");
+                                input_device->leds_state_invalid = true;
+                                ply_trigger_pull (input_device->leds_changed_trigger, input_device);
+                        }
                 }
 
                 /* If the key is repeating, or is being pressed down */
