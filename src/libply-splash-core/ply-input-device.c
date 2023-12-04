@@ -159,8 +159,10 @@ on_input (ply_input_device_t *input_device)
 {
         struct input_event ev;
         int rc;
+        unsigned int flags;
         ply_buffer_t *input_buffer = ply_buffer_new ();
 
+        flags = LIBEVDEV_READ_FLAG_NORMAL;
         for (;;) {
                 ply_key_direction_t key_state;
                 enum xkb_key_direction xkb_key_direction;
@@ -168,9 +170,18 @@ on_input (ply_input_device_t *input_device)
                 xkb_keysym_t symbol;
                 enum xkb_state_component updated_state;
 
-                rc = libevdev_next_event (input_device->dev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
-                if (rc != LIBEVDEV_READ_STATUS_SUCCESS)
+                rc = libevdev_next_event (input_device->dev, flags, &ev);
+
+                if (rc == LIBEVDEV_READ_STATUS_SYNC) {
+                        ply_trace ("Input device %s has backlog of events", libevdev_get_name (input_device->dev));
+                        flags = LIBEVDEV_READ_FLAG_SYNC;
+                        continue;
+                } else if (rc == LIBEVDEV_READ_STATUS_SUCCESS && flags == LIBEVDEV_READ_FLAG_SYNC) {
+                        ply_trace ("Input device %s event backlog has been processed", libevdev_get_name (input_device->dev));
+                        flags = LIBEVDEV_READ_FLAG_NORMAL;
+                } else if (rc != LIBEVDEV_READ_STATUS_SUCCESS) {
                         break;
+                }
 
                 if (!libevdev_event_is_type (&ev, EV_KEY))
                         continue;
@@ -208,6 +219,7 @@ on_input (ply_input_device_t *input_device)
                 updated_state = xkb_state_update_key (input_device->keyboard_state, keycode, xkb_key_direction);
 
                 if ((updated_state & XKB_STATE_LEDS) != 0) {
+                        ply_trace ("Keyboard indicator lights need update");
                         input_device->leds_state_invalid = true;
                         ply_trigger_pull (input_device->leds_changed_trigger, input_device);
                 }
