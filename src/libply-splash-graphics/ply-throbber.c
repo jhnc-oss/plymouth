@@ -305,7 +305,9 @@ ply_throbber_start (ply_throbber_t      *throbber,
                     long                 y)
 {
         assert (throbber != NULL);
-        assert (throbber->loop == NULL);
+
+        if (!throbber->is_stopped)
+                ply_throbber_stop_now (throbber, false);
 
         throbber->loop = loop;
         throbber->display = display;
