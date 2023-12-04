@@ -847,7 +847,7 @@ parse_vconsole_conf (ply_device_manager_t *manager)
         }
         ply_key_file_free (vconsole_conf);
 
-        ply_trace ("XKB_KEYMAP: %s     KEYMAP: %s", xkb_layout, keymap);
+        ply_trace ("KEYMAP: %s, XKBLAYOUT: %s, XKBMODEL %s, XKBVARIANT: %s, XKBOPTIONS: %s\n", keymap, xkb_layout, xkb_model, xkb_variant, xkb_options);
 
         if (xkb_layout != NULL) {
                 struct xkb_rule_names xkb_keymap = {
