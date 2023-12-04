@@ -160,6 +160,8 @@ double ply_strtod (const char *str);
 
 bool ply_is_secure_boot_enabled (void);
 
+long ply_get_random_number (long lower_bound, long range);
+
 #endif
 
 #endif /* PLY_UTILS_H */

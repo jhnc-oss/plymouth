@@ -1107,7 +1107,6 @@ create_plugin (ply_key_file_t *key_file)
         char *progress_function;
         char *show_animation_fraction;
 
-        srand ((int) ply_get_timestamp ());
         plugin = calloc (1, sizeof(ply_boot_splash_plugin_t));
 
         image_dir = ply_key_file_get_value (key_file, "two-step", "ImageDir");

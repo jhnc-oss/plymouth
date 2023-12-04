@@ -29,6 +29,7 @@
 #include "script-object.h"
 #include "script-lib-math.h"
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -60,7 +61,7 @@ static script_return_t script_lib_math_double_from_double_double_function (scrip
 static script_return_t script_lib_math_random (script_state_t *state,
                                                void           *user_data)
 {
-        double reply_double = random () / ((double) RAND_MAX + 1);
+        double reply_double = ply_get_random_number (0, LONG_MAX) / ((double) LONG_MAX);
 
         return script_return_obj (script_obj_new_number (reply_double));
 }
@@ -69,7 +70,6 @@ script_lib_math_data_t *script_lib_math_setup (script_state_t *state)
 {
         script_lib_math_data_t *data = malloc (sizeof(script_lib_math_data_t));
 
-        srand ((int) ply_get_timestamp ());
 
         script_obj_t *math_hash = script_obj_hash_get_element (state->global, "Math");
 

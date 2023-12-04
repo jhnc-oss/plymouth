@@ -1211,4 +1211,26 @@ ply_is_secure_boot_enabled (void)
         return is_secure_boot_enabled;
 }
 
+long
+ply_get_random_number (long lower_bound,
+                       long range)
+{
+        static bool seed_initialized = false;
+        long offset;
+
+        if (!seed_initialized) {
+                struct timespec now = { 0L, /* zero-filled */ };
+
+                clock_gettime (CLOCK_TAI, &now);
+                srand48 (now.tv_nsec);
+                seed_initialized = true;
+        }
+
+        offset = mrand48 ();
+
+        offset = labs (offset) % range;
+
+        return lower_bound + offset;
+}
+
 /* vim: set ts=4 sw=4 expandtab autoindent cindent cino={.5s,(0: */
