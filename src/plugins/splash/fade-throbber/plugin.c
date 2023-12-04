@@ -186,7 +186,6 @@ create_plugin (ply_key_file_t *key_file)
         ply_boot_splash_plugin_t *plugin;
         char *image_dir, *image_path;
 
-        srand ((int) ply_get_timestamp ());
         plugin = calloc (1, sizeof(ply_boot_splash_plugin_t));
         plugin->start_time = 0.0;
 
@@ -927,8 +926,8 @@ view_add_star (view_t *view)
 
         node = NULL;
         do {
-                x = rand () % screen_width;
-                y = rand () % screen_height;
+                x = ply_get_random_number (0, screen_width);
+                y = ply_get_random_number (0, screen_height);
 
                 if ((x <= logo_area.x + logo_area.width)
                     && (x >= logo_area.x)
@@ -965,7 +964,7 @@ view_add_star (view_t *view)
                 }
         } while (node != NULL);
 
-        star = star_new (x, y, (double) ((rand () % 50) + 1));
+        star = star_new (x, y, (double) ((ply_get_random_number (0, 50)) + 1));
         ply_list_append_data (view->stars, star);
 }
 
