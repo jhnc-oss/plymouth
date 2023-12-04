@@ -161,6 +161,19 @@ on_input (ply_input_device_t *input_device)
         int rc;
         unsigned int flags;
         ply_buffer_t *input_buffer = ply_buffer_new ();
+        static enum { PLY_INPUT_DEVICE_DEBUG_UNKNOWN = -1,
+                      PLY_INPUT_DEVICE_DEBUG_DISABLED,
+                      PLY_INPUT_DEVICE_DEBUG_ENABLED } debug_key_events = PLY_INPUT_DEVICE_DEBUG_UNKNOWN;
+
+        if (debug_key_events == PLY_INPUT_DEVICE_DEBUG_UNKNOWN) {
+                if (ply_kernel_command_line_has_argument ("plymouth.debug-input-devices")) {
+                        ply_trace ("WARNING: Input device debugging enabled. Passwords will be in log!");
+                        debug_key_events = PLY_INPUT_DEVICE_DEBUG_ENABLED;
+                } else {
+                        ply_trace ("Input device debugging disabled");
+                        debug_key_events = PLY_INPUT_DEVICE_DEBUG_DISABLED;
+                }
+        }
 
         flags = LIBEVDEV_READ_FLAG_NORMAL;
         for (;;) {
@@ -181,6 +194,14 @@ on_input (ply_input_device_t *input_device)
                         flags = LIBEVDEV_READ_FLAG_NORMAL;
                 } else if (rc != LIBEVDEV_READ_STATUS_SUCCESS) {
                         break;
+                }
+
+                if (debug_key_events == PLY_INPUT_DEVICE_DEBUG_ENABLED) {
+                        ply_trace ("Received event from input device %s, type=%s code=%s value=%d.",
+                                   libevdev_get_name (input_device->dev),
+                                   libevdev_event_type_get_name (ev.type),
+                                   libevdev_event_code_get_name (ev.type, ev.code),
+                                   ev.value);
                 }
 
                 if (!libevdev_event_is_type (&ev, EV_KEY))
