@@ -1699,8 +1699,20 @@ flush_head (ply_renderer_backend_t *backend,
         ply_pixel_buffer_t *pixel_buffer;
         char *map_address;
         bool dirty = false;
+        static enum { PLY_SET_MODE_ON_REDRAWS_UNKNOWN = -1,
+                      PLY_SET_MODE_ON_REDRAWS_DISABLED,
+                      PLY_SET_MODE_ON_REDRAWS_ENABLED } set_mode_on_redraws = PLY_SET_MODE_ON_REDRAWS_UNKNOWN;
 
         assert (backend != NULL);
+
+        if (set_mode_on_redraws == PLY_SET_MODE_ON_REDRAWS_UNKNOWN) {
+                if (ply_kernel_command_line_has_argument ("plymouth.set-mode-on-redraws")) {
+                        ply_trace ("Mode getting reset every redraw");
+                        set_mode_on_redraws = PLY_SET_MODE_ON_REDRAWS_ENABLED;
+                } else {
+                        set_mode_on_redraws = PLY_SET_MODE_ON_REDRAWS_DISABLED;
+                }
+        }
 
         if (!backend->is_active)
                 return;
@@ -1729,6 +1741,11 @@ flush_head (ply_renderer_backend_t *backend,
                 dirty = true;
 
                 node = ply_list_get_next_node (areas_to_flush, node);
+        }
+
+        if (set_mode_on_redraws == PLY_SET_MODE_ON_REDRAWS_ENABLED) {
+                dirty = true;
+                head->scan_out_buffer_needs_reset = true;
         }
 
         if (dirty) {
