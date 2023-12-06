@@ -52,7 +52,8 @@ typedef void (*ply_terminal_emulator_output_handler_t) (void       *user_data,
                                                         const char *output);
 
 #ifndef PLY_HIDE_FUNCTION_DECLARATIONS
-ply_terminal_emulator_t *ply_terminal_emulator_new (size_t maximum_line_count);
+ply_terminal_emulator_t *ply_terminal_emulator_new (size_t number_of_rows,
+                                                    size_t number_of_columns);
 void ply_terminal_emulator_free (ply_terminal_emulator_t *terminal_emulator);
 void ply_terminal_emulator_parse_lines (ply_terminal_emulator_t *terminal_emulator,
                                         const char              *text,
