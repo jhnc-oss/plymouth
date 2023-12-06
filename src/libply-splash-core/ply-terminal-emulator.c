@@ -110,8 +110,6 @@ struct _ply_terminal_emulator
 
         ply_rich_text_t                            *current_line;
         ply_rich_text_character_style_t             current_style;
-
-        uint32_t                                    default_colors_forced : 1;
 };
 
 typedef ply_terminal_emulator_break_string_t (*ply_terminal_emulator_dispatch_handler_t)();
@@ -158,8 +156,6 @@ ply_terminal_emulator_new (size_t maximum_line_count)
         terminal_emulator->current_style.italic_enabled = false;
         terminal_emulator->current_style.underline_enabled = false;
         terminal_emulator->current_style.reverse_enabled = false;
-
-        terminal_emulator->default_colors_forced = false;
 
         return terminal_emulator;
 }
@@ -1220,12 +1216,6 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
 
         if (terminal_emulator->break_action == PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_RESET_CURSOR_COLUMN)
                 terminal_emulator->cursor_column = 0;
-
-        if (terminal_emulator->default_colors_forced == true) {
-                terminal_emulator->default_colors_forced = false;
-                terminal_emulator->current_style.foreground_color = PLY_TERMINAL_COLOR_DEFAULT;
-                terminal_emulator->current_style.background_color = PLY_TERMINAL_COLOR_DEFAULT;
-        }
 
         terminal_emulator->current_line = NULL;
 }
