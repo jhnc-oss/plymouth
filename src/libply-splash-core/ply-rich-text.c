@@ -141,7 +141,7 @@ ply_rich_text_get_length (ply_rich_text_t *rich_text)
 }
 
 void
-ply_rich_text_character_style_init (ply_rich_text_character_style_t *default_style)
+ply_rich_text_character_style_initialize (ply_rich_text_character_style_t *default_style)
 {
         default_style->foreground_color = PLY_TERMINAL_COLOR_DEFAULT;
         default_style->background_color = PLY_TERMINAL_COLOR_DEFAULT;
@@ -269,9 +269,9 @@ ply_rich_text_set_character (ply_rich_text_t                *rich_text,
 }
 
 void
-ply_rich_text_iterator_init (ply_rich_text_iterator_t *iterator,
-                             ply_rich_text_t          *rich_text,
-                             ply_rich_text_span_t     *span)
+ply_rich_text_iterator_initialize (ply_rich_text_iterator_t *iterator,
+                                   ply_rich_text_t          *rich_text,
+                                   ply_rich_text_span_t     *span)
 {
         iterator->rich_text = rich_text;
         iterator->span = *span;

@@ -157,7 +157,7 @@ ply_terminal_emulator_new (size_t number_of_rows,
 
         terminal_emulator->pending_commands = ply_list_new ();
 
-        ply_rich_text_character_style_init (&terminal_emulator->current_style);
+        ply_rich_text_character_style_initialize (&terminal_emulator->current_style);
 
         return terminal_emulator;
 }
@@ -208,7 +208,7 @@ fill_offsets_with_padding (ply_terminal_emulator_t *terminal_emulator,
         ssize_t bytes_to_pad = pad_stop - pad_start;
         ply_rich_text_character_style_t default_style;
 
-        ply_rich_text_character_style_init (&default_style);
+        ply_rich_text_character_style_initialize (&default_style);
 
         if (pad_start < 0 || bytes_to_pad <= 0)
                 return;
@@ -321,7 +321,7 @@ on_control_sequence_insert_blank_characters (ply_terminal_emulator_t *terminal_e
 
         fill_offsets_with_padding (terminal_emulator, string_length, new_string_length);
 
-        ply_rich_text_character_style_init (&default_style);
+        ply_rich_text_character_style_initialize (&default_style);
 
         for (int i = string_move_end_offset; i >= terminal_emulator->cursor_column; i--) {
                 ply_rich_text_move_character (terminal_emulator->current_line,
@@ -935,7 +935,7 @@ on_escape_character_tab (ply_terminal_emulator_t *terminal_emulator,
         if (new_string_length >= maximum_characters - 1)
                 new_string_length = maximum_characters - 1;
 
-        ply_rich_text_character_style_init (&default_style);
+        ply_rich_text_character_style_initialize (&default_style);
 
         for (size_t i = string_length; i < new_string_length; i++) {
                 ply_rich_text_set_character (terminal_emulator->current_line, default_style, i, " ", 1);

@@ -80,13 +80,13 @@ void ply_rich_text_remove_characters (ply_rich_text_t *rich_text);
 ply_rich_text_character_t **ply_rich_text_get_characters (ply_rich_text_t *rich_text);
 void ply_rich_text_free (ply_rich_text_t *rich_text);
 
-void ply_rich_text_character_style_init (ply_rich_text_character_style_t *default_style);
+void ply_rich_text_character_style_initialize (ply_rich_text_character_style_t *default_style);
 ply_rich_text_character_t *ply_rich_text_character_new (void);
 void ply_rich_text_character_free (ply_rich_text_character_t *character);
 
-void ply_rich_text_iterator_init (ply_rich_text_iterator_t *iterator,
-                                  ply_rich_text_t          *rich_text,
-                                  ply_rich_text_span_t     *span);
+void ply_rich_text_iterator_initialize (ply_rich_text_iterator_t *iterator,
+                                        ply_rich_text_t          *rich_text,
+                                        ply_rich_text_span_t     *span);
 bool ply_rich_text_iterator_next (ply_rich_text_iterator_t   *iterator,
                                   ply_rich_text_character_t **character);
 
