@@ -738,8 +738,6 @@ on_control_sequence_set_attributes (ply_terminal_emulator_t *terminal_emulator,
         ply_terminal_color_t default_foreground_color = PLY_TERMINAL_COLOR_DEFAULT;
         ply_terminal_color_t default_background_color = PLY_TERMINAL_COLOR_DEFAULT;
 
-        ply_trace ("terminal control sequence: set attributes");
-
         assert (code == 'm');
 
         if (paramaters_valid != true)
@@ -915,8 +913,6 @@ ply_terminal_emulator_break_string_t
 on_escape_character_linefeed (ply_terminal_emulator_t *terminal_emulator,
                               const char               code)
 {
-        ply_trace ("terminal escape character: line feed");
-
         assert (code == '\n' || code == '\v' || code == '\f');
 
         terminal_emulator->cursor_row_offset++;
