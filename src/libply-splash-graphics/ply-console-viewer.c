@@ -100,7 +100,7 @@ ply_console_viewer_new (ply_pixel_display_t *display,
                 ply_list_append_data (console_viewer->message_labels, console_message_label);
         }
 
-        console_viewer->terminal_emulator = ply_terminal_emulator_new (line_count);
+        console_viewer->terminal_emulator = ply_terminal_emulator_new (line_count, console_viewer->line_max_chars);
 
         ply_terminal_emulator_watch_for_output (console_viewer->terminal_emulator,
                                                 (ply_terminal_emulator_output_handler_t)

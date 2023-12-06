@@ -127,10 +127,10 @@ int ply_utf8_string_get_length (const char *string,
 
 size_t ply_utf8_string_get_byte_offset_from_character_offset (const char *string,
                                                               size_t      character_offset);
-void ply_utf8_string_iterator_init (ply_utf8_string_iterator_t *iterator,
-                                    const char                 *string,
-                                    ssize_t                     starting_offset,
-                                    ssize_t                     range);
+void ply_utf8_string_iterator_initialize (ply_utf8_string_iterator_t *iterator,
+                                          const char                 *string,
+                                          ssize_t                     starting_offset,
+                                          ssize_t                     range);
 bool ply_utf8_string_iterator_next (ply_utf8_string_iterator_t *iterator,
                                     const char                **character,
                                     size_t                     *size);

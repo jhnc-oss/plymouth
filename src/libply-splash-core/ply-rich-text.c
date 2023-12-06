@@ -29,8 +29,9 @@
 
 struct _ply_rich_text_t
 {
-        ply_array_t *characters;
-        size_t       reference_count;
+        ply_array_t         *characters;
+        ply_rich_text_span_t span;
+        size_t               reference_count;
 };
 
 ply_rich_text_t *
@@ -139,6 +140,18 @@ ply_rich_text_get_length (ply_rich_text_t *rich_text)
         return length;
 }
 
+void
+ply_rich_text_character_style_initialize (ply_rich_text_character_style_t *default_style)
+{
+        default_style->foreground_color = PLY_TERMINAL_COLOR_DEFAULT;
+        default_style->background_color = PLY_TERMINAL_COLOR_DEFAULT;
+        default_style->bold_enabled = false;
+        default_style->dim_enabled = false;
+        default_style->italic_enabled = false;
+        default_style->underline_enabled = false;
+        default_style->reverse_enabled = false;
+}
+
 ply_rich_text_character_t *
 ply_rich_text_character_new (void)
 {
@@ -152,6 +165,9 @@ ply_rich_text_character_new (void)
 void
 ply_rich_text_character_free (ply_rich_text_character_t *character)
 {
+        if (character == NULL)
+                return;
+
         free (character->bytes);
         free (character);
 }
@@ -173,6 +189,13 @@ ply_rich_text_remove_character (ply_rich_text_t *rich_text,
 
         characters = ply_rich_text_get_characters (rich_text);
 
+        if (character_index < rich_text->span.offset)
+                return;
+
+        if (character_index >= rich_text->span.offset + rich_text->span.range)
+                return;
+
+
         if (characters[character_index] == NULL)
                 return;
 
@@ -186,9 +209,24 @@ ply_rich_text_move_character (ply_rich_text_t *rich_text,
                               size_t           new_index)
 {
         ply_rich_text_character_t **characters = ply_rich_text_get_characters (rich_text);
+
+        if (old_index < rich_text->span.offset)
+                return;
+
+        if (new_index < rich_text->span.offset)
+                return;
+
+        if (old_index >= rich_text->span.offset + rich_text->span.range)
+                return;
+
+        if (new_index >= rich_text->span.offset + rich_text->span.range)
+                return;
+
+
         characters[new_index] = characters[old_index];
         characters[old_index] = NULL;
 }
+
 
 void
 ply_rich_text_set_character (ply_rich_text_t                *rich_text,
@@ -200,12 +238,22 @@ ply_rich_text_set_character (ply_rich_text_t                *rich_text,
         ply_rich_text_character_t **characters;
         ply_rich_text_character_t *character;
 
+        while (ply_array_get_size (rich_text->characters) <= character_index) {
+                ply_array_add_pointer_element (rich_text->characters, NULL);
+        }
+
+
+        if (character_index < rich_text->span.offset)
+                return;
+
+        if (character_index >= rich_text->span.offset + rich_text->span.range)
+                return;
+
+
         characters = ply_rich_text_get_characters (rich_text);
 
         if (characters[character_index] == NULL) {
                 character = ply_rich_text_character_new ();
-                ply_array_add_pointer_element (rich_text->characters, character);
-                characters = (ply_rich_text_character_t **) ply_array_get_pointer_elements (rich_text->characters);
         } else {
                 character = characters[character_index];
                 if (character->bytes) {
@@ -221,9 +269,9 @@ ply_rich_text_set_character (ply_rich_text_t                *rich_text,
 }
 
 void
-ply_rich_text_iterator_init (ply_rich_text_iterator_t *iterator,
-                             ply_rich_text_t          *rich_text,
-                             ply_rich_text_span_t     *span)
+ply_rich_text_iterator_initialize (ply_rich_text_iterator_t *iterator,
+                                   ply_rich_text_t          *rich_text,
+                                   ply_rich_text_span_t     *span)
 {
         iterator->rich_text = rich_text;
         iterator->span = *span;
@@ -251,4 +299,18 @@ ply_rich_text_iterator_next (ply_rich_text_iterator_t   *iterator,
         iterator->current_offset++;
 
         return true;
+}
+
+void
+ply_rich_text_set_mutable_span (ply_rich_text_t      *rich_text,
+                                ply_rich_text_span_t *span)
+{
+        rich_text->span = *span;
+}
+
+void
+ply_rich_text_get_mutable_span (ply_rich_text_t      *rich_text,
+                                ply_rich_text_span_t *span)
+{
+        *span = rich_text->span;
 }
