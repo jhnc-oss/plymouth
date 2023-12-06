@@ -246,10 +246,10 @@ size_control (ply_label_plugin_control_t *label)
                                                    label->rich_text,
                                                    &label->span);
         } else {
-                ply_utf8_string_iterator_init (&utf8_string_iterator,
-                                               label->text,
-                                               0,
-                                               ply_utf8_string_get_length (label->text, strlen (label->text)));
+                ply_utf8_string_iterator_initialize (&utf8_string_iterator,
+                                                     label->text,
+                                                     0,
+                                                     ply_utf8_string_get_length (label->text, strlen (label->text)));
         }
         label->area.width = 0;
         label->area.height = 0;
@@ -454,10 +454,10 @@ draw_control (ply_label_plugin_control_t *label,
                                                    label->rich_text,
                                                    &label->span);
         } else {
-                ply_utf8_string_iterator_init (&utf8_string_iterator,
-                                               label->text,
-                                               0,
-                                               ply_utf8_string_get_length (label->text, strlen (label->text)));
+                ply_utf8_string_iterator_initialize (&utf8_string_iterator,
+                                                     label->text,
+                                                     0,
+                                                     ply_utf8_string_get_length (label->text, strlen (label->text)));
         }
 
         target = ply_pixel_buffer_get_argb32_data (pixel_buffer);

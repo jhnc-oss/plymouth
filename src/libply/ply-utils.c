@@ -790,10 +790,10 @@ ply_utf8_string_get_byte_offset_from_character_offset (const char *string,
 }
 
 void
-ply_utf8_string_iterator_init (ply_utf8_string_iterator_t *iterator,
-                               const char                 *string,
-                               ssize_t                     starting_offset,
-                               ssize_t                     range)
+ply_utf8_string_iterator_initialize (ply_utf8_string_iterator_t *iterator,
+                                     const char                 *string,
+                                     ssize_t                     starting_offset,
+                                     ssize_t                     range)
 {
         size_t byte_offset;
 
