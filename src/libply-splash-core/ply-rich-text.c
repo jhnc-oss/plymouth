@@ -140,6 +140,18 @@ ply_rich_text_get_length (ply_rich_text_t *rich_text)
         return length;
 }
 
+void
+ply_rich_text_character_style_init (ply_rich_text_character_style_t *default_style)
+{
+        default_style->foreground_color = PLY_TERMINAL_COLOR_DEFAULT;
+        default_style->background_color = PLY_TERMINAL_COLOR_DEFAULT;
+        default_style->bold_enabled = false;
+        default_style->dim_enabled = false;
+        default_style->italic_enabled = false;
+        default_style->underline_enabled = false;
+        default_style->reverse_enabled = false;
+}
+
 ply_rich_text_character_t *
 ply_rich_text_character_new (void)
 {
@@ -214,6 +226,7 @@ ply_rich_text_move_character (ply_rich_text_t *rich_text,
         characters[new_index] = characters[old_index];
         characters[old_index] = NULL;
 }
+
 
 void
 ply_rich_text_set_character (ply_rich_text_t                *rich_text,

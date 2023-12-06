@@ -157,13 +157,7 @@ ply_terminal_emulator_new (size_t number_of_rows,
 
         terminal_emulator->pending_commands = ply_list_new ();
 
-        terminal_emulator->current_style.foreground_color = PLY_TERMINAL_COLOR_DEFAULT;
-        terminal_emulator->current_style.background_color = PLY_TERMINAL_COLOR_DEFAULT;
-        terminal_emulator->current_style.bold_enabled = false;
-        terminal_emulator->current_style.dim_enabled = false;
-        terminal_emulator->current_style.italic_enabled = false;
-        terminal_emulator->current_style.underline_enabled = false;
-        terminal_emulator->current_style.reverse_enabled = false;
+        ply_rich_text_character_style_init (&terminal_emulator->current_style);
 
         return terminal_emulator;
 }
@@ -212,13 +206,16 @@ fill_offsets_with_padding (ply_terminal_emulator_t *terminal_emulator,
                            size_t                   pad_stop)
 {
         ssize_t bytes_to_pad = pad_stop - pad_start;
+        ply_rich_text_character_style_t default_style;
+
+        ply_rich_text_character_style_init (&default_style);
 
         if (pad_start < 0 || bytes_to_pad <= 0)
                 return;
 
         if (pad_stop > pad_start) {
                 for (size_t i = pad_start; i <= pad_stop; i++) {
-                        ply_rich_text_set_character (terminal_emulator->current_line, terminal_emulator->current_style, i, " ", 1);
+                        ply_rich_text_set_character (terminal_emulator->current_line, default_style, i, " ", 1);
                 }
         }
 }
@@ -283,6 +280,7 @@ on_control_sequence_insert_blank_characters (ply_terminal_emulator_t *terminal_e
         size_t string_move_end_offset;
         ply_rich_text_span_t span;
         size_t maximum_characters;
+        ply_rich_text_character_style_t default_style;
 
         ply_trace ("terminal control sequence: insert blank characters");
 
@@ -323,11 +321,13 @@ on_control_sequence_insert_blank_characters (ply_terminal_emulator_t *terminal_e
 
         fill_offsets_with_padding (terminal_emulator, string_length, new_string_length);
 
+        ply_rich_text_character_style_init (&default_style);
+
         for (int i = string_move_end_offset; i >= terminal_emulator->cursor_column; i--) {
                 ply_rich_text_move_character (terminal_emulator->current_line,
                                               i,
                                               i + append_count);
-                ply_rich_text_set_character (terminal_emulator->current_line, terminal_emulator->current_style, i, " ", 1);
+                ply_rich_text_set_character (terminal_emulator->current_line, default_style, i, " ", 1);
 
                 if (i <= 0)
                         break;
@@ -898,6 +898,7 @@ on_escape_character_tab (ply_terminal_emulator_t *terminal_emulator,
         size_t new_string_length;
         ply_rich_text_span_t span;
         size_t maximum_characters;
+        ply_rich_text_character_style_t default_style;
 
         ply_trace ("terminal escape character: tab");
 
@@ -934,8 +935,10 @@ on_escape_character_tab (ply_terminal_emulator_t *terminal_emulator,
         if (new_string_length >= maximum_characters - 1)
                 new_string_length = maximum_characters - 1;
 
+        ply_rich_text_character_style_init (&default_style);
+
         for (size_t i = string_length; i < new_string_length; i++) {
-                ply_rich_text_set_character (terminal_emulator->current_line, terminal_emulator->current_style, i, " ", 1);
+                ply_rich_text_set_character (terminal_emulator->current_line, default_style, i, " ", 1);
         }
 
         return PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE;
