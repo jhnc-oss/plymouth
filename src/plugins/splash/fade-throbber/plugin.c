@@ -1246,7 +1246,7 @@ on_boot_output (ply_boot_splash_plugin_t *plugin,
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
                 view = ply_list_node_get_data (node);
-                ply_console_viewer_parse_lines (view->console_viewer, output, size);
+                ply_console_viewer_write (view->console_viewer, output, size);
                 node = ply_list_get_next_node (plugin->views, node);
         }
 }

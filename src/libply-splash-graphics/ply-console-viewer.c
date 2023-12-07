@@ -316,9 +316,35 @@ ply_console_viewer_convert_boot_buffer (ply_console_viewer_t *console_viewer,
 }
 
 void
-ply_console_viewer_parse_lines (ply_console_viewer_t *console_viewer,
-                                const char           *text,
-                                size_t                size)
+ply_console_viewer_write (ply_console_viewer_t *console_viewer,
+                          const char           *text,
+                          size_t                size)
 {
         ply_terminal_emulator_parse_lines (console_viewer->terminal_emulator, text, size);
+}
+
+void
+ply_console_viewer_print (ply_console_viewer_t *console_viewer,
+                          const char           *format,
+                          ...)
+{
+        va_list arguments;
+        char *buffer = NULL;
+        int length;
+
+        va_start (arguments, format);
+        length = vsnprintf (NULL, 0, format, arguments);
+        if (length > 0)
+                buffer = calloc (1, length + 1);
+        va_end (arguments);
+
+        if (buffer == NULL)
+                return;
+
+        va_start (arguments, format);
+        vsnprintf (buffer, length + 1, format, arguments);
+        ply_console_viewer_write (console_viewer, buffer, length);
+        va_end (arguments);
+
+        free (buffer);
 }
