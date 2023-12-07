@@ -913,16 +913,6 @@ ply_terminal_get_vt_number (ply_terminal_t *terminal)
 }
 
 static bool
-set_active_vt (ply_terminal_t *terminal,
-               int             vt_number)
-{
-        if (ioctl (terminal->fd, VT_ACTIVATE, vt_number) < 0)
-                return false;
-
-        return true;
-}
-
-static bool
 wait_for_vt_to_become_active (ply_terminal_t *terminal,
                               int             vt_number)
 {
@@ -953,7 +943,7 @@ ply_terminal_activate_vt (ply_terminal_t *terminal)
         if (terminal->is_active)
                 return true;
 
-        if (!set_active_vt (terminal, terminal->vt_number)) {
+        if (!ply_change_to_vt_with_fd (terminal->vt_number, terminal->fd)) {
                 ply_trace ("unable to set active vt to %d: %m",
                            terminal->vt_number);
                 return false;
@@ -994,7 +984,7 @@ ply_terminal_deactivate_vt (ply_terminal_t *terminal)
         if (ply_terminal_is_active (terminal)) {
                 ply_trace ("Attempting to set active vt back to %d from %d",
                            terminal->initial_vt_number, old_vt_number);
-                if (!set_active_vt (terminal, terminal->initial_vt_number)) {
+                if (!ply_change_to_vt_with_fd (terminal->initial_vt_number, terminal->fd)) {
                         ply_trace ("Couldn't move console to initial vt: %m");
                         return false;
                 }

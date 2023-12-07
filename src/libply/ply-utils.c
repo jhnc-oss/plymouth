@@ -1232,4 +1232,33 @@ ply_get_random_number (long lower_bound,
         return lower_bound + offset;
 }
 
+bool
+ply_change_to_vt_with_fd (int vt_number,
+                          int tty_fd)
+{
+        if (ioctl (tty_fd, VT_ACTIVATE, vt_number) < 0)
+                return false;
+
+        return true;
+}
+
+bool
+ply_change_to_vt (int vt_number)
+{
+        int fd;
+        bool changed_vt;
+
+        fd = open ("/dev/tty0", O_RDWR);
+
+        if (fd < 0)
+                return false;
+
+        ply_save_errno ();
+        changed_vt = ply_change_to_vt_with_fd (vt_number, fd);
+        ply_restore_errno ();
+        close (fd);
+
+        return changed_vt;
+}
+
 /* vim: set ts=4 sw=4 expandtab autoindent cindent cino={.5s,(0: */
