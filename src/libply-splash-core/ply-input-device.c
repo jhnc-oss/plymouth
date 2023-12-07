@@ -36,6 +36,7 @@
 #include "ply-input-device.h"
 #include "ply-list.h"
 #include "ply-logger.h"
+#include "ply-terminal.h"
 #include "ply-trigger.h"
 #include "ply-utils.h"
 
@@ -62,6 +63,7 @@ struct _ply_input_device
 
         struct libevdev          *dev;
 
+        uint32_t                  kernel_has_vts : 1;
         uint32_t                  leds_state_invalid : 1;
 };
 
@@ -149,6 +151,17 @@ apply_key_to_input_buffer (ply_input_device_t *input_device,
                         assert (character_size + 1 == sizeof(character_buf));
 
                         ply_buffer_append_bytes (input_buffer, character_buf, character_size);
+                } else {
+                        xkb_keysym_t keysym;
+
+                        if (!input_device->kernel_has_vts)
+                                break;
+
+                        keysym = xkb_state_key_get_one_sym (input_device->keyboard_state, keycode);
+                        if (keysym >= XKB_KEY_XF86Switch_VT_1 && keysym <= XKB_KEY_XF86Switch_VT_12) {
+                                int vt_number = keysym - XKB_KEY_XF86Switch_VT_1 + 1;
+                                ply_change_to_vt (vt_number);
+                        }
                 }
                 break;
         }
@@ -338,6 +351,8 @@ ply_input_device_open (struct xkb_context *xkb_context,
         input_device->compose_table = xkb_compose_table_new_from_locale (xkb_context, locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
         if (input_device->compose_table)
                 input_device->compose_state = xkb_compose_state_new (input_device->compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
+
+        input_device->kernel_has_vts = ply_character_device_exists ("/dev/tty0");
 
         return input_device;
 
