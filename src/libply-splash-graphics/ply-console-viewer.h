@@ -47,9 +47,12 @@ void ply_console_viewer_set_text_color (ply_console_viewer_t *console_viewer,
                                         uint32_t              hex_color);
 void ply_console_viewer_convert_boot_buffer (ply_console_viewer_t *console_viewer,
                                              ply_buffer_t         *boot_buffer);
-void ply_console_viewer_parse_lines (ply_console_viewer_t *console_viewer,
-                                     const char           *text,
-                                     size_t                size);
+void ply_console_viewer_write (ply_console_viewer_t *console_viewer,
+                               const char           *text,
+                               size_t                size);
+void ply_console_viewer_print (ply_console_viewer_t *console_viewer,
+                               const char           *text,
+                               ...);
 #endif //PLY_HIDE_FUNCTION_DECLARATIONS
 
 #endif //PLY_CONSOLE_VIEWER_H
