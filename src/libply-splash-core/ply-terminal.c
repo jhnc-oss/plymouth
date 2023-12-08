@@ -103,6 +103,7 @@ struct _ply_terminal
         uint32_t             is_open : 1;
         uint32_t             is_active : 1;
         uint32_t             is_unbuffered : 1;
+        uint32_t             is_disabled : 1;
         uint32_t             is_watching_for_vt_changes : 1;
         uint32_t             should_ignore_mode_changes : 1;
 };
@@ -240,6 +241,11 @@ ply_terminal_set_unbuffered_input (ply_terminal_t *terminal)
 
         ply_terminal_unlock (terminal);
 
+        terminal->is_disabled = false;
+
+        if (ply_terminal_is_vt (terminal))
+                ioctl (terminal->fd, KDSKBMODE, K_UNICODE);
+
         tcgetattr (terminal->fd, &term_attributes);
 
         if (!terminal->original_term_attributes_saved) {
@@ -269,6 +275,11 @@ bool
 ply_terminal_set_buffered_input (ply_terminal_t *terminal)
 {
         struct termios term_attributes;
+
+        terminal->is_disabled = false;
+
+        if (ply_terminal_is_vt (terminal))
+                ioctl (terminal->fd, KDSKBMODE, K_UNICODE);
 
         if (!terminal->is_unbuffered)
                 return true;
@@ -306,6 +317,17 @@ ply_terminal_set_buffered_input (ply_terminal_t *terminal)
                 return false;
 
         terminal->is_unbuffered = false;
+
+        return true;
+}
+
+bool
+ply_terminal_set_disabled_input (ply_terminal_t *terminal)
+{
+        terminal->is_disabled = true;
+
+        if (ply_terminal_is_vt (terminal))
+                ioctl (terminal->fd, KDSKBMODE, K_OFF);
 
         return true;
 }
@@ -368,6 +390,11 @@ static void
 on_tty_input (ply_terminal_t *terminal)
 {
         ply_list_node_t *node;
+
+        if (terminal->is_disabled) {
+                ply_terminal_flush_input (terminal);
+                return;
+        }
 
         node = ply_list_get_first_node (terminal->input_closures);
         while (node != NULL) {

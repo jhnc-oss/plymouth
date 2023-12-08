@@ -70,6 +70,7 @@ void ply_terminal_reset_colors (ply_terminal_t *terminal);
 
 bool ply_terminal_set_unbuffered_input (ply_terminal_t *terminal);
 bool ply_terminal_set_buffered_input (ply_terminal_t *terminal);
+bool ply_terminal_set_disabled_input (ply_terminal_t *terminal);
 bool ply_terminal_refresh_geometry (ply_terminal_t *terminal);
 
 __attribute__((__format__ (__printf__, 2, 3)))
