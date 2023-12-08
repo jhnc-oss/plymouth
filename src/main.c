@@ -1226,8 +1226,10 @@ hide_splash (state_t *state)
 
         ply_boot_splash_hide (state->boot_splash);
 
-        if (state->local_console_terminal != NULL)
+        if (state->local_console_terminal != NULL) {
                 ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_TEXT);
+                ply_terminal_set_buffered_input (state->local_console_terminal);
+        }
 }
 
 static void
