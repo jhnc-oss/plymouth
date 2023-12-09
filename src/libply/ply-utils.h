@@ -42,6 +42,7 @@
 #define PLY_NUMBER_OF_ELEMENTS(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 #define PLY_UTF8_CHARACTER_SIZE_MAX 4
+#define PLY_UTF8_CHARACTER_IS_SEQUENCE_BYTE -2
 
 typedef intptr_t ply_module_handle_t;
 typedef void (*ply_module_function_t) (void);

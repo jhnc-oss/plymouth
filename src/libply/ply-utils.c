@@ -754,7 +754,7 @@ ply_utf8_character_get_size (const char *string,
         else if ((string[0] & 0xE0) == 0xC0) length = 2;
         else if ((string[0] & 0xF0) == 0xE0) length = 3;
         else if ((string[0] & 0xF8) == 0xF0) length = 4;
-        else return -2;
+        else return PLY_UTF8_CHARACTER_IS_SEQUENCE_BYTE;
         if (length > (int) n) return -1;
         return length;
 }
