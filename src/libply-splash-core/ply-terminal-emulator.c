@@ -106,6 +106,8 @@ struct _ply_terminal_emulator
         ply_terminal_emulator_command_t            *staged_command;
         ply_list_t                                 *pending_commands;
 
+        ply_buffer_t                               *current_character;
+        int                                         current_character_size;
         ply_rich_text_t                            *current_line;
         ply_rich_text_character_style_t             current_style;
 };
@@ -138,6 +140,8 @@ ply_terminal_emulator_new (size_t number_of_rows,
         terminal_emulator->number_of_rows = number_of_rows;
         terminal_emulator->number_of_columns = number_of_columns;
         terminal_emulator->lines = ply_array_new (PLY_ARRAY_ELEMENT_TYPE_POINTER);
+
+        terminal_emulator->current_character = ply_buffer_new ();
 
         span.offset = 0;
         span.range = terminal_emulator->number_of_columns;
@@ -1060,7 +1064,6 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                        const char             **unparsed_input,
                                        size_t                  *number_of_unparsed_bytes)
 {
-        char character_string[PLY_UTF8_CHARACTER_MAX_SIZE];
         size_t input_length = number_of_bytes_to_parse;
         size_t new_length;
         size_t i = 0;
@@ -1070,7 +1073,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
         ply_rich_text_span_t span;
         size_t maximum_characters;
 
-        int character_length;
+        int character_size;
         ply_list_node_t *node;
 
         terminal_emulator->current_line = terminal_emulator_line;
@@ -1094,6 +1097,8 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                 fill_offsets_with_padding (terminal_emulator, new_length, terminal_emulator->cursor_column);
 
         while (i < input_length) {
+                ply_utf8_character_byte_type_t character_byte_type;
+
                 if (break_string == PLY_TERMINAL_EMULATOR_BREAK_STRING && terminal_emulator->state == PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED) {
                         break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE;
                         break;
@@ -1103,27 +1108,54 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
 
                 terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_PRESERVE_CURSOR_COLUMN;
 
-                /* Non-ASCII Unicode characters have no impact on escape code handling */
-                character_length = ply_utf8_character_get_size (&input[i], 4);
+                character_byte_type = ply_utf8_character_get_byte_type (input[i]);
 
-                /* skip, if the character_length is -2, it's a auxiliary unicode byte */
-                if (character_length < 0) {
+                if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING) {
                         i++;
                         continue;
-                } else if (character_length > 1) {
-                        /* Last element is a nullchar */
-                        character_string[character_length] = '\0';
+                } else if (PLY_UTF8_CHARACTER_BYTE_TYPE_IS_MULTI_BYTE (character_byte_type)) {
+                        /* Multi-byte Unicode characters */
+                        character_size = ply_utf8_character_get_size_from_byte_type (character_byte_type);
 
-                        for (int j = 0; j < character_length; j++) {
-                                character_string[j] = input[i];
+                        terminal_emulator->current_character_size = character_size;
 
-                                i++;
+                        ply_buffer_append_bytes (terminal_emulator->current_character, &input[i], 1);
 
-                                if (i >= maximum_characters)
-                                        break;
-                        }
-                        ply_rich_text_set_character (terminal_emulator->current_line, terminal_emulator->current_style, terminal_emulator->cursor_column, character_string, character_length);
+                        i++;
+                        continue;
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_1_BYTE) {
+                        /* Ascii characters could potentially be used in escape sequences */
+                        terminal_emulator->current_character_size = character_size;
+                        ply_buffer_clear (terminal_emulator->current_character);
+                } else if (PLY_UTF8_CHARACTER_BYTE_TYPE_IS_NOT_LEADING (character_size)) {
+                        /* Only handle the auxiliary unicode byte if handling a Unicode character */
+                        if (terminal_emulator->current_character_size > 1)
+                                ply_buffer_append_bytes (terminal_emulator->current_character, &input[i], 1);
+
+                        i++;
+
+                        /* The Unicode character is not finished yet, continue the loop */
+                        if (ply_buffer_get_size (terminal_emulator->current_character) < terminal_emulator->current_character_size)
+                                continue;
+                }
+
+                /* If the current character is a Unicode character, and it has all the bytes */
+                if (terminal_emulator->current_character_size > 1) {
+                        ply_rich_text_set_character (terminal_emulator->current_line,
+                                                     terminal_emulator->current_style,
+                                                     terminal_emulator->cursor_column,
+                                                     ply_buffer_steal_bytes (terminal_emulator->current_character),
+                                                     ply_buffer_get_size (terminal_emulator->current_character));
+
+                        ply_buffer_clear (terminal_emulator->current_character);
                         terminal_emulator->cursor_column++;
+
+                        if (terminal_emulator->cursor_column >= maximum_characters) {
+                                terminal_emulator->cursor_row_offset++;
+                                terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_RESET_CURSOR_COLUMN;
+                                break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING;
+                        }
+
                         continue;
                 }
 
@@ -1139,9 +1171,12 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_CONTROL_CHARACTER;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
                         } else {
-                                character_string[0] = input[i];
-                                character_string[1] = '\0';
-                                ply_rich_text_set_character (terminal_emulator->current_line, terminal_emulator->current_style, terminal_emulator->cursor_column, character_string, 1);
+                                ply_buffer_append_bytes (terminal_emulator->current_character, &input[i], 1);
+                                ply_rich_text_set_character (terminal_emulator->current_line,
+                                                             terminal_emulator->current_style,
+                                                             terminal_emulator->cursor_column,
+                                                             ply_buffer_steal_bytes (terminal_emulator->current_character),
+                                                             ply_buffer_get_size (terminal_emulator->current_character));
                                 terminal_emulator->cursor_column++;
 
                                 if (terminal_emulator->cursor_column >= maximum_characters) {
