@@ -95,7 +95,6 @@ typedef struct
 struct _ply_terminal_emulator
 {
         ply_terminal_emulator_terminal_state_t             state;
-        ply_terminal_emulator_utf8_character_parse_state_t unicode_state;
 
         size_t                                             number_of_rows;
         size_t                                             number_of_columns;
@@ -114,8 +113,9 @@ struct _ply_terminal_emulator
         ply_terminal_emulator_command_t                   *staged_command;
         ply_list_t                                        *pending_commands;
 
+        ply_terminal_emulator_utf8_character_parse_state_t pending_character_state;
         ply_buffer_t                                      *pending_character;
-        int                                                pending_character_unicode_bytes;
+        int                                                pending_character_size;
 
         ply_rich_text_t                                   *current_line;
         ply_rich_text_character_style_t                    current_style;
@@ -151,6 +151,8 @@ ply_terminal_emulator_new (size_t number_of_rows,
         terminal_emulator->lines = ply_array_new (PLY_ARRAY_ELEMENT_TYPE_POINTER);
 
         terminal_emulator->pending_character = ply_buffer_new ();
+        terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
+        terminal_emulator->pending_character_size = 0;
 
         span.offset = 0;
         span.range = terminal_emulator->number_of_columns;
@@ -164,7 +166,6 @@ ply_terminal_emulator_new (size_t number_of_rows,
         terminal_emulator->cursor_row_offset = 0;
 
         terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED;
-        terminal_emulator->unicode_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
 
         terminal_emulator->last_parameter_was_integer = false;
         terminal_emulator->pending_parameter_value = 0;
@@ -1109,8 +1110,6 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
         ply_terminal_emulator_command_t *command;
         ply_rich_text_span_t span;
         size_t maximum_characters;
-
-        int character_unicode_bytes;
         ply_list_node_t *node;
 
         terminal_emulator->current_line = terminal_emulator_line;
@@ -1134,17 +1133,19 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                 fill_offsets_with_padding (terminal_emulator, new_length, terminal_emulator->cursor_column);
 
         while (i < input_length) {
-                if (break_string == PLY_TERMINAL_EMULATOR_BREAK_STRING && terminal_emulator->state == PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
+                ply_utf8_character_byte_type_t character_byte_type;
+
+                if (break_string == PLY_TERMINAL_EMULATOR_BREAK_STRING && terminal_emulator->state == PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED) {
                         break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE;
                         break;
                 }
 
                 terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_PRESERVE_CURSOR_COLUMN;
 
-                character_unicode_bytes = ply_utf8_character_get_size (&input[i], PLY_UTF8_CHARACTER_SIZE_MAX);
+                character_byte_type = ply_utf8_character_get_byte_type (input[i]);
 
                 /* If the previous byte was also a UTF-8 prefix byte, handle it as an invalid character */
-                if (terminal_emulator->unicode_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE && character_unicode_bytes != PLY_UTF8_CHARACTER_IS_SEQUENCE_BYTE) {
+                if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE && character_byte_type != PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION) {
                         ply_buffer_clear (terminal_emulator->pending_character);
 
                         if (terminal_emulator->state == PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
@@ -1157,38 +1158,40 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                         }
                 }
 
-                if (character_unicode_bytes > 1) {
+                if (PLY_UTF8_CHARACTER_BYTE_TYPE_IS_MULTI_BYTE (character_byte_type)) {
                         /* Multi-byte Unicode characters */
-                        terminal_emulator->unicode_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE;
-                        terminal_emulator->pending_character_unicode_bytes = character_unicode_bytes;
+                        terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE;
+                        terminal_emulator->pending_character_size = ply_utf8_character_get_size_from_byte_type (character_byte_type);
 
                         ply_buffer_append_bytes (terminal_emulator->pending_character, &input[i], 1);
 
                         i++;
                         continue;
-                } else if (character_unicode_bytes == 1) {
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_1_BYTE) {
                         /* Ascii characters could potentially be used in escape sequences */
-                        terminal_emulator->unicode_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
-                        terminal_emulator->pending_character_unicode_bytes = character_unicode_bytes;
+                        terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
+                        terminal_emulator->pending_character_size = ply_utf8_character_get_size_from_byte_type (character_byte_type);
                         ply_buffer_clear (terminal_emulator->pending_character);
-                } else if (character_unicode_bytes == 0 || character_unicode_bytes == -1) {
-                        /* This should not happen with ply_utf8_character_get_size */
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING) {
                         i++;
                         continue;
-                } else if (character_unicode_bytes == PLY_UTF8_CHARACTER_IS_SEQUENCE_BYTE) {
-                        if (terminal_emulator->unicode_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE) {
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_INVALID) {
+                        i++;
+                        continue;
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION) {
+                        if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE) {
                                 /* Handle the auxiliary unicode byte if handling a multi-byte character */
-                                if (terminal_emulator->unicode_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE)
+                                if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE)
                                         ply_buffer_append_bytes (terminal_emulator->pending_character, &input[i], 1);
 
                                 i++;
 
                                 /* The multi-byte character is not finished yet, continue the loop */
-                                if (ply_buffer_get_size (terminal_emulator->pending_character) < terminal_emulator->pending_character_unicode_bytes)
+                                if (ply_buffer_get_size (terminal_emulator->pending_character) < terminal_emulator->pending_character_size)
                                         continue;
                         } else {
                                 /* If this is an auxiliary Unicode byte when not handling a multi-byte character, replace it with a placeholder */
-                                terminal_emulator->pending_character_unicode_bytes = 1;
+                                terminal_emulator->pending_character_size = 1;
                                 ply_buffer_clear (terminal_emulator->pending_character);
                                 ply_buffer_append_bytes (terminal_emulator->pending_character, "?", 1);
 
@@ -1203,14 +1206,14 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                 }
 
                 /* If the current character is a multi-byte character, and all the bytes are received */
-                if (terminal_emulator->unicode_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE) {
+                if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE) {
                         /* Drop and skip the multi-byte character if is still escaped */
                         if (terminal_emulator->state != PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
                                 ply_buffer_clear (terminal_emulator->pending_character);
                                 continue;
                         }
 
-                        terminal_emulator->unicode_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
+                        terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
                         break_string = ply_terminal_emulator_flush_pending_character_to_line (terminal_emulator,
                                                                                               maximum_characters,
                                                                                               ply_buffer_steal_bytes (terminal_emulator->pending_character),
