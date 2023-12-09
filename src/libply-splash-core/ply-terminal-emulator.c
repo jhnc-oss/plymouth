@@ -27,7 +27,7 @@
 
 #include <stdio.h>
 
-#define PLY_TERMINAL_SPACES_PER_TAB 8
+#define PLY_TERMINAL_EMULATOR_SPACES_PER_TAB 8
 
 /* Characters between 64 to 157 end the escape sequence strings (in testing)
  *  for i in $(seq 1 255)
@@ -924,9 +924,9 @@ on_escape_character_tab (ply_terminal_emulator_t *terminal_emulator,
         terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_PRESERVE_CURSOR_COLUMN;
 
         if (terminal_emulator->cursor_column <= 0) {
-                pad_character_count = PLY_TERMINAL_SPACES_PER_TAB;
+                pad_character_count = PLY_TERMINAL_EMULATOR_SPACES_PER_TAB;
         } else {
-                pad_character_count = PLY_TERMINAL_SPACES_PER_TAB - (terminal_emulator->cursor_column % PLY_TERMINAL_SPACES_PER_TAB);
+                pad_character_count = PLY_TERMINAL_EMULATOR_SPACES_PER_TAB - (terminal_emulator->cursor_column % PLY_TERMINAL_EMULATOR_SPACES_PER_TAB);
         }
 
         ply_rich_text_get_mutable_span (terminal_emulator->current_line, &span);
