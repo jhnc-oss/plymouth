@@ -162,6 +162,10 @@ bool ply_is_secure_boot_enabled (void);
 
 long ply_get_random_number (long lower_bound, long range);
 
+bool ply_change_to_vt_with_fd (int vt_number,
+                               int tty_fd);
+bool ply_change_to_vt (int vt_number);
+
 #endif
 
 #endif /* PLY_UTILS_H */

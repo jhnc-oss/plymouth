@@ -590,7 +590,12 @@ flush_head (ply_renderer_backend_t *backend,
 
         if (backend->terminal != NULL) {
                 ply_terminal_set_mode (backend->terminal, PLY_TERMINAL_MODE_GRAPHICS);
-                ply_terminal_set_unbuffered_input (backend->terminal);
+
+                if (using_input_device (&backend->input_source)) {
+                        ply_terminal_set_disabled_input (backend->terminal);
+                } else {
+                        ply_terminal_set_unbuffered_input (backend->terminal);
+                }
         }
         pixel_buffer = head->pixel_buffer;
         updated_region = ply_pixel_buffer_get_updated_areas (pixel_buffer);
