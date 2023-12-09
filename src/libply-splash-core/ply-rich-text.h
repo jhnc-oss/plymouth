@@ -23,8 +23,6 @@
 #include "ply-terminal.h"
 #include <stddef.h>
 
-#define PLY_UTF8_CHARACTER_MAX_SIZE 5
-
 typedef struct _ply_rich_text_t ply_rich_text_t;
 
 typedef struct
