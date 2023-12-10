@@ -812,6 +812,10 @@ ply_utf8_string_remove_last_character (char   **string,
         size_t size = *n;
 
         bytes_to_remove = MIN (size, PLY_UTF8_CHARACTER_SIZE_MAX);
+
+        if (size == 0)
+                return;
+
         do {
                 ply_utf8_character_byte_type_t previous_character_byte_type;
                 const char *previous_character = bytes + size - bytes_to_remove;
@@ -820,6 +824,9 @@ ply_utf8_string_remove_last_character (char   **string,
                 previous_character_size = ply_utf8_character_get_size_from_byte_type (previous_character_byte_type);
 
                 if (bytes_to_remove < previous_character_size)
+                        break;
+
+                if (previous_character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING)
                         break;
 
                 if (PLY_UTF8_CHARACTER_BYTE_TYPE_IS_NOT_LEADING (previous_character_byte_type))
@@ -831,7 +838,7 @@ ply_utf8_string_remove_last_character (char   **string,
 
         } while (previous_character_size <= bytes_to_remove);
 
-        if (bytes_to_remove <= size) {
+        if (bytes_to_remove < size) {
                 size_t new_size;
                 new_size = size - bytes_to_remove;
                 bytes[new_size - 1] = '\0';
