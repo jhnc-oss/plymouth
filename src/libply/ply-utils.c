@@ -742,21 +742,94 @@ ply_detach_daemon (ply_daemon_handle_t *handle,
  * 11100000-11101111    E0-EF   Start of 3-byte sequence
  * 11110000-11110100    F0-F4   Start of 4-byte sequence
  */
-int
-ply_utf8_character_get_size (const char *string,
-                             size_t      n)
+ply_utf8_character_byte_type_t
+ply_utf8_character_get_byte_type (const char byte)
 {
-        int length;
+        ply_utf8_character_byte_type_t byte_type;
 
-        if (n < 1) return -1;
-        if (string[0] == 0x00) length = 0;
-        else if ((string[0] & 0x80) == 0x00) length = 1;
-        else if ((string[0] & 0xE0) == 0xC0) length = 2;
-        else if ((string[0] & 0xF0) == 0xE0) length = 3;
-        else if ((string[0] & 0xF8) == 0xF0) length = 4;
-        else return PLY_UTF8_CHARACTER_IS_SEQUENCE_BYTE;
-        if (length > (int) n) return -1;
-        return length;
+        if (byte == '\0')
+                byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING;
+        else if ((byte & 0x80) == 0x00)
+                byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_1_BYTE;
+        else if ((byte & 0xE0) == 0xC0)
+                byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_2_BYTES;
+        else if ((byte & 0xF0) == 0xE0)
+                byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_3_BYTES;
+        else if ((byte & 0xF8) == 0xF0)
+                byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_4_BYTES;
+        else
+                byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION;
+
+        return byte_type;
+}
+
+ssize_t
+ply_utf8_character_get_size_from_byte_type (ply_utf8_character_byte_type_t byte_type)
+{
+        size_t size;
+
+        switch (byte_type) {
+        case PLY_UTF8_CHARACTER_BYTE_TYPE_1_BYTE:
+                size = 1;
+                break;
+        case PLY_UTF8_CHARACTER_BYTE_TYPE_2_BYTES:
+                size = 2;
+                break;
+        case PLY_UTF8_CHARACTER_BYTE_TYPE_3_BYTES:
+                size = 3;
+                break;
+        case PLY_UTF8_CHARACTER_BYTE_TYPE_4_BYTES:
+                size = 4;
+                break;
+        case PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION:
+        case PLY_UTF8_CHARACTER_BYTE_TYPE_INVALID:
+        case PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING:
+                size = 0;
+                break;
+        }
+        return size;
+}
+
+ssize_t
+ply_utf8_character_get_size (const char *bytes)
+{
+        ply_utf8_character_byte_type_t byte_type;
+        ssize_t size;
+
+        byte_type = ply_utf8_character_get_byte_type (bytes[0]);
+        size = ply_utf8_character_get_size_from_byte_type (byte_type);
+
+        return size;
+}
+
+void
+ply_utf8_string_remove_last_character (char   **string,
+                                       size_t  *size)
+{
+        char *bytes = *string;
+        size_t size_in = *size, end_offset;
+
+        if (size_in == 0)
+                return;
+
+        end_offset = size_in - 1;
+        do {
+                ply_utf8_character_byte_type_t byte_type;
+
+                byte_type = ply_utf8_character_get_byte_type (bytes[end_offset]);
+
+                if (byte_type != PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION) {
+                        memset (bytes + end_offset, '\0', size_in - end_offset);
+                        *size = end_offset;
+                        break;
+                }
+
+                if (end_offset == 0)
+                        break;
+
+                end_offset--;
+        }
+        while (true);
 }
 
 int
@@ -766,10 +839,16 @@ ply_utf8_string_get_length (const char *string,
         size_t count = 0;
 
         while (true) {
-                int charlen = ply_utf8_character_get_size (string, n);
-                if (charlen <= 0) break;
-                string += charlen;
-                n -= charlen;
+                size_t size = ply_utf8_character_get_size (string);
+
+                if (size == 0)
+                        break;
+
+                if (size > n)
+                        break;
+
+                string += size;
+                n -= size;
                 count++;
         }
         return count;
@@ -783,7 +862,7 @@ ply_utf8_string_get_byte_offset_from_character_offset (const char *string,
         size_t i;
 
         for (i = 0; i < character_offset && string[byte_offset] != '\0'; i++) {
-                byte_offset += ply_utf8_character_get_size (string + byte_offset, PLY_UTF8_CHARACTER_SIZE_MAX);
+                byte_offset += ply_utf8_character_get_size (string + byte_offset);
         }
 
         return byte_offset;
@@ -818,8 +897,7 @@ ply_utf8_string_iterator_next (ply_utf8_string_iterator_t *iterator,
         if (iterator->string[iterator->current_byte_offset] == '\0')
                 return false;
 
-        size_of_current_character = ply_utf8_character_get_size (iterator->string + iterator->current_byte_offset,
-                                                                 PLY_UTF8_CHARACTER_SIZE_MAX);
+        size_of_current_character = ply_utf8_character_get_size (iterator->string + iterator->current_byte_offset);
 
         if (size_of_current_character == 0)
                 return false;

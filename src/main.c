@@ -1652,28 +1652,17 @@ on_keyboard_input (state_t    *state,
 static void
 on_backspace (state_t *state)
 {
-        ssize_t bytes_to_remove;
-        ssize_t previous_character_size;
-        const char *bytes;
+        char *bytes;
         size_t size;
+        size_t capacity;
         ply_list_node_t *node = ply_list_get_first_node (state->entry_triggers);
 
         if (!node) return;
 
-        bytes = ply_buffer_get_bytes (state->entry_buffer);
-        size = ply_buffer_get_size (state->entry_buffer);
-        if (size == 0)
-                return;
-
-        bytes_to_remove = MIN (size, PLY_UTF8_CHARACTER_SIZE_MAX);
-        while ((previous_character_size = ply_utf8_character_get_size (bytes + size - bytes_to_remove, bytes_to_remove)) < bytes_to_remove) {
-                if (previous_character_size > 0)
-                        bytes_to_remove -= previous_character_size;
-                else
-                        bytes_to_remove--;
+        ply_buffer_borrow_bytes (state->entry_buffer, &bytes, &size, &capacity) {
+                ply_utf8_string_remove_last_character (&bytes, &size);
         }
 
-        ply_buffer_remove_bytes_at_end (state->entry_buffer, bytes_to_remove);
         update_display (state);
 }
 
