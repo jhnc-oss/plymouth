@@ -153,25 +153,14 @@ ply_keyboard_new_for_renderer (ply_renderer_t *renderer)
 static void
 process_backspace (ply_keyboard_t *keyboard)
 {
-        size_t bytes_to_remove;
-        ssize_t previous_character_size;
-        const char *bytes;
+        char *bytes;
         size_t size;
+        size_t capacity;
         ply_list_node_t *node;
 
-        bytes = ply_buffer_get_bytes (keyboard->line_buffer);
-        size = ply_buffer_get_size (keyboard->line_buffer);
-
-        bytes_to_remove = MIN (size, PLY_UTF8_CHARACTER_SIZE_MAX);
-        while ((previous_character_size = ply_utf8_character_get_size (bytes + size - bytes_to_remove, bytes_to_remove)) < (ssize_t) bytes_to_remove) {
-                if (previous_character_size > 0)
-                        bytes_to_remove -= previous_character_size;
-                else
-                        bytes_to_remove--;
+        ply_buffer_borrow_bytes (keyboard->line_buffer, &bytes, &size, &capacity) {
+                ply_utf8_string_remove_last_character (&bytes, &size);
         }
-
-        if (bytes_to_remove <= size)
-                ply_buffer_remove_bytes_at_end (keyboard->line_buffer, bytes_to_remove);
 
         for (node = ply_list_get_first_node (keyboard->backspace_handler_list);
              node; node = ply_list_get_next_node (keyboard->backspace_handler_list, node)) {
@@ -277,6 +266,7 @@ on_key_event (ply_keyboard_t *keyboard,
 
         i = 0;
         while (i < size) {
+                ply_utf8_character_byte_type_t character_byte_type;
                 ssize_t character_size;
                 char *keyboard_input;
                 size_t bytes_left = size - i;
@@ -318,17 +308,22 @@ on_key_event (ply_keyboard_t *keyboard,
                         continue;
                 }
 
-                character_size = (ssize_t) ply_utf8_character_get_size (bytes + i, bytes_left);
+                character_byte_type = ply_utf8_character_get_byte_type (bytes[i]);
 
-                if (character_size < 0)
+                if (PLY_UTF8_CHARACTER_BYTE_TYPE_IS_NOT_LEADING (character_byte_type))
                         break;
 
                 /* If we're at a NUL character walk through it
                  */
-                if (character_size == 0) {
+                if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING) {
                         i++;
                         continue;
                 }
+
+                character_size = ply_utf8_character_get_size_from_byte_type (character_byte_type);
+
+                if (character_size > bytes_left)
+                        break;
 
                 keyboard_input = strndup (bytes + i, character_size);
 

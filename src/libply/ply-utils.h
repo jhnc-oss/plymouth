@@ -55,6 +55,19 @@ typedef enum
         PLY_UNIX_SOCKET_TYPE_TRIMMED_ABSTRACT
 } ply_unix_socket_type_t;
 
+typedef enum {
+        PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION = -2,
+        PLY_UTF8_CHARACTER_BYTE_TYPE_INVALID = -1,
+        PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING = 0,
+        PLY_UTF8_CHARACTER_BYTE_TYPE_1_BYTE = 1,
+        PLY_UTF8_CHARACTER_BYTE_TYPE_2_BYTES = 2,
+        PLY_UTF8_CHARACTER_BYTE_TYPE_3_BYTES = 3,
+        PLY_UTF8_CHARACTER_BYTE_TYPE_4_BYTES = 4
+} ply_utf8_character_byte_type_t;
+
+#define PLY_UTF8_CHARACTER_BYTE_TYPE_IS_NOT_LEADING(t) ((t) == PLY_UTF8_CHARACTER_BYTE_TYPE_INVALID || (t) == PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION)
+#define PLY_UTF8_CHARACTER_BYTE_TYPE_IS_MULTI_BYTE(t) (((t) == PLY_UTF8_CHARACTER_BYTE_TYPE_2_BYTES || (t) == PLY_UTF8_CHARACTER_BYTE_TYPE_3_BYTES || (t) == PLY_UTF8_CHARACTER_BYTE_TYPE_4_BYTES))
+
 typedef struct
 {
         const char *string;
@@ -120,8 +133,12 @@ ply_daemon_handle_t *ply_create_daemon (void);
 bool ply_detach_daemon (ply_daemon_handle_t *handle,
                         int                  exit_code);
 
-int ply_utf8_character_get_size (const char *string,
-                                 size_t      n);
+ply_utf8_character_byte_type_t ply_utf8_character_get_byte_type (const char byte);
+ssize_t ply_utf8_character_get_size_from_byte_type (ply_utf8_character_byte_type_t byte_type);
+ssize_t ply_utf8_character_get_size (const char *bytes);
+
+void ply_utf8_string_remove_last_character (char   **string,
+                                            size_t  *n);
 int ply_utf8_string_get_length (const char *string,
                                 size_t      n);
 
