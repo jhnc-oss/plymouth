@@ -224,6 +224,20 @@ ply_buffer_append_from_fd (ply_buffer_t *buffer,
                 ply_buffer_append_bytes (buffer, bytes, bytes_read);
 }
 
+void
+ply_buffer_set_bytes (ply_buffer_t *buffer,
+                      void         *bytes,
+                      size_t        number_of_bytes,
+                      size_t        capacity)
+{
+        if (buffer->data != bytes)
+                free (buffer->data);
+
+        buffer->data = bytes;
+        buffer->size = number_of_bytes;
+        buffer->capacity = capacity;
+}
+
 const char *
 ply_buffer_get_bytes (ply_buffer_t *buffer)
 {
@@ -244,6 +258,12 @@ ply_buffer_steal_bytes (ply_buffer_t *buffer)
         buffer->size = 0;
 
         return bytes;
+}
+
+size_t
+ply_buffer_get_capacity (ply_buffer_t *buffer)
+{
+        return buffer->capacity;
 }
 
 size_t
