@@ -27,7 +27,7 @@
 
 #include <stdio.h>
 
-#define PLY_TERMINAL_SPACES_PER_TAB 8
+#define PLY_TERMINAL_EMULATOR_SPACES_PER_TAB 8
 
 /* Characters between 64 to 157 end the escape sequence strings (in testing)
  *  for i in $(seq 1 255)
@@ -47,10 +47,16 @@
 
 typedef enum
 {
-        PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED,
-        PLY_TERMINAL_EMULATOR_PARSE_STATE_ESCAPED,
-        PLY_TERMINAL_EMULATOR_PARSE_STATE_CONTROL_SEQUENCE_PARAMETER
-} ply_terminal_emulator_parse_state_t;
+        PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED,
+        PLY_TERMINAL_EMULATOR_TERMINAL_STATE_ESCAPED,
+        PLY_TERMINAL_EMULATOR_TERMINAL_STATE_CONTROL_SEQUENCE_PARAMETER
+} ply_terminal_emulator_terminal_state_t;
+
+typedef enum
+{
+        PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE,
+        PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE,
+} ply_terminal_emulator_utf8_character_parse_state_t;
 
 typedef enum
 {
@@ -88,26 +94,31 @@ typedef struct
 
 struct _ply_terminal_emulator
 {
-        ply_terminal_emulator_parse_state_t         state;
+        ply_terminal_emulator_terminal_state_t             state;
 
-        size_t                                      number_of_rows;
-        size_t                                      number_of_columns;
+        size_t                                             number_of_rows;
+        size_t                                             number_of_columns;
 
-        size_t                                      line_count;
-        ply_array_t                                *lines;
+        size_t                                             line_count;
+        ply_array_t                                       *lines;
 
-        ply_trigger_t                              *output_trigger;
+        ply_trigger_t                                     *output_trigger;
 
-        ssize_t                                     cursor_row_offset; /* Relative to the bottom-most allocated line */
-        size_t                                      cursor_column;
-        ply_terminal_emulator_break_string_action_t break_action;
+        ssize_t                                            cursor_row_offset; /* Relative to the bottom-most allocated line */
+        size_t                                             cursor_column;
+        ply_terminal_emulator_break_string_action_t        break_action;
 
-        uint32_t                                    last_parameter_was_integer : 1;
-        ply_terminal_emulator_command_t            *staged_command;
-        ply_list_t                                 *pending_commands;
+        uint32_t                                           last_parameter_was_integer : 1;
+        uint32_t                                           pending_parameter_value;
+        ply_terminal_emulator_command_t                   *staged_command;
+        ply_list_t                                        *pending_commands;
 
-        ply_rich_text_t                            *current_line;
-        ply_rich_text_character_style_t             current_style;
+        ply_terminal_emulator_utf8_character_parse_state_t pending_character_state;
+        ply_buffer_t                                      *pending_character;
+        int                                                pending_character_size;
+
+        ply_rich_text_t                                   *current_line;
+        ply_rich_text_character_style_t                    current_style;
 };
 
 typedef ply_terminal_emulator_break_string_t (*ply_terminal_emulator_dispatch_handler_t)();
@@ -139,6 +150,10 @@ ply_terminal_emulator_new (size_t number_of_rows,
         terminal_emulator->number_of_columns = number_of_columns;
         terminal_emulator->lines = ply_array_new (PLY_ARRAY_ELEMENT_TYPE_POINTER);
 
+        terminal_emulator->pending_character = ply_buffer_new ();
+        terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
+        terminal_emulator->pending_character_size = 0;
+
         span.offset = 0;
         span.range = terminal_emulator->number_of_columns;
 
@@ -150,7 +165,10 @@ ply_terminal_emulator_new (size_t number_of_rows,
 
         terminal_emulator->cursor_row_offset = 0;
 
-        terminal_emulator->state = PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED;
+        terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED;
+
+        terminal_emulator->last_parameter_was_integer = false;
+        terminal_emulator->pending_parameter_value = 0;
 
         terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_PRESERVE_CURSOR_COLUMN;
         terminal_emulator->output_trigger = ply_trigger_new (NULL);
@@ -907,9 +925,9 @@ on_escape_character_tab (ply_terminal_emulator_t *terminal_emulator,
         terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_PRESERVE_CURSOR_COLUMN;
 
         if (terminal_emulator->cursor_column <= 0) {
-                pad_character_count = PLY_TERMINAL_SPACES_PER_TAB;
+                pad_character_count = PLY_TERMINAL_EMULATOR_SPACES_PER_TAB;
         } else {
-                pad_character_count = PLY_TERMINAL_SPACES_PER_TAB - (terminal_emulator->cursor_column % PLY_TERMINAL_SPACES_PER_TAB);
+                pad_character_count = PLY_TERMINAL_EMULATOR_SPACES_PER_TAB - (terminal_emulator->cursor_column % PLY_TERMINAL_EMULATOR_SPACES_PER_TAB);
         }
 
         ply_rich_text_get_mutable_span (terminal_emulator->current_line, &span);
@@ -1052,6 +1070,40 @@ ply_terminal_emulator_get_line_count (ply_terminal_emulator_t *terminal_emulator
         return terminal_emulator->line_count;
 }
 
+static ply_terminal_emulator_break_string_t
+ply_terminal_emulator_flush_pending_character_to_line (ply_terminal_emulator_t *terminal_emulator)
+{
+        ply_terminal_emulator_break_string_t break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE;
+        ply_rich_text_span_t span;
+        const char *character_bytes;
+        size_t character_size;
+        size_t maximum_characters;
+
+        character_bytes = ply_buffer_get_bytes (terminal_emulator->pending_character);
+        character_size = ply_buffer_get_size (terminal_emulator->pending_character);
+
+        ply_rich_text_set_character (terminal_emulator->current_line,
+                                     terminal_emulator->current_style,
+                                     terminal_emulator->cursor_column,
+                                     character_bytes,
+                                     character_size);
+        ply_buffer_clear (terminal_emulator->pending_character);
+
+        terminal_emulator->cursor_column++;
+
+        ply_rich_text_get_mutable_span (terminal_emulator->current_line, &span);
+
+        maximum_characters = span.offset + span.range;
+
+        if (terminal_emulator->cursor_column >= maximum_characters) {
+                terminal_emulator->cursor_row_offset++;
+                terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_RESET_CURSOR_COLUMN;
+                break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING;
+        }
+
+        return break_string;
+}
+
 void
 ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulator,
                                        ply_rich_text_t         *terminal_emulator_line,
@@ -1060,17 +1112,13 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                        const char             **unparsed_input,
                                        size_t                  *number_of_unparsed_bytes)
 {
-        char character_string[PLY_UTF8_CHARACTER_MAX_SIZE];
         size_t input_length = number_of_bytes_to_parse;
         size_t new_length;
         size_t i = 0;
         ply_terminal_emulator_break_string_t break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE;
-        int parameter_value;
         ply_terminal_emulator_command_t *command;
         ply_rich_text_span_t span;
         size_t maximum_characters;
-
-        int character_length;
         ply_list_node_t *node;
 
         terminal_emulator->current_line = terminal_emulator_line;
@@ -1094,89 +1142,127 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                 fill_offsets_with_padding (terminal_emulator, new_length, terminal_emulator->cursor_column);
 
         while (i < input_length) {
-                if (break_string == PLY_TERMINAL_EMULATOR_BREAK_STRING && terminal_emulator->state == PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED) {
+                ply_utf8_character_byte_type_t character_byte_type;
+
+                if (break_string == PLY_TERMINAL_EMULATOR_BREAK_STRING && terminal_emulator->state == PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
                         break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE;
                         break;
                 }
 
-                parameter_value = 0;
-
                 terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_PRESERVE_CURSOR_COLUMN;
 
-                /* Non-ASCII Unicode characters have no impact on escape code handling */
-                character_length = ply_utf8_character_get_size (&input[i], 4);
+                character_byte_type = ply_utf8_character_get_byte_type (input[i]);
 
-                /* skip, if the character_length is -2, it's a auxiliary unicode byte */
-                if (character_length < 0) {
+                if (character_byte_type != PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION)
+                        ply_buffer_clear (terminal_emulator->pending_character);
+
+                /* If the previous byte was also a UTF-8 leading byte, handle it as an invalid character */
+                if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE &&
+                    character_byte_type != PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION &&
+                    terminal_emulator->state == PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
+                        ply_buffer_append_bytes (terminal_emulator->pending_character, "?", 1);
+                        break_string = ply_terminal_emulator_flush_pending_character_to_line (terminal_emulator);
+                }
+
+                if (PLY_UTF8_CHARACTER_BYTE_TYPE_IS_MULTI_BYTE (character_byte_type)) {
+                        /* Multi-byte Unicode characters */
+                        terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE;
+                        terminal_emulator->pending_character_size = ply_utf8_character_get_size_from_byte_type (character_byte_type);
+
+                        ply_buffer_append_bytes (terminal_emulator->pending_character, &input[i], 1);
+
                         i++;
                         continue;
-                } else if (character_length > 1) {
-                        /* Last element is a nullchar */
-                        character_string[character_length] = '\0';
-
-                        for (int j = 0; j < character_length; j++) {
-                                character_string[j] = input[i];
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_1_BYTE) {
+                        /* Ascii characters could potentially be used in escape sequences */
+                        terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
+                        terminal_emulator->pending_character_size = ply_utf8_character_get_size_from_byte_type (character_byte_type);
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING) {
+                        i++;
+                        continue;
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_INVALID) {
+                        i++;
+                        continue;
+                } else if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION) {
+                        if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE) {
+                                /* Handle the auxiliary unicode byte if handling a multi-byte character */
+                                if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE)
+                                        ply_buffer_append_bytes (terminal_emulator->pending_character, &input[i], 1);
 
                                 i++;
 
-                                if (i >= maximum_characters)
-                                        break;
+                                /* The multi-byte character is not finished yet, continue the loop */
+                                if (ply_buffer_get_size (terminal_emulator->pending_character) < terminal_emulator->pending_character_size)
+                                        continue;
+                        } else {
+                                /* If this is an auxiliary Unicode byte when not handling a multi-byte character, replace it with a placeholder */
+                                terminal_emulator->pending_character_size = 1;
+                                ply_buffer_clear (terminal_emulator->pending_character);
+                                ply_buffer_append_bytes (terminal_emulator->pending_character, "?", 1);
+
+                                break_string = ply_terminal_emulator_flush_pending_character_to_line (terminal_emulator);
+                                i++;
+
+                                continue;
                         }
-                        ply_rich_text_set_character (terminal_emulator->current_line, terminal_emulator->current_style, terminal_emulator->cursor_column, character_string, character_length);
-                        terminal_emulator->cursor_column++;
+                }
+
+                /* If the current character is a multi-byte character, and all the bytes are received */
+                if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE) {
+                        /* Drop and skip the multi-byte character if is still escaped */
+                        if (terminal_emulator->state != PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
+                                ply_buffer_clear (terminal_emulator->pending_character);
+                                continue;
+                        }
+
+                        terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_SINGLE_BYTE;
+                        break_string = ply_terminal_emulator_flush_pending_character_to_line (terminal_emulator);
                         continue;
                 }
 
                 switch (terminal_emulator->state) {
-                case PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED:
+                case PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED:
                         if (input[i] == '\e') {
                                 terminal_emulator->staged_command = ply_terminal_emulator_command_new ();
 
-                                terminal_emulator->state = PLY_TERMINAL_EMULATOR_PARSE_STATE_ESCAPED;
+                                terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_ESCAPED;
                         } else if (iscntrl (input[i]) && input[i] != '\e') {
                                 terminal_emulator->staged_command = ply_terminal_emulator_command_new ();
                                 terminal_emulator->staged_command->code = input[i];
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_CONTROL_CHARACTER;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
                         } else {
-                                character_string[0] = input[i];
-                                character_string[1] = '\0';
-                                ply_rich_text_set_character (terminal_emulator->current_line, terminal_emulator->current_style, terminal_emulator->cursor_column, character_string, 1);
-                                terminal_emulator->cursor_column++;
-
-                                if (terminal_emulator->cursor_column >= maximum_characters) {
-                                        terminal_emulator->cursor_row_offset++;
-                                        terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_RESET_CURSOR_COLUMN;
-                                        break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING;
-                                }
+                                ply_buffer_append_bytes (terminal_emulator->pending_character, &input[i], 1);
+                                break_string = ply_terminal_emulator_flush_pending_character_to_line (terminal_emulator);
                         }
                         break;
-                case PLY_TERMINAL_EMULATOR_PARSE_STATE_ESCAPED:
+                case PLY_TERMINAL_EMULATOR_TERMINAL_STATE_ESCAPED:
                         if (input[i] == '[') {
+                                terminal_emulator->pending_parameter_value = 0;
                                 terminal_emulator->staged_command->parameters = ply_array_new (PLY_ARRAY_ELEMENT_TYPE_UINT32);
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_CONTROL_SEQUENCE;
                                 terminal_emulator->staged_command->parameters_valid = true;
 
                                 terminal_emulator->last_parameter_was_integer = false;
 
-                                terminal_emulator->state = PLY_TERMINAL_EMULATOR_PARSE_STATE_CONTROL_SEQUENCE_PARAMETER;
+                                terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_CONTROL_SEQUENCE_PARAMETER;
                         } else {
                                 terminal_emulator->staged_command->code = input[i];
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_ESCAPE;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
-                                terminal_emulator->state = PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED;
+                                terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED;
                         }
                         break;
-                case PLY_TERMINAL_EMULATOR_PARSE_STATE_CONTROL_SEQUENCE_PARAMETER:
+                case PLY_TERMINAL_EMULATOR_TERMINAL_STATE_CONTROL_SEQUENCE_PARAMETER:
                         /* Characters that end the control sequence, and define the command */
                         if ((unsigned char) input[i] >= PLY_TERMINAL_ESCAPE_CODE_COMMAND_MINIMUM &&
                             (unsigned char) input[i] <= PLY_TERMINAL_ESCAPE_CODE_COMMAND_MAXIMUM) {
-                                terminal_emulator->state = PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED;
+                                terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED;
                                 terminal_emulator->staged_command->code = input[i];
 
-                                if (terminal_emulator->last_parameter_was_integer == false)
-                                        ply_array_add_uint32_element (terminal_emulator->staged_command->parameters, parameter_value);
 
+                                ply_array_add_uint32_element (terminal_emulator->staged_command->parameters, terminal_emulator->pending_parameter_value);
+                                terminal_emulator->pending_parameter_value = 0;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
 
                                 break;
@@ -1187,28 +1273,22 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                 ply_list_append_data (terminal_emulator->pending_commands, nested_command);
                         } else if (input[i] == ';' || (isdigit (input[i]))) {
                                 if (isdigit (input[i])) {
-                                        /* If the previous character was an integer, and this one is an integer, it is probably the next digit*/
-                                        if (terminal_emulator->last_parameter_was_integer == true) {
-                                                parameter_value = -1;
-                                        } else {
-                                                parameter_value = atoi (&input[i]);
-                                        }
+                                        /* If the previous character was an integer, and this one is an integer, it is probably the next digit */
+                                        terminal_emulator->pending_parameter_value = terminal_emulator->pending_parameter_value * 10;
+                                        terminal_emulator->pending_parameter_value += input[i] - '0';
 
                                         terminal_emulator->last_parameter_was_integer = true;
                                 } else if (input[i] == ';') {
-                                        /* Skip, and do not add the default value of 0 if the last character encountered was a valid parameter
-                                         * Double ;;'s imply a 0
-                                         */
-                                        if (terminal_emulator->last_parameter_was_integer == true)
-                                                parameter_value = -1;
+                                        /* Double ;;'s imply a 0 */
+                                        if (terminal_emulator->last_parameter_was_integer == false) {
+                                                ply_array_add_uint32_element (terminal_emulator->staged_command->parameters, 0);
+                                        } else {
+                                                ply_array_add_uint32_element (terminal_emulator->staged_command->parameters, terminal_emulator->pending_parameter_value);
+                                        }
 
+                                        terminal_emulator->pending_parameter_value = 0;
                                         terminal_emulator->last_parameter_was_integer = false;
                                 }
-
-                                /* Skip parameter if less than 0 */
-                                if (parameter_value >= 0)
-                                        ply_array_add_uint32_element (terminal_emulator->staged_command->parameters, parameter_value);
-
                                 break;
                         } else {
                                 /* invalid characters in the middle of the escape sequence invalidate it */
@@ -1217,7 +1297,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                         break;
                 }
 
-                if (terminal_emulator->state == PLY_TERMINAL_EMULATOR_PARSE_STATE_UNESCAPED) {
+                if (terminal_emulator->state == PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
                         ply_list_foreach (terminal_emulator->pending_commands, node) {
                                 ply_terminal_emulator_break_string_t break_string_value = PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE;
 
@@ -1273,7 +1353,6 @@ ply_terminal_emulator_parse_lines (ply_terminal_emulator_t *terminal_emulator,
         unparsed_text = text;
         unparsed_text_length = size;
         while (unparsed_text_length > 0) {
-
                 assert (terminal_emulator->line_count != 0);
 
                 first_row = 0;
