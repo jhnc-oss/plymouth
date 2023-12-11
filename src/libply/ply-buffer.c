@@ -275,6 +275,9 @@ ply_buffer_get_size (ply_buffer_t *buffer)
 void
 ply_buffer_clear (ply_buffer_t *buffer)
 {
-        memset (buffer->data, '\0', buffer->capacity);
+        if (buffer->size == 0)
+                return;
+
+        memset (buffer->data, '\0', buffer->size);
         buffer->size = 0;
 }
