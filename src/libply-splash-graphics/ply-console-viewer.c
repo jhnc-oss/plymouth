@@ -357,3 +357,9 @@ ply_console_viewer_print (ply_console_viewer_t *console_viewer,
 
         free (buffer);
 }
+
+void
+ply_console_viewer_clear_line (ply_console_viewer_t *console_viewer)
+{
+        ply_console_viewer_print (console_viewer, "\033[2K\033[0G");
+}
