@@ -1123,13 +1123,6 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
 
         terminal_emulator->current_line = terminal_emulator_line;
 
-        /* avoid duplicate empty lines, the end of the line implies a newline */
-        if (input_length == 1 && input[0] == '\n') {
-                *unparsed_input = &input[1];
-                *number_of_unparsed_bytes = number_of_bytes_to_parse - 1;
-                return;
-        }
-
         ply_rich_text_get_mutable_span (terminal_emulator->current_line, &span);
         maximum_characters = span.offset + span.range;
 
