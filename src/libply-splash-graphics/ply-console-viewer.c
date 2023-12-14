@@ -158,7 +158,6 @@ update_console_messages (ply_console_viewer_t *console_viewer)
         if (number_of_messages < 0)
                 return;
 
-        ply_pixel_display_pause_updates (console_viewer->display);
         node = ply_list_get_first_node (console_viewer->message_labels);
         while (node != NULL) {
                 ply_rich_text_t *line = NULL;
@@ -211,7 +210,6 @@ update_console_messages (ply_console_viewer_t *console_viewer)
         ply_pixel_display_draw_area (console_viewer->display, 0, 0,
                                      ply_pixel_display_get_width (console_viewer->display),
                                      ply_pixel_display_get_height (console_viewer->display));
-        ply_pixel_display_unpause_updates (console_viewer->display);
 }
 
 void
