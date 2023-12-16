@@ -202,6 +202,7 @@ struct _ply_boot_splash_plugin
         double                         progress_target;
 
         uint32_t                       root_is_mounted : 1;
+        uint32_t                       needs_redraw : 1;
         uint32_t                       is_visible : 1;
         uint32_t                       is_animating : 1;
 
@@ -345,7 +346,16 @@ view_redraw (view_t *view)
 static void
 redraw_views (ply_boot_splash_plugin_t *plugin)
 {
+        plugin->needs_redraw = true;
+}
+
+static void
+process_needed_redraws (ply_boot_splash_plugin_t *plugin)
+{
         ply_list_node_t *node;
+
+        if (!plugin->needs_redraw)
+                return;
 
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
@@ -359,6 +369,8 @@ redraw_views (ply_boot_splash_plugin_t *plugin)
 
                 node = next_node;
         }
+
+        plugin->needs_redraw = false;
 }
 
 static void
@@ -443,6 +455,32 @@ view_start_animation (view_t *view)
 }
 
 static void
+view_show_prompt_on_console_viewer (view_t     *view,
+                                    const char *prompt,
+                                    const char *entry_text,
+                                    int         number_of_bullets)
+{
+        ply_boot_splash_plugin_t *plugin = view->plugin;
+
+        if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_NORMAL)
+                ply_console_viewer_print (view->console_viewer, "\n");
+
+        ply_console_viewer_clear_line (view->console_viewer);
+
+        ply_console_viewer_print (view->console_viewer, prompt);
+
+        ply_console_viewer_print (view->console_viewer, ": ");
+        if (entry_text)
+                ply_console_viewer_print (view->console_viewer, "%s", entry_text);
+
+        for (int i = 0; i < number_of_bullets; i++) {
+                ply_console_viewer_print (view->console_viewer, " ");
+        }
+
+        ply_console_viewer_print (view->console_viewer, "_");
+}
+
+static void
 view_show_prompt (view_t     *view,
                   const char *prompt)
 {
@@ -493,7 +531,17 @@ view_show_prompt (view_t     *view,
 static void
 view_hide_prompt (view_t *view)
 {
+        ply_boot_splash_plugin_t *plugin;
+
         assert (view != NULL);
+
+        plugin = view->plugin;
+
+        /* Obscure the password length in the scroll back */
+        if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
+                ply_console_viewer_clear_line (view->console_viewer);
+
+        ply_console_viewer_print (view->console_viewer, "\n");
 
         ply_entry_hide (view->entry);
         ply_label_hide (view->label);
@@ -593,6 +641,8 @@ create_plugin (ply_key_file_t *key_file)
         plugin->image_dir = image_dir;
 
         plugin->views = ply_list_new ();
+
+        plugin->needs_redraw = true;
 
         return plugin;
 }
@@ -1334,11 +1384,12 @@ on_draw (view_t             *view,
         if (width == 1 && height == 1)
                 single_pixel = true;
 
-        if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_QUESTION_ENTRY ||
-            plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY) {
-                uint32_t *box_data, *lock_data;
+        draw_background (view, pixel_buffer, x, y, width, height);
 
-                draw_background (view, pixel_buffer, x, y, width, height);
+        if ((plugin->state == PLY_BOOT_SPLASH_DISPLAY_QUESTION_ENTRY ||
+             plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY) &&
+            !plugin->should_show_console_messages) {
+                uint32_t *box_data, *lock_data;
 
                 box_data = ply_image_get_data (plugin->box_image);
                 ply_pixel_buffer_fill_with_argb32_data (pixel_buffer,
@@ -1350,10 +1401,9 @@ on_draw (view_t             *view,
                 ply_pixel_buffer_fill_with_argb32_data (pixel_buffer,
                                                         &view->lock_area,
                                                         lock_data);
-        } else {
+        } else if (!plugin->should_show_console_messages) {
                 ply_list_node_t *node;
 
-                draw_background (view, pixel_buffer, x, y, width, height);
 
                 for (node = ply_list_get_first_node (view->sprites); node; node = ply_list_get_next_node (view->sprites, node)) {
                         sprite_t *sprite = ply_list_node_get_data (node);
@@ -1391,9 +1441,11 @@ on_draw (view_t             *view,
         }
         if (single_pixel)
                 ply_pixel_buffer_fill_with_color (pixel_buffer, &clip_area, pixel_r, pixel_g, pixel_b, 1.0);
-        ply_label_draw_area (view->message_label,
-                             pixel_buffer,
-                             x, y, width, height);
+
+        if (!plugin->should_show_console_messages)
+                ply_label_draw_area (view->message_label,
+                                     pixel_buffer,
+                                     x, y, width, height);
 
         if (plugin->plugin_console_messages_updating == false && view->console_viewer) {
                 ply_console_viewer_draw_area (view->console_viewer, pixel_buffer, x, y, width, height);
@@ -1423,6 +1475,11 @@ draw_background (view_t             *view,
         image_area.y = 0;
         image_area.width = ply_image_get_width (view->scaled_background_image);
         image_area.height = ply_image_get_height (view->scaled_background_image);
+
+        if (plugin->should_show_console_messages) {
+                ply_pixel_buffer_fill_with_hex_color (pixel_buffer, &area, 0);
+                return;
+        }
 
         ply_pixel_buffer_fill_with_argb32_data_with_clip (pixel_buffer,
                                                           &image_area, &area,
@@ -1792,6 +1849,7 @@ show_password_prompt (ply_boot_splash_plugin_t *plugin,
                 view = ply_list_node_get_data (node);
                 next_node = ply_list_get_next_node (plugin->views, node);
 
+                view_show_prompt_on_console_viewer (view, text, NULL, number_of_bullets);
                 view_show_prompt (view, text);
                 ply_entry_set_bullet_count (view->entry, number_of_bullets);
 
@@ -1814,6 +1872,7 @@ show_prompt (ply_boot_splash_plugin_t *plugin,
                 view = ply_list_node_get_data (node);
                 next_node = ply_list_get_next_node (plugin->views, node);
 
+                view_show_prompt_on_console_viewer (view, prompt, entry_text, -1);
                 view_show_prompt (view, prompt);
                 ply_entry_set_text (view->entry, entry_text);
 
@@ -1850,6 +1909,7 @@ show_message (ply_boot_splash_plugin_t *plugin,
                 next_node = ply_list_get_next_node (plugin->views, node);
                 ply_label_set_text (view->message_label, message);
                 ply_label_show (view->message_label, view->display, 10, 10);
+                ply_console_viewer_print (view->console_viewer, "\n%s\n", message);
 
                 ply_pixel_display_draw_area (view->display, 10, 10,
                                              ply_label_get_width (view->message_label),
@@ -1866,13 +1926,15 @@ display_normal (ply_boot_splash_plugin_t *plugin)
                 hide_prompt (plugin);
 
         plugin->state = PLY_BOOT_SPLASH_DISPLAY_NORMAL;
-        if (!plugin->should_show_console_messages) {
+        if (!plugin->should_show_console_messages)
                 start_animation (plugin);
-        } else {
-                unhide_console_messages (plugin);
-        }
 
         redraw_views (plugin);
+
+        if (plugin->should_show_console_messages)
+                display_console_messages (plugin);
+
+        process_needed_redraws (plugin);
         unpause_views (plugin);
 }
 
@@ -1888,6 +1950,11 @@ display_password (ply_boot_splash_plugin_t *plugin,
         plugin->state = PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY;
         show_password_prompt (plugin, prompt, bullets);
         redraw_views (plugin);
+
+        if (plugin->should_show_console_messages)
+                display_console_messages (plugin);
+
+        process_needed_redraws (plugin);
         unpause_views (plugin);
 }
 
@@ -1903,6 +1970,11 @@ display_question (ply_boot_splash_plugin_t *plugin,
         plugin->state = PLY_BOOT_SPLASH_DISPLAY_QUESTION_ENTRY;
         show_prompt (plugin, prompt, entry_text);
         redraw_views (plugin);
+
+        if (plugin->should_show_console_messages)
+                display_console_messages (plugin);
+
+        process_needed_redraws (plugin);
         unpause_views (plugin);
 }
 
@@ -1948,6 +2020,9 @@ display_console_messages (ply_boot_splash_plugin_t *plugin)
 
         pause_views (plugin);
 
+        if (plugin->should_show_console_messages)
+                stop_animation (plugin);
+
         plugin->plugin_console_messages_updating = true;
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
@@ -1958,6 +2033,7 @@ display_console_messages (ply_boot_splash_plugin_t *plugin)
         plugin->plugin_console_messages_updating = false;
 
         redraw_views (plugin);
+        process_needed_redraws (plugin);
         unpause_views (plugin);
 }
 
@@ -1965,7 +2041,6 @@ static void
 unhide_console_messages (ply_boot_splash_plugin_t *plugin)
 {
         plugin->should_show_console_messages = true;
-        stop_animation (plugin);
         display_console_messages (plugin);
 }
 
@@ -1977,6 +2052,7 @@ hide_console_messages (ply_boot_splash_plugin_t *plugin)
 
         plugin->should_show_console_messages = false;
 
+        pause_views (plugin);
         plugin->plugin_console_messages_updating = true;
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
@@ -1987,6 +2063,10 @@ hide_console_messages (ply_boot_splash_plugin_t *plugin)
         plugin->plugin_console_messages_updating = false;
         if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_NORMAL)
                 start_animation (plugin);
+
+        redraw_views (plugin);
+        process_needed_redraws (plugin);
+        unpause_views (plugin);
 }
 
 static void

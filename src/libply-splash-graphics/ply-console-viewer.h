@@ -53,6 +53,7 @@ void ply_console_viewer_write (ply_console_viewer_t *console_viewer,
 void ply_console_viewer_print (ply_console_viewer_t *console_viewer,
                                const char           *text,
                                ...);
+void ply_console_viewer_clear_line (ply_console_viewer_t *console_viewer);
 #endif //PLY_HIDE_FUNCTION_DECLARATIONS
 
 #endif //PLY_CONSOLE_VIEWER_H

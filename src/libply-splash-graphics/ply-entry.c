@@ -148,6 +148,9 @@ ply_entry_load (ply_entry_t *entry)
 static void
 ply_entry_draw (ply_entry_t *entry)
 {
+        if (entry->is_hidden)
+                return;
+
         ply_pixel_display_draw_area (entry->display,
                                      entry->area.x,
                                      entry->area.y,

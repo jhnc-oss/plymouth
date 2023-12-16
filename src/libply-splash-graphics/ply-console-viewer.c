@@ -132,7 +132,7 @@ update_console_messages (ply_console_viewer_t *console_viewer)
 {
         ply_list_node_t *node;
         ply_label_t *console_message_label;
-        size_t message_number;
+        size_t message_number, number_of_messages, visible_line_count;
         ssize_t characters_left;
         ply_rich_text_span_t span;
 
@@ -144,12 +144,20 @@ update_console_messages (ply_console_viewer_t *console_viewer)
         if (console_viewer->display == NULL)
                 return;
 
-        message_number = ply_terminal_emulator_get_line_count (console_viewer->terminal_emulator) - 1;
+        visible_line_count = ply_list_get_length (console_viewer->message_labels);
 
-        if (message_number < 0)
+        number_of_messages = ply_terminal_emulator_get_line_count (console_viewer->terminal_emulator);
+
+        message_number = ply_terminal_emulator_get_line_count (console_viewer->terminal_emulator);
+        if (message_number < visible_line_count) {
+                message_number = 0;
+        } else {
+                message_number = number_of_messages - visible_line_count;
+        }
+
+        if (number_of_messages < 0)
                 return;
 
-        ply_pixel_display_pause_updates (console_viewer->display);
         node = ply_list_get_first_node (console_viewer->message_labels);
         while (node != NULL) {
                 ply_rich_text_t *line = NULL;
@@ -193,16 +201,15 @@ update_console_messages (ply_console_viewer_t *console_viewer)
                 if (line != NULL)
                         ply_rich_text_drop_reference (line);
 
-                if (message_number <= 0)
-                        break;
+                message_number++;
 
-                message_number--;
+                if (message_number >= number_of_messages)
+                        break;
         }
         console_viewer->needs_redraw = true;
         ply_pixel_display_draw_area (console_viewer->display, 0, 0,
                                      ply_pixel_display_get_width (console_viewer->display),
                                      ply_pixel_display_get_height (console_viewer->display));
-        ply_pixel_display_unpause_updates (console_viewer->display);
 }
 
 void
@@ -226,7 +233,7 @@ ply_console_viewer_show (ply_console_viewer_t *console_viewer,
                 console_message_label = ply_list_node_get_data (node);
                 ply_label_show (console_message_label, console_viewer->display,
                                 console_viewer->font_width / 2,
-                                (ply_pixel_display_get_height (console_viewer->display) - (console_viewer->font_height * label_index) - console_viewer->font_height));
+                                console_viewer->font_height * label_index);
                 ply_label_set_hex_color (console_message_label, label_color);
                 label_index++;
         }
@@ -257,7 +264,7 @@ ply_console_viewer_draw_area (ply_console_viewer_t *console_viewer,
                 console_message_label = ply_list_node_get_data (node);
                 ply_label_draw_area (console_message_label, buffer,
                                      MAX (x, console_viewer->font_width / 2),
-                                     MAX (y, (ply_pixel_display_get_height (console_viewer->display) - (console_viewer->font_height * label_index) - console_viewer->font_height)),
+                                     MAX (y, console_viewer->font_height * label_index),
                                      MIN (ply_label_get_width (console_message_label), width),
                                      MIN (height, console_viewer->font_height));
                 label_index++;
@@ -347,4 +354,10 @@ ply_console_viewer_print (ply_console_viewer_t *console_viewer,
         va_end (arguments);
 
         free (buffer);
+}
+
+void
+ply_console_viewer_clear_line (ply_console_viewer_t *console_viewer)
+{
+        ply_console_viewer_print (console_viewer, "\033[2K\033[0G");
 }

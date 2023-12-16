@@ -41,6 +41,10 @@
 #include "ply-renderer.h"
 #include "ply-utils.h"
 
+#ifndef FRAMES_PER_SECOND
+#define FRAMES_PER_SECOND 60
+#endif
+
 struct _ply_pixel_display
 {
         ply_event_loop_t                *loop;
@@ -57,6 +61,23 @@ struct _ply_pixel_display
 
         int                              pause_count;
 };
+
+static void
+on_timeout (ply_pixel_display_t *display)
+{
+        double sleep_time;
+
+
+        sleep_time = 1.0 / FRAMES_PER_SECOND;
+
+        ply_pixel_display_unpause_updates (display);
+        ply_pixel_display_pause_updates (display);
+
+        ply_event_loop_watch_for_timeout (display->loop,
+                                          sleep_time,
+                                          (ply_event_loop_timeout_handler_t)
+                                          on_timeout, display);
+}
 
 ply_pixel_display_t *
 ply_pixel_display_new (ply_renderer_t      *renderer,
@@ -182,9 +203,19 @@ ply_pixel_display_set_draw_handler (ply_pixel_display_t             *display,
                                     ply_pixel_display_draw_handler_t draw_handler,
                                     void                            *user_data)
 {
+        double sleep_time;
+
         assert (display != NULL);
 
         display->draw_handler = draw_handler;
         display->draw_handler_user_data = user_data;
+
+        sleep_time = 1.0 / FRAMES_PER_SECOND;
+
+        ply_event_loop_watch_for_timeout (display->loop,
+                                          sleep_time,
+                                          (ply_event_loop_timeout_handler_t)
+                                          on_timeout, display);
+        ply_pixel_display_pause_updates (display);
 }
 
