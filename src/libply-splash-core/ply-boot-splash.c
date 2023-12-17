@@ -47,6 +47,10 @@
 #define UPDATES_PER_SECOND 30
 #endif
 
+#ifndef FRAMES_PER_SECOND
+#define FRAMES_PER_SECOND 60
+#endif
+
 struct _ply_boot_splash
 {
         ply_event_loop_t                         *loop;
@@ -70,6 +74,7 @@ struct _ply_boot_splash
         void                                     *idle_handler_user_data;
 
         uint32_t                                  is_loaded : 1;
+        uint32_t                                  is_shown : 1;
         uint32_t                                  should_force_text_mode : 1;
 };
 
@@ -135,6 +140,11 @@ ply_boot_splash_add_pixel_display (ply_boot_splash_t   *splash,
         height = ply_pixel_display_get_height (display);
 
         ply_trace ("adding %lux%lu pixel display", width, height);
+
+        if (splash->is_shown) {
+                ply_trace ("Splash already shown, so pausing display until next frame update");
+                ply_pixel_display_pause_updates (display);
+        }
 
         splash->plugin_interface->add_pixel_display (splash->plugin, display);
         ply_list_append_data (splash->pixel_displays, display);
@@ -456,6 +466,52 @@ ply_boot_splash_attach_progress (ply_boot_splash_t *splash,
         splash->progress = progress;
 }
 
+static void
+ply_boot_splash_pause_pixel_displays (ply_boot_splash_t *splash)
+{
+        ply_list_node_t *node;
+
+        ply_list_foreach (splash->pixel_displays, node) {
+                ply_pixel_display_t *display = ply_list_node_get_data (node);
+                ply_pixel_display_pause_updates (display);
+        }
+}
+
+static void
+ply_boot_splash_unpause_pixel_displays (ply_boot_splash_t *splash)
+{
+        ply_list_node_t *node;
+
+        ply_list_foreach (splash->pixel_displays, node) {
+                ply_pixel_display_t *display = ply_list_node_get_data (node);
+                ply_pixel_display_unpause_updates (display);
+        }
+}
+
+static void
+ply_boot_splash_flush_displays (ply_boot_splash_t *splash)
+{
+        if (!splash->is_shown)
+                return;
+
+        ply_boot_splash_unpause_pixel_displays (splash);
+        ply_boot_splash_pause_pixel_displays (splash);
+}
+
+static void
+on_new_frame (ply_boot_splash_t *splash)
+{
+        if (!splash->is_shown)
+                return;
+
+        ply_boot_splash_flush_displays (splash);
+
+        ply_event_loop_watch_for_timeout (splash->loop,
+                                          1.0 / FRAMES_PER_SECOND,
+                                          (ply_event_loop_timeout_handler_t)
+                                          on_new_frame,
+                                          splash);
+}
 
 bool
 ply_boot_splash_show (ply_boot_splash_t     *splash,
@@ -491,6 +547,25 @@ ply_boot_splash_show (ply_boot_splash_t     *splash,
                 ply_trace ("can't show splash: %m");
                 ply_restore_errno ();
                 return false;
+        }
+
+        if (!splash->is_shown) {
+                size_t number_of_displays;
+                ply_trace ("(this is an initial showing)");
+                number_of_displays = ply_list_get_length (splash->pixel_displays);
+
+                if (number_of_displays > 0) {
+                        ply_trace ("Pausing %ld already added displays",
+                                   number_of_displays);
+                        ply_boot_splash_pause_pixel_displays (splash);
+                }
+
+                ply_event_loop_watch_for_timeout (splash->loop,
+                                                  1.0 / FRAMES_PER_SECOND,
+                                                  (ply_event_loop_timeout_handler_t)
+                                                  on_new_frame,
+                                                  splash);
+                splash->is_shown = true;
         }
 
         if (splash->plugin_interface->on_boot_progress != NULL)
@@ -575,6 +650,15 @@ ply_boot_splash_hide (ply_boot_splash_t *splash)
         splash->mode = PLY_BOOT_SPLASH_MODE_INVALID;
 
         if (splash->loop != NULL) {
+                if (splash->is_shown) {
+                        ply_boot_splash_unpause_pixel_displays (splash);
+
+                        ply_event_loop_stop_watching_for_timeout (splash->loop,
+                                                                  (ply_event_loop_timeout_handler_t)
+                                                                  on_new_frame, splash);
+                        splash->is_shown = false;
+                }
+
                 if (splash->plugin_interface->on_boot_progress != NULL) {
                         ply_event_loop_stop_watching_for_timeout (splash->loop,
                                                                   (ply_event_loop_timeout_handler_t)
