@@ -341,6 +341,9 @@ ply_console_viewer_print (ply_console_viewer_t *console_viewer,
         char *buffer = NULL;
         int length;
 
+        if (format == NULL)
+                return;
+
         va_start (arguments, format);
         length = vsnprintf (NULL, 0, format, arguments);
         if (length > 0)
