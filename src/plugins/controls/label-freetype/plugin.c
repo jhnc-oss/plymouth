@@ -22,6 +22,8 @@
  * Written by: Fabian Vogt <fvogt@suse.com>
  */
 
+#include <assert.h>
+#include <endian.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -41,6 +43,37 @@
 #define FONT_FALLBACK "/usr/share/fonts/Plymouth.ttf"
 #define MONOSPACE_FONT_FALLBACK "/usr/share/fonts/Plymouth-monospace.ttf"
 
+/* This is a little sketchy... It relies on implementation details of the compiler
+ * but it makes dealing with the fixed point math freetype uses much more pleasant,
+ * imo, so I'm going to roll with it for now until it causes problems.
+ */
+typedef union
+{
+        struct
+        {
+#if BYTE_ORDER == LITTLE_ENDIAN
+                uint32_t fractional_part : 6;
+                uint32_t pixels : 26;
+#else
+                uint32_t pixels : 26;
+                uint32_t fractional_part : 6;
+#endif
+        } as_pixels_unit;
+
+        struct
+        {
+#if BYTE_ORDER == LITTLE_ENDIAN
+                uint32_t fractional_part : 6;
+                uint32_t points : 26;
+#else
+                uint32_t points : 26;
+                uint32_t fractional_part : 6;
+#endif
+        } as_points_unit;
+
+        uint32_t as_integer;
+} ply_freetype_unit_t;
+
 struct _ply_label_plugin_control
 {
         ply_pixel_display_t  *display;
@@ -51,20 +84,37 @@ struct _ply_label_plugin_control
 
         FT_Library            library;
         FT_Face               face;
+        char                 *font;
 
         char                 *text;
         ply_rich_text_t      *rich_text;
         ply_rich_text_span_t  span;
+
+        ply_array_t          *dimensions_of_lines;
+
         float                 red;
         float                 green;
         float                 blue;
         float                 alpha;
 
+        uint32_t              scale_factor;
+
         uint32_t              is_hidden : 1;
         uint32_t              is_monospaced : 1;
 };
 
+typedef enum
+{
+        PLY_LOAD_GLYPH_ACTION_MEASURE,
+        PLY_LOAD_GLYPH_ACTION_RENDER,
+} ply_load_glyph_action_t;
+
 ply_label_plugin_interface_t *ply_label_plugin_get_interface (void);
+static void set_font_for_control (ply_label_plugin_control_t *label,
+                                  const char                 *font);
+static void load_glyphs (ply_label_plugin_control_t *label,
+                         ply_load_glyph_action_t     action,
+                         ply_pixel_buffer_t         *pixel_buffer);
 
 /* Query fontconfig, if available, for the default font. */
 static const char *
@@ -124,13 +174,14 @@ create_control (void)
 {
         int error;
         ply_label_plugin_control_t *label;
-        const char *font_path;
 
         label = calloc (1, sizeof(ply_label_plugin_control_t));
 
         label->is_hidden = true;
         label->width = -1;
         label->text = NULL;
+        label->scale_factor = 1;
+        label->dimensions_of_lines = ply_array_new (PLY_ARRAY_ELEMENT_TYPE_POINTER);
 
         error = FT_Init_FreeType (&label->library);
         if (error) {
@@ -138,24 +189,24 @@ create_control (void)
                 return NULL;
         }
 
-        font_path = query_fc_match ();
-        error = set_font_with_fallback (label, font_path, FONT_FALLBACK);
-        if (error) {
-                FT_Done_FreeType (label->library);
-                free (label);
-                return NULL;
-        }
-
-        /* 12pt/96dpi as default */
-        error = FT_Set_Char_Size (label->face, 12 << 6, 0, 96, 0);
-        if (error) {
-                FT_Done_Face (label->face);
-                FT_Done_FreeType (label->library);
-                free (label);
-                return NULL;
-        }
+        set_font_for_control (label, "Sans");
 
         return label;
+}
+
+static void
+clear_dimensions_of_lines (ply_label_plugin_control_t *label)
+{
+        ply_rectangle_t **dimensions_of_lines;
+        size_t i;
+
+        if (label->dimensions_of_lines == NULL)
+                return;
+
+        dimensions_of_lines = (ply_rectangle_t **) ply_array_steal_pointer_elements (label->dimensions_of_lines);
+        for (i = 0; dimensions_of_lines[i] != NULL; i++) {
+                free (dimensions_of_lines[i]);
+        }
 }
 
 static void
@@ -164,7 +215,11 @@ destroy_control (ply_label_plugin_control_t *label)
         if (label == NULL)
                 return;
 
+        clear_dimensions_of_lines (label);
+        ply_array_free (label->dimensions_of_lines);
+
         free (label->text);
+        free (label->font);
         FT_Done_Face (label->face);
         FT_Done_FreeType (label->library);
 
@@ -183,14 +238,15 @@ get_height_of_control (ply_label_plugin_control_t *label)
         return label->area.height;
 }
 
-static bool
-load_character (ply_label_plugin_control_t *label,
-                const char                **text)
+static FT_GlyphSlot
+load_glyph (ply_label_plugin_control_t *label,
+            ply_load_glyph_action_t     action,
+            const char                 *input_text)
 {
         FT_Error error;
         size_t character_size;
         wchar_t character;
-        const char *input_text = *text;
+        FT_Int32 load_flags = FT_LOAD_TARGET_LIGHT;
 
         character_size = mbrtowc (&character, input_text, PLY_UTF8_CHARACTER_SIZE_MAX, NULL);
 
@@ -199,100 +255,27 @@ load_character (ply_label_plugin_control_t *label,
                 character_size = 1;
         }
 
-        error = FT_Load_Char (label->face, (FT_ULong) character, FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT);
+        if (action == PLY_LOAD_GLYPH_ACTION_RENDER)
+                load_flags |= FT_LOAD_RENDER;
 
-        *text = input_text + character_size;
+        error = FT_Load_Char (label->face, (FT_ULong) character, load_flags);
 
-        return !error;
-}
+        if (error)
+                return NULL;
 
-static FT_Int
-width_of_string (ply_label_plugin_control_t *label,
-                 const char                 *text)
-{
-        FT_Int width = 0;
-        FT_Int left_bearing = 0;
-
-        while (*text != '\0' && *text != '\n') {
-                if (load_character (label, &text)) {
-                        width += label->face->glyph->advance.x >> 6;
-                        left_bearing = label->face->glyph->bitmap_left;
-                        /* We don't "go back" when drawing, so when left bearing is
-                         * negative (like for 'j'), we simply add to the width. */
-                        if (left_bearing < 0)
-                                width += -left_bearing;
-                }
-        }
-
-        return width;
+        return label->face->glyph;
 }
 
 static void
 size_control (ply_label_plugin_control_t *label)
 {
-        FT_Int character_width, line_width;
-        ply_rich_text_iterator_t rich_text_iterator;
-        ply_utf8_string_iterator_t utf8_string_iterator;
-        bool should_stop = false;
-
         if (label->rich_text == NULL && label->text == NULL) {
                 label->area.width = 0;
                 label->area.height = 0;
                 return;
         }
 
-        if (label->rich_text != NULL) {
-                ply_rich_text_iterator_initialize (&rich_text_iterator,
-                                                   label->rich_text,
-                                                   &label->span);
-        } else {
-                ply_utf8_string_iterator_initialize (&utf8_string_iterator,
-                                                     label->text,
-                                                     0,
-                                                     ply_utf8_string_get_length (label->text, strlen (label->text)));
-        }
-        label->area.width = 0;
-        label->area.height = 0;
-
-        line_width = 0;
-
-        /* Go through each line */
-        do {
-                const char *current_character;
-
-                if (label->rich_text != NULL) {
-                        ply_rich_text_character_t *rich_text_character;
-                        should_stop = !ply_rich_text_iterator_next (&rich_text_iterator,
-                                                                    &rich_text_character);
-                        if (!should_stop)
-                                current_character = rich_text_character->bytes;
-                } else {
-                        size_t character_size;
-
-                        should_stop = !ply_utf8_string_iterator_next (&utf8_string_iterator,
-                                                                      &current_character,
-                                                                      &character_size);
-                }
-
-                if (!should_stop) {
-                        character_width = width_of_string (label, current_character);
-                        line_width += character_width;
-                }
-
-                if (should_stop || character_width == 0) {
-                        if ((uint32_t) line_width > label->area.width)
-                                label->area.width = line_width;
-
-                        line_width = 0;
-
-                        label->area.height += (label->face->size->metrics.ascender
-                                               - label->face->size->metrics.descender) >> 6;
-                }
-        } while (!should_stop);
-
-        /* If centered, area.x is not the origin anymore */
-        if ((long) label->area.width < label->width)
-                label->area.width = label->width;
+        load_glyphs (label, PLY_LOAD_GLYPH_ACTION_MEASURE, NULL);
 }
 
 static void
@@ -420,34 +403,98 @@ look_up_rgb_color_from_terminal_color (ply_label_plugin_control_t *label,
 }
 
 static void
-draw_control (ply_label_plugin_control_t *label,
-              ply_pixel_buffer_t         *pixel_buffer,
-              long                        x,
-              long                        y,
-              unsigned long               width,
-              unsigned long               height)
+update_scale_factor_from_pixel_buffer (ply_label_plugin_control_t *label,
+                                       ply_pixel_buffer_t         *pixel_buffer)
 {
-        FT_Vector pen;
-        FT_GlyphSlot slot;
+        uint32_t device_scale;
+
+        device_scale = ply_pixel_buffer_get_device_scale (pixel_buffer);
+
+        if (label->scale_factor == device_scale)
+                return;
+
+        label->scale_factor = device_scale;
+        set_font_for_control (label, label->font?: "Sans");
+        size_control (label);
+}
+
+static void
+finish_measuring_line (ply_label_plugin_control_t *label,
+                       ply_freetype_unit_t        *glyph_x,
+                       ply_freetype_unit_t        *glyph_y,
+                       ply_rectangle_t            *dimensions)
+{
+
+        ply_freetype_unit_t line_height;
+        ply_rectangle_t *entry;
+
+        line_height.as_integer = label->face->size->metrics.ascender + -label->face->size->metrics.descender;
+
+        dimensions->x = label->area.x;
+
+        dimensions->width = glyph_x->as_pixels_unit.pixels - dimensions->x;
+        label->area.width = MAX (label->area.width, dimensions->width);
+
+        dimensions->height = line_height.as_pixels_unit.pixels;
+        label->area.height += dimensions->height;
+
+        entry = calloc (1, sizeof(ply_rectangle_t));
+        *entry = *dimensions;
+        ply_array_add_pointer_element (label->dimensions_of_lines, entry);
+
+        dimensions->y += dimensions->height;
+}
+
+static void
+align_lines (ply_label_plugin_control_t *label)
+{
+        ply_rectangle_t **dimensions_of_lines;
+        ply_rectangle_t *line_dimensions;
+        long width;
+        size_t i;
+
+        if (label->alignment == PLY_LABEL_ALIGN_LEFT)
+                return;
+
+        if (label->dimensions_of_lines == NULL)
+                return;
+
+        width = label->width > 0? label->width : label->area.width;
+
+        dimensions_of_lines = (ply_rectangle_t **) ply_array_get_pointer_elements (label->dimensions_of_lines);
+
+        for (i = 0; dimensions_of_lines[i] != NULL; i++) {
+                line_dimensions = dimensions_of_lines[i];
+
+                if (label->alignment == PLY_LABEL_ALIGN_CENTER)
+                        line_dimensions->x += (width - line_dimensions->width) / 2;
+                else if (label->alignment == PLY_LABEL_ALIGN_RIGHT)
+                        line_dimensions->x += width - line_dimensions->width;
+        }
+}
+
+static void
+load_glyphs (ply_label_plugin_control_t *label,
+             ply_load_glyph_action_t     action,
+             ply_pixel_buffer_t         *pixel_buffer)
+{
+        FT_GlyphSlot glyph = NULL;
         ply_rich_text_iterator_t rich_text_iterator;
         ply_utf8_string_iterator_t utf8_string_iterator;
-        uint32_t *target;
+        uint32_t *target = NULL;
         ply_rectangle_t target_size;
-        if (label->is_hidden)
-                return;
+        ply_freetype_unit_t glyph_x = { .as_pixels_unit = { .pixels = label->area.x } };
+        ply_freetype_unit_t glyph_y = { .as_pixels_unit = { .pixels = label->area.y } };
+        FT_Error error;
+        FT_UInt previous_glyph_index = 0;
+        bool is_first_character = true;
+        ply_rectangle_t *line_dimensions = NULL;
+        ply_rectangle_t **dimensions_of_lines = NULL;
+        size_t line_number;
 
         if (label->rich_text == NULL &&
             label->text == NULL)
                 return;
-
-        /* Check for overlap.
-         * TODO: Don't redraw everything if only a part should be drawn! */
-        if (label->area.x > x + (long) width || label->area.y > y + (long) height
-            || label->area.x + (long) label->area.width < x
-            || label->area.y + (long) label->area.height < y)
-                return;
-
-        slot = label->face->glyph;
 
         if (label->rich_text != NULL) {
                 ply_rich_text_iterator_initialize (&rich_text_iterator,
@@ -460,17 +507,37 @@ draw_control (ply_label_plugin_control_t *label,
                                                      ply_utf8_string_get_length (label->text, strlen (label->text)));
         }
 
-        target = ply_pixel_buffer_get_argb32_data (pixel_buffer);
-        ply_pixel_buffer_get_size (pixel_buffer, &target_size);
+        if (action == PLY_LOAD_GLYPH_ACTION_MEASURE) {
+                clear_dimensions_of_lines (label);
 
-        if (target_size.height == 0)
-                return; /* This happens sometimes. */
+                line_dimensions = alloca (sizeof(ply_rectangle_t));
+                line_dimensions->x = label->area.x;
+                line_dimensions->y = label->area.y;
+                label->area.width = 0;
+                label->area.height = 0;
+        } else if (ply_array_get_size (label->dimensions_of_lines) == 0) {
+                return;
+        } else {
+                dimensions_of_lines = (ply_rectangle_t **) ply_array_get_pointer_elements (label->dimensions_of_lines);
+                line_number = 0;
 
-        /* 64ths of a pixel */
-        pen.y = label->area.y << 6;
+                line_dimensions = dimensions_of_lines[line_number++];
+
+                assert (line_dimensions != NULL);
+
+                glyph_x.as_pixels_unit.pixels = line_dimensions->x;
+        }
+
+        if (action == PLY_LOAD_GLYPH_ACTION_RENDER) {
+                target = ply_pixel_buffer_get_argb32_data (pixel_buffer);
+                ply_pixel_buffer_get_size (pixel_buffer, &target_size);
+
+                if (target_size.height == 0)
+                        return;
+        }
 
         /* Make sure that the first row fits */
-        pen.y += label->face->size->metrics.ascender;
+        glyph_y.as_integer += label->face->size->metrics.ascender;
 
         /* Go through each line */
         do {
@@ -478,12 +545,14 @@ draw_control (ply_label_plugin_control_t *label,
                 const char *current_character;
                 uint8_t red, green, blue;
 
-                FT_Int extraAdvance = 0, positiveBearingX = 0;
+                FT_Int extra_advance = 0, positive_bearing_x = 0;
                 ply_rich_text_character_t *rich_text_character;
 
-                red = 255 * label->red;
-                green = 255 * label->green;
-                blue = 255 * label->blue;
+                if (action == PLY_LOAD_GLYPH_ACTION_RENDER) {
+                        red = 255 * label->red;
+                        green = 255 * label->green;
+                        blue = 255 * label->blue;
+                }
 
                 if (label->rich_text != NULL) {
                         should_stop = !ply_rich_text_iterator_next (&rich_text_iterator,
@@ -493,32 +562,40 @@ draw_control (ply_label_plugin_control_t *label,
 
                         current_character = rich_text_character->bytes;
 
-                        look_up_rgb_color_from_terminal_color (label,
-                                                               rich_text_character->style.foreground_color,
-                                                               &red,
-                                                               &green,
-                                                               &blue);
+                        if (action == PLY_LOAD_GLYPH_ACTION_RENDER) {
+                                look_up_rgb_color_from_terminal_color (label,
+                                                                       rich_text_character->style.foreground_color,
+                                                                       &red,
+                                                                       &green,
+                                                                       &blue);
+                        }
                 } else {
                         size_t character_size;
 
                         should_stop = !ply_utf8_string_iterator_next (&utf8_string_iterator,
                                                                       &current_character,
                                                                       &character_size);
+                        if (should_stop)
+                                break;
                 }
 
-                if (*current_character == '\n')
+                glyph = load_glyph (label, action, current_character);
+
+                if (glyph == NULL)
                         continue;
 
-                pen.x = label->area.x << 6;
+                if (*current_character == '\n') {
+                        if (action == PLY_LOAD_GLYPH_ACTION_MEASURE)
+                                finish_measuring_line (label, &glyph_x, &glyph_y, line_dimensions);
+                        else
+                                line_dimensions = dimensions_of_lines[line_number++];
 
-                /* Start at start position (alignment) */
-                if (label->alignment == PLY_LABEL_ALIGN_CENTER)
-                        pen.x += (label->area.width - width_of_string (label, current_character)) << 5;
-                else if (label->alignment == PLY_LABEL_ALIGN_RIGHT)
-                        pen.x += (label->area.width - width_of_string (label, current_character)) << 6;
+                        glyph_x.as_pixels_unit.pixels = line_dimensions->x;
+                        glyph_y.as_pixels_unit.pixels = line_dimensions->y;
 
-                if (!load_character (label, &current_character))
+                        glyph_y.as_integer += label->face->size->metrics.ascender;
                         continue;
+                }
 
                 /* We consider negative left bearing an increment in size,
                  * as we draw full character boxes and don't "go back" in
@@ -526,24 +603,69 @@ draw_control (ply_label_plugin_control_t *label,
                  * For definitions see
                  * https://freetype.org/freetype2/docs/glyphs/glyphs-3.html
                  */
-                if (slot->bitmap_left < 0)
-                        extraAdvance = -slot->bitmap_left;
+                if (glyph->bitmap_left < 0)
+                        extra_advance = -glyph->bitmap_left;
                 else
-                        positiveBearingX = slot->bitmap_left;
+                        positive_bearing_x = glyph->bitmap_left;
 
-                draw_bitmap (label, target, target_size, &slot->bitmap,
-                             (pen.x >> 6) + positiveBearingX,
-                             (pen.y >> 6) - slot->bitmap_top,
-                             red,
-                             green,
-                             blue);
+                if (action == PLY_LOAD_GLYPH_ACTION_RENDER) {
+                        draw_bitmap (label, target, target_size, &glyph->bitmap,
+                                     glyph_x.as_pixels_unit.pixels + positive_bearing_x,
+                                     glyph_y.as_pixels_unit.pixels - glyph->bitmap_top,
+                                     red,
+                                     green,
+                                     blue);
+                }
 
-                pen.x += slot->advance.x + extraAdvance;
-                pen.y += slot->advance.y;
+                glyph_x.as_integer += glyph->advance.x + extra_advance;
 
-                /* Next line */
-                pen.y += label->face->size->metrics.height;
+                if (!is_first_character) {
+                        FT_Vector kerning_space;
+
+                        error = FT_Get_Kerning (label->face, previous_glyph_index, glyph->glyph_index, FT_KERNING_DEFAULT, &kerning_space);
+
+                        if (error == 0)
+                                glyph_x.as_integer += kerning_space.x;
+
+                        previous_glyph_index = glyph->glyph_index;
+                } else {
+                        is_first_character = false;
+                }
         } while (true);
+
+        if (action == PLY_LOAD_GLYPH_ACTION_MEASURE) {
+                if (!is_first_character)
+                        finish_measuring_line (label, &glyph_x, &glyph_y, line_dimensions);
+
+                align_lines (label);
+        }
+}
+
+static void
+draw_control (ply_label_plugin_control_t *label,
+              ply_pixel_buffer_t         *pixel_buffer,
+              long                        x,
+              long                        y,
+              unsigned long               width,
+              unsigned long               height)
+{
+        if (label->is_hidden)
+                return;
+
+        if (label->rich_text == NULL &&
+            label->text == NULL)
+                return;
+
+        update_scale_factor_from_pixel_buffer (label, pixel_buffer);
+
+        /* Check for overlap.
+         * TODO: Don't redraw everything if only a part should be drawn! */
+        if (label->area.x > x + (long) width || label->area.y > y + (long) height
+            || label->area.x + (long) label->area.width < x
+            || label->area.y + (long) label->area.height < y)
+                return;
+
+        load_glyphs (label, PLY_LOAD_GLYPH_ACTION_RENDER, pixel_buffer);
 }
 
 static void
@@ -578,6 +700,8 @@ clear_text (ply_label_plugin_control_t *label)
                 label->span.offset = 0;
                 label->span.range = 0;
         }
+
+        clear_dimensions_of_lines (label);
 }
 
 static void
@@ -607,51 +731,62 @@ set_rich_text_for_control (ply_label_plugin_control_t *label,
 
 static void
 set_font_for_control (ply_label_plugin_control_t *label,
-                      const char                 *fontdesc)
+                      const char                 *font)
 {
         /* Only able to set size and monospaced/nonmonospaced */
 
         int error = 0;
         char *size_str_after;
         const char *size_str, *font_path;
-        unsigned long size;
-        bool size_in_pixels;
+        char *new_font;
+        ply_freetype_unit_t size = { .as_points_unit = { .points = 12 } };
+        int dpi = 96;
+        bool size_in_pixels = false;
 
-        if (strstr (fontdesc, "Mono") || strstr (fontdesc, "mono")) {
-                if (label->is_monospaced == false) {
+        new_font = strdup (font);
+        free (label->font);
+        label->font = new_font;
+
+        if (strstr (font, "Mono") || strstr (font, "mono")) {
+                if (!label->is_monospaced) {
                         FT_Done_Face (label->face);
                         font_path = query_fc_match_monospace ();
                         error = set_font_with_fallback (label, font_path, MONOSPACE_FONT_FALLBACK);
+                        label->is_monospaced = true;
                 }
         } else {
-                if (label->is_monospaced == true) {
+                if (label->is_monospaced || label->face == NULL) {
                         FT_Done_Face (label->face);
                         font_path = query_fc_match ();
                         error = set_font_with_fallback (label, font_path, FONT_FALLBACK);
+                        label->is_monospaced = false;
                 }
         }
         if (error)
                 FT_Done_Face (label->face);
 
-        size = 25; /* Default, if not set. */
-        size_in_pixels = false;
-
         /* Format is "Family 1[,Family 2[,..]] [25[px]]" .
          * [] means optional. */
-        size_str = strrchr (fontdesc, ' ');
+        size_str = strrchr (font, ' ');
 
         if (size_str) {
-                size = strtoul (size_str, &size_str_after, 10);
-                if (size_str_after == size_str)
-                        size = 25; /* Not a number */
-                else if (strcmp (size_str_after, "px") == 0)
-                        size_in_pixels = true;
+                unsigned long parsed_size;
+                parsed_size = strtoul (size_str, &size_str_after, 10);
+
+                if (size_str_after != size_str) {
+                        if (strcmp (size_str_after, "px") == 0) {
+                                size_in_pixels = true;
+                                size.as_pixels_unit.pixels = parsed_size;
+                        } else {
+                                size.as_points_unit.points = parsed_size;
+                        }
+                }
         }
 
         if (size_in_pixels)
-                FT_Set_Pixel_Sizes (label->face, 0, size);
+                FT_Set_Pixel_Sizes (label->face, 0, size.as_pixels_unit.pixels * label->scale_factor);
         else
-                FT_Set_Char_Size (label->face, size << 6, 0, 72, 0);
+                FT_Set_Char_Size (label->face, size.as_integer, 0, dpi * label->scale_factor, 0);
 
         /* Ignore errors, to keep the current size. */
 
