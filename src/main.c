@@ -1465,16 +1465,12 @@ void
 on_new_kmsg_message (state_t        *state,
                      kmsg_message_t *kmsg_message)
 {
-        long size = strlen (kmsg_message->message) + 1;
-        char output[size];
+        ply_buffer_append (state->boot_buffer, "%s\n", kmsg_message->message);
 
-        strcpy (output, kmsg_message->message);
-        strcat (output, "\n");
-
-        ply_buffer_append_bytes (state->boot_buffer, output, size);
-
-        if (state->boot_splash != NULL)
-                ply_boot_splash_update_output (state->boot_splash, output, size);
+        if (state->boot_splash != NULL) {
+                ply_boot_splash_update_output (state->boot_splash, kmsg_message->message, strlen (kmsg_message->message));
+                ply_boot_splash_update_output (state->boot_splash, "\n", 1);
+        }
 }
 
 static bool
