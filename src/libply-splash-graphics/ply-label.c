@@ -157,7 +157,7 @@ ply_label_load_plugin (ply_label_t *label)
         if (label->text != NULL) {
                 if (label->rich_text == NULL) {
                         label->plugin_interface->set_text_for_control (label->control,
-                                                                       label->text);
+                                                                       label->text?: "");
                 } else {
                         label->plugin_interface->set_rich_text_for_control (label->control,
                                                                             label->rich_text,
@@ -259,7 +259,7 @@ ply_label_set_text (ply_label_t *label,
                 return;
 
         label->plugin_interface->set_text_for_control (label->control,
-                                                       text);
+                                                       text?: "");
 }
 
 void
