@@ -84,7 +84,7 @@ ply_keymap_icon_fill_keymap_info (ply_keymap_icon_t *keymap_icon)
 {
         const char *keymap_with_variant;
         ply_renderer_t *renderer;
-        char *keymap, *compare_keymap;
+        char *keymap_without_variant;
         int i;
 
         keymap_icon->keymap_offset = -1;
@@ -94,18 +94,19 @@ ply_keymap_icon_fill_keymap_info (ply_keymap_icon_t *keymap_icon)
         if (!keymap_with_variant)
                 return;
 
-        keymap = ply_keymap_normalize_keymap (keymap_with_variant);
+        keymap_without_variant = ply_keymap_normalize_keymap (keymap_with_variant);
 
         for (i = 0; ply_keymap_metadata[i].name; i++) {
+                const char *icon_text = NULL;
+
                 if (ply_keymap_metadata[i].type == PLY_LAYOUT_TERMINAL) {
-                        compare_keymap = strdup (keymap);
+                        icon_text = keymap_without_variant;
                 } else if (ply_keymap_metadata[i].type == PLY_LAYOUT_XKB) {
-                        compare_keymap = strdup (keymap_with_variant);
+                        icon_text = keymap_with_variant;
                 }
 
-                keymap_icon->keymap_name = compare_keymap;
-
-                if (strcmp (ply_keymap_metadata[i].name, compare_keymap) == 0) {
+                if (strcmp (ply_keymap_metadata[i].name, icon_text) == 0) {
+                        keymap_icon->keymap_name = strdup (icon_text);
                         keymap_icon->keymap_offset = ply_keymap_metadata[i].offset;
                         keymap_icon->keymap_width = ply_keymap_metadata[i].width;
                         keymap_icon->has_prerendered_text = true;
@@ -114,9 +115,9 @@ ply_keymap_icon_fill_keymap_info (ply_keymap_icon_t *keymap_icon)
         }
 
         if (keymap_icon->keymap_offset == -1)
-                ply_trace ("Warning: no pre-rendered text for '%s' keymap", keymap);
+                ply_trace ("Warning: no pre-rendered text for '%s' keymap", keymap_without_variant);
 
-        free (keymap);
+        free (keymap_without_variant);
 }
 
 ply_keymap_icon_t *
