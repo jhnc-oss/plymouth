@@ -558,7 +558,8 @@ ply_input_device_free (ply_input_device_t *input_device)
 
         free (input_device->path);
 
-        ply_event_loop_stop_watching_fd (input_device->loop, input_device->fd_watch);
+        if (input_device->fd_watch != NULL)
+                ply_event_loop_stop_watching_fd (input_device->loop, input_device->fd_watch);
 
         close (input_device->fd);
 
