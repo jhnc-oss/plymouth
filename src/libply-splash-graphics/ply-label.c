@@ -248,7 +248,10 @@ ply_label_set_text (ply_label_t *label,
                     const char  *text)
 {
         free (label->text);
-        label->text = strdup (text);
+        label->text = NULL;
+
+        if (text != NULL)
+                label->text = strdup (text);
 
         if (label->rich_text) {
                 ply_rich_text_drop_reference (label->rich_text);
@@ -259,7 +262,7 @@ ply_label_set_text (ply_label_t *label,
                 return;
 
         label->plugin_interface->set_text_for_control (label->control,
-                                                       text?: "");
+                                                       label->text?: "");
 }
 
 void
