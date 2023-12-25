@@ -513,12 +513,14 @@ if [ -d "${X11_DIRECTORY}" ]; then
 
     # In the off chance the user uses their compose key when
     # typing their password, install compose sequences
-    inst ${X11_DIRECTORY}/locale/compose.dir $INITRDDIR
-    grep UTF-8/Compose: ${X11_DIRECTORY}/locale/compose.dir | awk -F: '{ print $1 }' | sort -u | xargs dirname | while read DIR; do
-        find ${X11_DIRECTORY}/locale/$DIR -maxdepth 1 ! -type d | while read file; do
-            inst $file $INITRDDIR
-         done
-    done
+    if [ -f "${X11_DIRECTORY}/locale/compose.dir" ]; then
+        inst ${X11_DIRECTORY}/locale/compose.dir $INITRDDIR
+        grep UTF-8/Compose: ${X11_DIRECTORY}/locale/compose.dir | awk -F: '{ print $1 }' | sort -u | xargs dirname | while read DIR; do
+            find ${X11_DIRECTORY}/locale/$DIR -maxdepth 1 ! -type d | while read file; do
+                inst $file $INITRDDIR
+             done
+        done
+    fi
 fi
 
 if [ -z "$PLYMOUTH_THEME_NAME" ]; then
@@ -551,7 +553,7 @@ PLYMOUTH_IMAGE_DIR=$(grep "ImageDir *= *" ${PLYMOUTH_SYSROOT}${PLYMOUTH_THEME_DI
 PLYMOUTH_FONT_PATH=""
 PLYMOUTH_FONT=$(grep "\bFont *= *" ${PLYMOUTH_SYSROOT}${PLYMOUTH_THEME_DIR}/${PLYMOUTH_THEME_NAME}.plymouth | sed 's/Font *= *//' | head -1)
 if [ ! -z "$PLYMOUTH_FONT" ]; then
-     PLYMOUTH_FONT_PATH=$(fc-match -f %{file} "$PLYMOUTH_FONT")
+     PLYMOUTH_FONT_PATH=$(fc-match -f %{file} "$PLYMOUTH_FONT" 2> /dev/null)
      if [ ! -z "$PLYMOUTH_FONT_PATH" ]; then
           inst "$PLYMOUTH_FONT_PATH" $INITRDDIR
      fi
@@ -560,7 +562,7 @@ fi
 PLYMOUTH_TITLE_FONT_PATH=""
 PLYMOUTH_TITLE_FONT=$(grep "\bTitleFont *= *" ${PLYMOUTH_SYSROOT}${PLYMOUTH_THEME_DIR}/${PLYMOUTH_THEME_NAME}.plymouth | sed 's/TitleFont *= *//' | head -1)
 if [ ! -z "$PLYMOUTH_TITLE_FONT" ]; then
-     PLYMOUTH_TITLE_FONT_PATH=$(fc-match -f %{file} "$PLYMOUTH_TITLE_FONT")
+     PLYMOUTH_TITLE_FONT_PATH=$(fc-match -f %{file} "$PLYMOUTH_TITLE_FONT" 2> /dev/null)
      if [ ! -z "$PLYMOUTH_TITLE_FONT_PATH" ]; then
           inst "$PLYMOUTH_TITLE_FONT_PATH" $INITRDDIR
      fi
@@ -569,7 +571,7 @@ fi
 PLYMOUTH_MONOSPACE_FONT_PATH=""
 PLYMOUTH_MONOSPACE_FONT=$(grep "\bMonospaceFont *= *" ${PLYMOUTH_SYSROOT}${PLYMOUTH_THEME_DIR}/${PLYMOUTH_THEME_NAME}.plymouth | sed 's/MonospaceFont *= *//' | head -1)
 if [ ! -z "$PLYMOUTH_MONOSPACE_FONT" ]; then
-     PLYMOUTH_MONOSPACE_FONT_PATH=$(fc-match -f %{file} "$PLYMOUTH_MONOSPACE_FONT")
+     PLYMOUTH_MONOSPACE_FONT_PATH=$(fc-match -f %{file} "$PLYMOUTH_MONOSPACE_FONT" 2> /dev/null)
      if [ ! -z "$PLYMOUTH_MONOSPACE_FONT_PATH" ]; then
           inst "$PLYMOUTH_MONOSPACE_FONT_PATH" $INITRDDIR
      fi
@@ -594,9 +596,9 @@ if [ "${PLYMOUTH_IMAGE_DIR}" != "${PLYMOUTH_THEME_DIR}" -a -d "${PLYMOUTH_SYSROO
      inst_recur "${PLYMOUTH_IMAGE_DIR}"
 fi
 
-DEFAULT_FONT=$(fc-match -f %{file})
+DEFAULT_FONT=$(fc-match -f %{file} 2> /dev/null)
 [ ! -z "$DEFAULT_FONT" ] && inst "$DEFAULT_FONT" $INITRDDIR
-DEFAULT_MONOSPACE_FONT=$(fc-match -f %{file} monospace)
+DEFAULT_MONOSPACE_FONT=$(fc-match -f %{file} monospace 2> /dev/null)
 [ ! -z "$DEFAULT_MONOSPACE_FONT" ] && inst "$DEFAULT_FONT" $INITRDDIR
 inst "$DEFAULT_MONOSPACE_FONT" $INITRDDIR
 
