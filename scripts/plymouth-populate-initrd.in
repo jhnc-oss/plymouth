@@ -424,7 +424,7 @@ function usage() {
         rc=1
     fi
 
-    echo "usage: plymouth [ --verbose | -v ] { --targetdir | -t } <initrd_directory> { --x11-directory | -x } <x11_directory>" > $output
+    echo "usage: $0 [ --verbose | -v ] { --targetdir | -t } <initrd_directory> { --x11-directory | -x } <x11_directory>" > $output
     exit $rc
 }
 
