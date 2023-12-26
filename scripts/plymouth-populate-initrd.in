@@ -599,15 +599,14 @@ fi
 DEFAULT_FONT=$(fc-match -f %{file} 2> /dev/null)
 [ ! -z "$DEFAULT_FONT" ] && inst "$DEFAULT_FONT" $INITRDDIR
 DEFAULT_MONOSPACE_FONT=$(fc-match -f %{file} monospace 2> /dev/null)
-[ ! -z "$DEFAULT_MONOSPACE_FONT" ] && inst "$DEFAULT_FONT" $INITRDDIR
-inst "$DEFAULT_MONOSPACE_FONT" $INITRDDIR
+[ ! -z "$DEFAULT_MONOSPACE_FONT" ] && inst "$DEFAULT_MONOSPACE_FONT" $INITRDDIR
 
 if [ -f "${PLYMOUTH_PLUGIN_PATH}/label-freetype.so" ]; then
      inst ${PLYMOUTH_PLUGIN_PATH}/label-freetype.so $INITRDDIR
      # The label-freetype plugin expects it at this location
      mkdir -p $INITRDDIR/usr/share/fonts
-     ln -s "$DEFAULT_FONT" $INITRDDIR/usr/share/fonts/Plymouth.ttf
-     ln -s "$DEFAULT_MONOSPACE_FONT" $INITRDDIR/usr/share/fonts/Plymouth-monospace.ttf
+     [ ! -z "$DEFAULT_FONT" ] && ln -s "$DEFAULT_FONT" $INITRDDIR/usr/share/fonts/Plymouth.ttf
+     [ ! -z "$DEFAULT_MONOSPACE_FONT" ] && ln -s "$DEFAULT_MONOSPACE_FONT" $INITRDDIR/usr/share/fonts/Plymouth-monospace.ttf
 fi
 
 if [ -L ${PLYMOUTH_SYSROOT}${PLYMOUTH_DATADIR}/plymouth/themes/default.plymouth ]; then
