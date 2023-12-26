@@ -25,6 +25,7 @@
 #include "script.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
+#include "ply-console-viewer.h"
 
 typedef struct
 {
@@ -32,11 +33,18 @@ typedef struct
         ply_list_t                *sprite_list;
         script_obj_native_class_t *class;
         script_op_t               *script_main_op;
+        script_op_t               *script_consoleviewer_op;
         uint32_t                   background_color_start;
         uint32_t                   background_color_end;
         bool                       full_refresh;
         unsigned int               max_width;
         unsigned int               max_height;
+
+        ply_buffer_t              *boot_buffer;
+        char                      *monospace_font;
+        bool                       needs_redraw;
+        bool                       plugin_console_messages_updating;
+        bool                       should_show_console_messages;
 } script_lib_sprite_data_t;
 
 typedef struct
@@ -45,6 +53,8 @@ typedef struct
         script_lib_sprite_data_t *data;
         int                       x;
         int                       y;
+
+        ply_console_viewer_t     *console_viewer;
 } script_lib_display_t;
 
 typedef struct
@@ -63,6 +73,9 @@ typedef struct
         bool                remove_me;
         ply_pixel_buffer_t *image;
         script_obj_t       *image_obj;
+        char               *monospace_font;
+        script_state_t     *state;
+        script_obj_t       *draw_func;
 } sprite_t;
 
 script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
@@ -73,5 +86,12 @@ void script_lib_sprite_pixel_display_removed (script_lib_sprite_data_t *data,
                                               ply_pixel_display_t      *pixel_display);
 void script_lib_sprite_refresh (script_lib_sprite_data_t *data);
 void script_lib_sprite_destroy (script_lib_sprite_data_t *data);
-
+ply_list_t *script_lib_get_displays (script_lib_sprite_data_t *data);
+void script_lib_sprite_set_needs_redraw (script_lib_sprite_data_t *data);
+void script_lib_sprite_console_viewer_print (script_lib_sprite_data_t *data,
+                                             const char               *format,
+                                             ...);
+void script_lib_sprite_console_viewer_clear_line (script_lib_sprite_data_t *data);
+void script_lib_sprite_console_viewer_show (script_lib_sprite_data_t *data);
+void script_lib_sprite_console_viewer_hide (script_lib_sprite_data_t *data);
 #endif /* SCRIPT_LIB_SPRITE_H */
