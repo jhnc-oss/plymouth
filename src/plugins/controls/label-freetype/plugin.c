@@ -33,6 +33,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "ply-logger.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
 #include "ply-utils.h"
@@ -158,11 +159,12 @@ set_font_with_fallback (ply_label_plugin_control_t *label,
                         const char                 *fallback_font_path)
 {
         FT_Error error;
-        if (primary_font_path)
+        if (primary_font_path != NULL)
                 error = FT_New_Face (label->library, primary_font_path, 0, &label->face);
 
-        if (!fallback_font_path || error) {
-                printf ("label-ft: trying font fallback\n");
+        if (fallback_font_path != NULL && error != 0) {
+                ply_trace ("Could not load font '%s', trying fallback font '%s' (error %d)",
+                           primary_font_path?: "(unset)", fallback_font_path, (int) error);
                 error = FT_New_Face (label->library, fallback_font_path, 0, &label->face);
         }
 
