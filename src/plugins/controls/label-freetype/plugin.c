@@ -248,6 +248,9 @@ load_glyph (ply_label_plugin_control_t *label,
         wchar_t character;
         FT_Int32 load_flags = FT_LOAD_TARGET_LIGHT;
 
+        if (label->face == NULL)
+                return NULL;
+
         character_size = mbrtowc (&character, input_text, PLY_UTF8_CHARACTER_SIZE_MAX, NULL);
 
         if (character_size <= 0) {
@@ -428,6 +431,9 @@ finish_measuring_line (ply_label_plugin_control_t *label,
         ply_freetype_unit_t line_height;
         ply_rectangle_t *entry;
 
+        if (label->face == NULL)
+                return;
+
         line_height.as_integer = label->face->size->metrics.ascender + -label->face->size->metrics.descender;
 
         dimensions->x = label->area.x;
@@ -536,9 +542,6 @@ load_glyphs (ply_label_plugin_control_t *label,
                         return;
         }
 
-        /* Make sure that the first row fits */
-        glyph_y.as_integer += label->face->size->metrics.ascender;
-
         /* Go through each line */
         do {
                 bool should_stop;
@@ -583,6 +586,11 @@ load_glyphs (ply_label_plugin_control_t *label,
 
                 if (glyph == NULL)
                         continue;
+
+                if (is_first_character) {
+                        /* Move pen to the first character's base line */
+                        glyph_y.as_integer += label->face->size->metrics.ascender;
+                }
 
                 if (*current_character == '\n') {
                         if (action == PLY_LOAD_GLYPH_ACTION_MEASURE)
@@ -762,8 +770,11 @@ set_font_for_control (ply_label_plugin_control_t *label,
                         label->is_monospaced = false;
                 }
         }
-        if (error)
+        if (error) {
                 FT_Done_Face (label->face);
+                label->face = NULL;
+                return;
+        }
 
         /* Format is "Family 1[,Family 2[,..]] [25[px]]" .
          * [] means optional. */
