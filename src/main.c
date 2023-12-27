@@ -59,6 +59,8 @@
 #define BOOT_DURATION_FILE     PLYMOUTH_TIME_DIRECTORY "/boot-duration"
 #define SHUTDOWN_DURATION_FILE PLYMOUTH_TIME_DIRECTORY "/shutdown-duration"
 
+static int crash_fd = -1;
+
 typedef struct
 {
         const char    *keys;
@@ -1970,10 +1972,13 @@ check_verbosity (state_t *state)
                         ply_trace ("streaming debug output to %s instead of screen", stream);
                         fd = open (stream, O_RDWR | O_NOCTTY | O_CREAT, 0600);
 
-                        if (fd < 0)
+                        if (fd < 0) {
                                 ply_trace ("could not stream output to %s: %m", stream);
-                        else
+                        } else {
                                 ply_logger_set_output_fd (ply_logger_get_error_default (), fd);
+                                crash_fd = fd;
+                        }
+
                         free (stream);
                 } else {
                         const char *device;
@@ -2153,6 +2158,70 @@ dump_debug_buffer_to_file (void)
 
 #include <termios.h>
 #include <unistd.h>
+#include <execinfo.h>
+
+#define BACKTRACE_SIZE 1024
+#define MAPS_SIZE 8192
+#define BACKTRACE_FRAMES_TO_SKIP 2 /* write_backtrace and on_crash themselves */
+
+static void
+write_maps (int output_fd)
+{
+        char maps_buffer[MAPS_SIZE];
+        ssize_t bytes_read;
+        ssize_t line_start = 0, buffer_end = 0;
+        int fd;
+
+        write (output_fd, "maps:\n", strlen ("maps:\n"));
+        fd = open ("/proc/self/maps", O_RDONLY);
+
+        if (fd < 0)
+                return;
+
+        while ((bytes_read = read (fd, maps_buffer + buffer_end, MAPS_SIZE - buffer_end)) > 0) {
+                bytes_read += buffer_end;
+                buffer_end = 0;
+
+                for (ssize_t i = line_start; i < bytes_read; ++i) {
+                        if (maps_buffer[i] == '\n') {
+                                write (output_fd, maps_buffer + line_start, i - line_start + 1);
+                                line_start = i + 1;
+                        }
+                }
+
+                if (line_start < bytes_read) {
+                        memmove (maps_buffer, maps_buffer + line_start, bytes_read - line_start);
+                        buffer_end = bytes_read - line_start;
+                        line_start = 0;
+                } else {
+                        line_start = 0;
+                }
+        }
+
+        if (buffer_end > 0) {
+                write (output_fd, maps_buffer, buffer_end);
+        }
+
+        close (fd);
+}
+
+static void
+write_backtrace (int output_fd)
+{
+        void *addresses[BACKTRACE_SIZE];
+        int number_of_addresses;
+
+        write (output_fd, "backtrace:\n", strlen ("backtrace:\n"));
+        number_of_addresses = backtrace (addresses, BACKTRACE_SIZE);
+
+        if (number_of_addresses <= BACKTRACE_FRAMES_TO_SKIP)
+                return;
+
+        backtrace_symbols_fd (addresses + BACKTRACE_FRAMES_TO_SKIP,
+                              number_of_addresses - BACKTRACE_FRAMES_TO_SKIP,
+                              output_fd);
+}
+
 static void
 on_crash (int signum)
 {
@@ -2160,22 +2229,29 @@ on_crash (int signum)
         int fd;
         static const char *show_cursor_sequence = "\033[?25h";
 
-        fd = open ("/dev/tty1", O_RDWR | O_NOCTTY);
-        if (fd < 0) fd = open ("/dev/hvc0", O_RDWR | O_NOCTTY);
+        if (crash_fd != -1) {
+                fd = crash_fd;
+        } else {
+                fd = open ("/dev/tty1", O_RDWR | O_NOCTTY);
+                if (fd < 0) fd = open ("/dev/hvc0", O_RDWR | O_NOCTTY);
+        }
 
-        ioctl (fd, KDSETMODE, KD_TEXT);
+        if (fd >= 0) {
+                ioctl (fd, KDSETMODE, KD_TEXT);
 
-        write (fd, show_cursor_sequence, sizeof(show_cursor_sequence) - 1);
+                write (fd, show_cursor_sequence, sizeof(show_cursor_sequence) - 1);
 
-        tcgetattr (fd, &term_attributes);
+                tcgetattr (fd, &term_attributes);
 
-        term_attributes.c_iflag |= BRKINT | IGNPAR | ICRNL | IXON;
-        term_attributes.c_oflag |= OPOST;
-        term_attributes.c_lflag |= ECHO | ICANON | ISIG | IEXTEN;
+                term_attributes.c_iflag |= BRKINT | IGNPAR | ICRNL | IXON;
+                term_attributes.c_oflag |= OPOST;
+                term_attributes.c_lflag |= ECHO | ICANON | ISIG | IEXTEN;
 
-        tcsetattr (fd, TCSAFLUSH, &term_attributes);
+                tcsetattr (fd, TCSAFLUSH, &term_attributes);
 
-        close (fd);
+                write_maps (fd);
+                write_backtrace (fd);
+        }
 
         if (debug_buffer != NULL) {
                 dump_debug_buffer_to_file ();
