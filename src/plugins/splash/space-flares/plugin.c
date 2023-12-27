@@ -462,6 +462,9 @@ view_show_prompt_on_console_viewer (view_t     *view,
 {
         ply_boot_splash_plugin_t *plugin = view->plugin;
 
+        if (view->console_viewer == NULL)
+                return;
+
         if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_NORMAL)
                 ply_console_viewer_print (view->console_viewer, "\n");
 
