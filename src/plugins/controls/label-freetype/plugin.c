@@ -33,6 +33,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "ply-logger.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
 #include "ply-utils.h"
@@ -158,11 +159,12 @@ set_font_with_fallback (ply_label_plugin_control_t *label,
                         const char                 *fallback_font_path)
 {
         FT_Error error;
-        if (primary_font_path)
+        if (primary_font_path != NULL)
                 error = FT_New_Face (label->library, primary_font_path, 0, &label->face);
 
-        if (!fallback_font_path || error) {
-                printf ("label-ft: trying font fallback\n");
+        if (fallback_font_path != NULL && error != 0) {
+                ply_trace ("Could not load font '%s', trying fallback font '%s' (error %d)",
+                           primary_font_path?: "(unset)", fallback_font_path, (int) error);
                 error = FT_New_Face (label->library, fallback_font_path, 0, &label->face);
         }
 
@@ -247,6 +249,9 @@ load_glyph (ply_label_plugin_control_t *label,
         size_t character_size;
         wchar_t character;
         FT_Int32 load_flags = FT_LOAD_TARGET_LIGHT;
+
+        if (label->face == NULL)
+                return NULL;
 
         character_size = mbrtowc (&character, input_text, PLY_UTF8_CHARACTER_SIZE_MAX, NULL);
 
@@ -428,6 +433,9 @@ finish_measuring_line (ply_label_plugin_control_t *label,
         ply_freetype_unit_t line_height;
         ply_rectangle_t *entry;
 
+        if (label->face == NULL)
+                return;
+
         line_height.as_integer = label->face->size->metrics.ascender + -label->face->size->metrics.descender;
 
         dimensions->x = label->area.x;
@@ -536,9 +544,6 @@ load_glyphs (ply_label_plugin_control_t *label,
                         return;
         }
 
-        /* Make sure that the first row fits */
-        glyph_y.as_integer += label->face->size->metrics.ascender;
-
         /* Go through each line */
         do {
                 bool should_stop;
@@ -583,6 +588,11 @@ load_glyphs (ply_label_plugin_control_t *label,
 
                 if (glyph == NULL)
                         continue;
+
+                if (is_first_character) {
+                        /* Move pen to the first character's base line */
+                        glyph_y.as_integer += label->face->size->metrics.ascender;
+                }
 
                 if (*current_character == '\n') {
                         if (action == PLY_LOAD_GLYPH_ACTION_MEASURE)
@@ -762,8 +772,11 @@ set_font_for_control (ply_label_plugin_control_t *label,
                         label->is_monospaced = false;
                 }
         }
-        if (error)
+        if (error) {
                 FT_Done_Face (label->face);
+                label->face = NULL;
+                return;
+        }
 
         /* Format is "Family 1[,Family 2[,..]] [25[px]]" .
          * [] means optional. */
