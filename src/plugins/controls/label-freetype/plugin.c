@@ -780,6 +780,8 @@ set_font_for_control (ply_label_plugin_control_t *label,
         if (error) {
                 FT_Done_Face (label->face);
                 label->face = NULL;
+
+                ply_trace ("Could not load font, error %d", error);
                 return;
         }
 
