@@ -291,8 +291,7 @@ view_free (view_t *view)
         ply_label_free (view->title_label);
         ply_label_free (view->subtitle_label);
 
-        if (view->console_viewer)
-                ply_console_viewer_free (view->console_viewer);
+        ply_console_viewer_free (view->console_viewer);
 
         if (view->background_buffer != NULL)
                 ply_pixel_buffer_free (view->background_buffer);
@@ -1098,10 +1097,12 @@ view_hide_prompt (view_t *view)
         plugin = view->plugin;
 
         /* Obscure the password length in the scroll back */
-        if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
-                ply_console_viewer_clear_line (view->console_viewer);
+        if (view->console_viewer != NULL) {
+                if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
+                        ply_console_viewer_clear_line (view->console_viewer);
 
-        ply_console_viewer_print (view->console_viewer, "\n");
+                ply_console_viewer_print (view->console_viewer, "\n");
+        }
 
         ply_entry_hide (view->entry);
 
@@ -1759,7 +1760,7 @@ on_draw (view_t             *view,
                                      pixel_buffer,
                                      x, y, width, height);
 
-        if (!plugin->plugin_console_messages_updating && view->console_viewer)
+        if (!plugin->plugin_console_messages_updating && view->console_viewer != NULL)
                 ply_console_viewer_draw_area (view->console_viewer, pixel_buffer, x, y, width, height);
 }
 
@@ -1838,7 +1839,8 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                         view = ply_list_node_get_data (node);
                         next_node = ply_list_get_next_node (plugin->views, node);
 
-                        ply_console_viewer_convert_boot_buffer (view->console_viewer, plugin->boot_buffer);
+                        if (view->console_viewer != NULL)
+                                ply_console_viewer_convert_boot_buffer (view->console_viewer, plugin->boot_buffer);
 
                         node = next_node;
                 }
@@ -2144,7 +2146,8 @@ view_show_message (view_t     *view,
         ply_label_show (view->message_label, view->display, x, y);
         ply_pixel_display_draw_area (view->display, x, y, width, height);
 
-        ply_console_viewer_print (view->console_viewer, "\n%s\n", message);
+        if (view->console_viewer != NULL)
+                ply_console_viewer_print (view->console_viewer, "\n%s\n", message);
 }
 
 static void
@@ -2290,7 +2293,8 @@ display_console_messages (ply_boot_splash_plugin_t *plugin)
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
                 view = ply_list_node_get_data (node);
-                ply_console_viewer_show (view->console_viewer, view->display);
+                if (view->console_viewer != NULL)
+                        ply_console_viewer_show (view->console_viewer, view->display);
                 node = ply_list_get_next_node (plugin->views, node);
         }
         plugin->plugin_console_messages_updating = false;
@@ -2320,7 +2324,8 @@ hide_console_messages (ply_boot_splash_plugin_t *plugin)
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
                 view = ply_list_node_get_data (node);
-                ply_console_viewer_hide (view->console_viewer);
+                if (view->console_viewer != NULL)
+                        ply_console_viewer_hide (view->console_viewer);
                 node = ply_list_get_next_node (plugin->views, node);
         }
         plugin->plugin_console_messages_updating = false;
@@ -2346,7 +2351,8 @@ on_boot_output (ply_boot_splash_plugin_t *plugin,
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
                 view = ply_list_node_get_data (node);
-                ply_console_viewer_write (view->console_viewer, output, size);
+                if (view->console_viewer != NULL)
+                        ply_console_viewer_write (view->console_viewer, output, size);
                 node = ply_list_get_next_node (plugin->views, node);
         }
 }
