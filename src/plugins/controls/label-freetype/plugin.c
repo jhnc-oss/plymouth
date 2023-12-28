@@ -102,6 +102,7 @@ struct _ply_label_plugin_control
 
         uint32_t              is_hidden : 1;
         uint32_t              is_monospaced : 1;
+        uint32_t              needs_size_update : 1;
 };
 
 typedef enum
@@ -116,6 +117,9 @@ static void set_font_for_control (ply_label_plugin_control_t *label,
 static void load_glyphs (ply_label_plugin_control_t *label,
                          ply_load_glyph_action_t     action,
                          ply_pixel_buffer_t         *pixel_buffer);
+
+static void size_control (ply_label_plugin_control_t *label,
+                          bool                        force);
 
 /* Query fontconfig, if available, for the default font. */
 static const char *
@@ -236,12 +240,14 @@ destroy_control (ply_label_plugin_control_t *label)
 static long
 get_width_of_control (ply_label_plugin_control_t *label)
 {
+        size_control (label, false);
         return label->area.width;
 }
 
 static long
 get_height_of_control (ply_label_plugin_control_t *label)
 {
+        size_control (label, false);
         return label->area.height;
 }
 
@@ -277,8 +283,17 @@ load_glyph (ply_label_plugin_control_t *label,
 }
 
 static void
-size_control (ply_label_plugin_control_t *label)
+size_control (ply_label_plugin_control_t *label,
+              bool                        force)
 {
+        if (!force && !label->needs_size_update)
+                return;
+
+        if (!force && label->is_hidden) {
+                label->needs_size_update = true;
+                return;
+        }
+
         if (label->rich_text == NULL && label->text == NULL) {
                 label->area.width = 0;
                 label->area.height = 0;
@@ -286,6 +301,7 @@ size_control (ply_label_plugin_control_t *label)
         }
 
         load_glyphs (label, PLY_LOAD_GLYPH_ACTION_MEASURE, NULL);
+        label->needs_size_update = false;
 }
 
 static void
@@ -295,7 +311,7 @@ trigger_redraw (ply_label_plugin_control_t *label,
         ply_rectangle_t dirty_area = label->area;
 
         if (adjust_size)
-                size_control (label);
+                size_control (label, true);
 
         if (label->is_hidden || label->display == NULL)
                 return;
@@ -425,7 +441,7 @@ update_scale_factor_from_pixel_buffer (ply_label_plugin_control_t *label,
 
         label->scale_factor = device_scale;
         set_font_for_control (label, label->font?: "Sans");
-        size_control (label);
+        size_control (label, true);
 }
 
 static void
@@ -689,6 +705,7 @@ set_alignment_for_control (ply_label_plugin_control_t *label,
 {
         if (label->alignment != alignment) {
                 label->alignment = alignment;
+                label->needs_size_update = true;
                 trigger_redraw (label, true);
         }
 }
@@ -699,6 +716,7 @@ set_width_for_control (ply_label_plugin_control_t *label,
 {
         if (label->width != width) {
                 label->width = width;
+                label->needs_size_update = true;
                 trigger_redraw (label, true);
         }
 }
@@ -726,6 +744,7 @@ set_text_for_control (ply_label_plugin_control_t *label,
         if (label->text != text) {
                 clear_text (label);
                 label->text = strdup (text);
+                label->needs_size_update = true;
                 trigger_redraw (label, true);
         }
 }
@@ -741,6 +760,7 @@ set_rich_text_for_control (ply_label_plugin_control_t *label,
         ply_rich_text_take_reference (rich_text);
         label->span = *span;
 
+        label->needs_size_update = true;
         trigger_redraw (label, true);
 }
 
@@ -757,6 +777,8 @@ set_font_for_control (ply_label_plugin_control_t *label,
         ply_freetype_unit_t size = { .as_points_unit = { .points = 12 } };
         int dpi = 96;
         bool size_in_pixels = false;
+
+        label->needs_size_update = true;
 
         new_font = strdup (font);
         free (label->font);
@@ -809,7 +831,6 @@ set_font_for_control (ply_label_plugin_control_t *label,
                 FT_Set_Char_Size (label->face, size.as_integer, 0, dpi * label->scale_factor, 0);
 
         /* Ignore errors, to keep the current size. */
-
         trigger_redraw (label, true);
 }
 
@@ -843,7 +864,7 @@ show_control (ply_label_plugin_control_t *label,
 
         label->is_hidden = false;
 
-        size_control (label);
+        size_control (label, false);
 
         if (!label->is_hidden && label->display != NULL)
                 ply_pixel_display_draw_area (label->display,
