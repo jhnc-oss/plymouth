@@ -165,6 +165,11 @@ set_font_with_fallback (ply_label_plugin_control_t *label,
         if (fallback_font_path != NULL && error != 0) {
                 ply_trace ("Could not load font '%s', trying fallback font '%s' (error %d)",
                            primary_font_path?: "(unset)", fallback_font_path, (int) error);
+
+                if (!ply_file_exists (fallback_font_path)) {
+                        ply_trace ("Fallback font '%s' does not exist!", fallback_font_path);
+                        return error;
+                }
                 error = FT_New_Face (label->library, fallback_font_path, 0, &label->face);
         }
 
