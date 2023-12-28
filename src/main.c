@@ -2455,6 +2455,7 @@ main (int    argc,
 
         signal (SIGABRT, on_crash);
         signal (SIGSEGV, on_crash);
+        signal (SIGFPE, on_crash);
 
         if (graphical_boot || ply_kernel_command_line_has_argument ("plymouth.graphical")) {
                 state.should_force_default_splash = true;
