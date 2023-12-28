@@ -83,7 +83,7 @@ ply_console_viewer_preferred (void)
                 goto out;
         } else {
                 ply_trace ("Using console viewer instead of kernel framebuffer console");
-                preference = PLY_CONSOLE_VIEWER_PREFERENCE_NO_VIEWER;
+                preference = PLY_CONSOLE_VIEWER_PREFERENCE_VIEWER;
                 goto out;
         }
 
