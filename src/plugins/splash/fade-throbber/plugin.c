@@ -209,10 +209,12 @@ view_hide_prompt (view_t *view)
         plugin = view->plugin;
 
         /* Obscure the password length in the scroll back */
-        if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
-                ply_console_viewer_clear_line (view->console_viewer);
+        if (view->console_viewer != NULL) {
+                if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
+                        ply_console_viewer_clear_line (view->console_viewer);
 
-        ply_console_viewer_print (view->console_viewer, "\n");
+                ply_console_viewer_print (view->console_viewer, "\n");
+        }
 
         if (ply_entry_is_hidden (view->entry))
                 return;
@@ -350,8 +352,7 @@ view_free (view_t *view)
         ply_label_free (view->message_label);
         free_stars (view);
 
-        if (view->console_viewer)
-                ply_console_viewer_free (view->console_viewer);
+        ply_console_viewer_free (view->console_viewer);
 
         ply_pixel_display_set_draw_handler (view->display, NULL, NULL);
 
@@ -850,9 +851,8 @@ on_draw (view_t             *view,
                                      x, y, width, height);
         }
 
-        if (plugin->plugin_console_messages_updating == false && view->console_viewer) {
+        if (!plugin->plugin_console_messages_updating && view->console_viewer != NULL)
                 ply_console_viewer_draw_area (view->console_viewer, pixel_buffer, x, y, width, height);
-        }
 }
 
 static void
@@ -926,7 +926,8 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                         view = ply_list_node_get_data (node);
                         next_node = ply_list_get_next_node (plugin->views, node);
 
-                        ply_console_viewer_convert_boot_buffer (view->console_viewer, plugin->boot_buffer);
+                        if (view->console_viewer != NULL)
+                                ply_console_viewer_convert_boot_buffer (view->console_viewer, plugin->boot_buffer);
 
                         node = next_node;
                 }
@@ -1081,7 +1082,8 @@ show_message (ply_boot_splash_plugin_t *plugin,
                                              ply_label_get_height (view->message_label));
 
 
-                ply_console_viewer_print (view->console_viewer, "\n%s\n", message);
+                if (view->console_viewer != NULL)
+                        ply_console_viewer_print (view->console_viewer, "\n%s\n", message);
                 node = next_node;
         }
 }
