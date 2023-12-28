@@ -120,7 +120,7 @@ ply_console_viewer_new (ply_pixel_display_t *display,
         line_count = ply_pixel_display_get_height (display) / console_viewer->font_height;
 
         /* Display at least one line */
-        if (line_count < 0)
+        if (line_count == 0)
                 line_count = 1;
 
         ply_label_free (measure_label);
