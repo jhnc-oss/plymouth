@@ -120,7 +120,7 @@ ply_console_viewer_new (ply_pixel_display_t *display,
         line_count = ply_pixel_display_get_height (display) / console_viewer->font_height;
 
         /* Display at least one line */
-        if (line_count < 0)
+        if (line_count == 0)
                 line_count = 1;
 
         ply_label_free (measure_label);
@@ -146,6 +146,9 @@ ply_console_viewer_free (ply_console_viewer_t *console_viewer)
 {
         ply_list_node_t *node;
         ply_label_t *console_message_label;
+
+        if (console_viewer == NULL)
+                return;
 
         ply_list_foreach (console_viewer->message_labels, node) {
                 console_message_label = ply_list_node_get_data (node);
