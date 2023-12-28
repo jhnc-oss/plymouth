@@ -518,7 +518,7 @@ ply_file_exists (const char *file)
 {
         struct stat file_info;
 
-        if (lstat (file, &file_info) < 0)
+        if (stat (file, &file_info) < 0)
                 return false;
 
         return S_ISREG (file_info.st_mode);
