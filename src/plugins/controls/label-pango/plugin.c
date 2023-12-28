@@ -316,8 +316,8 @@ size_control (ply_label_plugin_control_t *label,
 {
         cairo_t *cairo_context;
         PangoLayout *pango_layout;
-        int text_width;
-        int text_height;
+        int text_width = 0;
+        int text_height = 0;
 
         if (!force && !label->needs_size_update)
                 return; /* Size already is up to date */
@@ -330,10 +330,16 @@ size_control (ply_label_plugin_control_t *label,
         cairo_context = get_cairo_context_for_sizing (label);
 
         pango_layout = init_pango_text_layout (cairo_context, label->text, label->font, label->alignment, label->attribute_list, label->width);
+        pango_layout_get_pixel_size (pango_layout, &text_width, &text_height);
 
-        pango_layout_get_size (pango_layout, &text_width, &text_height);
-        label->area.width = (long) ((double) text_width / PANGO_SCALE);
-        label->area.height = (long) ((double) text_height / PANGO_SCALE);
+        if (label->width < 0) {
+                g_object_unref (pango_layout);
+                pango_layout = init_pango_text_layout (cairo_context, label->text, label->font, label->alignment, label->attribute_list, text_width);
+                pango_layout_get_pixel_size (pango_layout, &text_width, &text_height);
+        }
+
+        label->area.width = text_width;
+        label->area.height = text_height;
 
         g_object_unref (pango_layout);
         cairo_destroy (cairo_context);
