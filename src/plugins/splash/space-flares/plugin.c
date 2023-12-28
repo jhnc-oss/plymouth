@@ -224,7 +224,6 @@ static void on_boot_output (ply_boot_splash_plugin_t *plugin,
 static void toggle_console_messages (ply_boot_splash_plugin_t *plugin);
 static void display_console_messages (ply_boot_splash_plugin_t *plugin);
 static void hide_console_messages (ply_boot_splash_plugin_t *plugin);
-static void unhide_console_messages (ply_boot_splash_plugin_t *plugin);
 
 static view_t *
 view_new (ply_boot_splash_plugin_t *plugin,
@@ -266,8 +265,7 @@ view_free (view_t *view)
         view_free_sprites (view);
         ply_list_free (view->sprites);
 
-        if (view->console_viewer)
-                ply_console_viewer_free (view->console_viewer);
+        ply_console_viewer_free (view->console_viewer);
 
         ply_image_free (view->scaled_background_image);
 
@@ -541,10 +539,12 @@ view_hide_prompt (view_t *view)
         plugin = view->plugin;
 
         /* Obscure the password length in the scroll back */
-        if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
-                ply_console_viewer_clear_line (view->console_viewer);
+        if (view->console_viewer != NULL) {
+                if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
+                        ply_console_viewer_clear_line (view->console_viewer);
 
-        ply_console_viewer_print (view->console_viewer, "\n");
+                ply_console_viewer_print (view->console_viewer, "\n");
+        }
 
         ply_entry_hide (view->entry);
         ply_label_hide (view->label);
@@ -1450,9 +1450,8 @@ on_draw (view_t             *view,
                                      pixel_buffer,
                                      x, y, width, height);
 
-        if (plugin->plugin_console_messages_updating == false && view->console_viewer) {
+        if (!plugin->plugin_console_messages_updating && view->console_viewer != NULL)
                 ply_console_viewer_draw_area (view->console_viewer, pixel_buffer, x, y, width, height);
-        }
 }
 
 static void
@@ -1754,7 +1753,8 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                         view = ply_list_node_get_data (node);
                         next_node = ply_list_get_next_node (plugin->views, node);
 
-                        ply_console_viewer_convert_boot_buffer (view->console_viewer, plugin->boot_buffer);
+                        if (view->console_viewer != NULL)
+                                ply_console_viewer_convert_boot_buffer (view->console_viewer, plugin->boot_buffer);
 
                         node = next_node;
                 }
@@ -1912,7 +1912,9 @@ show_message (ply_boot_splash_plugin_t *plugin,
                 next_node = ply_list_get_next_node (plugin->views, node);
                 ply_label_set_text (view->message_label, message);
                 ply_label_show (view->message_label, view->display, 10, 10);
-                ply_console_viewer_print (view->console_viewer, "\n%s\n", message);
+
+                if (view->console_viewer != NULL)
+                        ply_console_viewer_print (view->console_viewer, "\n%s\n", message);
 
                 ply_pixel_display_draw_area (view->display, 10, 10,
                                              ply_label_get_width (view->message_label),
@@ -2011,7 +2013,8 @@ toggle_console_messages (ply_boot_splash_plugin_t *plugin)
                 plugin->should_show_console_messages = false;
                 hide_console_messages (plugin);
         } else {
-                unhide_console_messages (plugin);
+                plugin->should_show_console_messages = true;
+                display_console_messages (plugin);
         }
 }
 
@@ -2030,7 +2033,8 @@ display_console_messages (ply_boot_splash_plugin_t *plugin)
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
                 view = ply_list_node_get_data (node);
-                ply_console_viewer_show (view->console_viewer, view->display);
+                if (view->console_viewer != NULL)
+                        ply_console_viewer_show (view->console_viewer, view->display);
                 node = ply_list_get_next_node (plugin->views, node);
         }
         plugin->plugin_console_messages_updating = false;
@@ -2038,13 +2042,6 @@ display_console_messages (ply_boot_splash_plugin_t *plugin)
         redraw_views (plugin);
         process_needed_redraws (plugin);
         unpause_views (plugin);
-}
-
-static void
-unhide_console_messages (ply_boot_splash_plugin_t *plugin)
-{
-        plugin->should_show_console_messages = true;
-        display_console_messages (plugin);
 }
 
 static void
