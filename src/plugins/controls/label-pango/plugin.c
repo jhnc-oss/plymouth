@@ -319,7 +319,7 @@ size_control (ply_label_plugin_control_t *label,
         int text_width;
         int text_height;
 
-        if (force && !label->needs_size_update)
+        if (!force && !label->needs_size_update)
                 return; /* Size already is up to date */
 
         if (!force && label->is_hidden) {
