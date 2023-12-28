@@ -289,11 +289,6 @@ size_control (ply_label_plugin_control_t *label,
         if (!force && !label->needs_size_update)
                 return;
 
-        if (!force && label->is_hidden) {
-                label->needs_size_update = true;
-                return;
-        }
-
         if (label->rich_text == NULL && label->text == NULL) {
                 label->area.width = 0;
                 label->area.height = 0;
