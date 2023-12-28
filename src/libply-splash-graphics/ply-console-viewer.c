@@ -147,6 +147,9 @@ ply_console_viewer_free (ply_console_viewer_t *console_viewer)
         ply_list_node_t *node;
         ply_label_t *console_message_label;
 
+        if (console_viewer == NULL)
+                return;
+
         ply_list_foreach (console_viewer->message_labels, node) {
                 console_message_label = ply_list_node_get_data (node);
                 ply_label_free (console_message_label);
