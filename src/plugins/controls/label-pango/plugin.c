@@ -42,6 +42,7 @@
 #include <cairo.h>
 #include <pango/pangocairo.h>
 
+#include "ply-logger.h"
 #include "ply-terminal.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
@@ -337,6 +338,8 @@ size_control (ply_label_plugin_control_t *label,
                 pango_layout = init_pango_text_layout (cairo_context, label->text, label->font, label->alignment, label->attribute_list, text_width);
                 pango_layout_get_pixel_size (pango_layout, &text_width, &text_height);
         }
+
+        ply_trace ("Text '%s' has dimensions %dx%d", label->text, text_width, text_height);
 
         label->area.width = text_width;
         label->area.height = text_height;
