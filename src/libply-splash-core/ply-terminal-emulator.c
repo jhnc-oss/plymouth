@@ -28,6 +28,7 @@
 #include <stdio.h>
 
 #define PLY_TERMINAL_EMULATOR_SPACES_PER_TAB 8
+#define PLY_TERMINAL_CONTROL_CODE_LETTER_OFFSET 64
 
 /* Characters between 64 to 157 end the escape sequence strings (in testing)
  *  for i in $(seq 1 255)
@@ -119,6 +120,8 @@ struct _ply_terminal_emulator
 
         ply_rich_text_t                                   *current_line;
         ply_rich_text_character_style_t                    current_style;
+
+        uint32_t                                           show_escape_sequences : 1;
 };
 
 typedef ply_terminal_emulator_break_string_t (*ply_terminal_emulator_dispatch_handler_t)();
@@ -176,6 +179,9 @@ ply_terminal_emulator_new (size_t number_of_rows,
         terminal_emulator->pending_commands = ply_list_new ();
 
         ply_rich_text_character_style_initialize (&terminal_emulator->current_style);
+
+        if (ply_kernel_command_line_has_argument ("plymouth.debug-escape-sequences"))
+                terminal_emulator->show_escape_sequences = true;
 
         return terminal_emulator;
 }
@@ -1136,6 +1142,21 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
 
         while (i < input_length) {
                 ply_utf8_character_byte_type_t character_byte_type;
+                char debug_string[1] = "X";
+                const char *input_bytes = &input[i];
+
+                if (terminal_emulator->show_escape_sequences) {
+                        if (iscntrl (*input_bytes) && *input_bytes != '\n' &&
+                            (input_bytes[0] != '\e' || ((i + 1 < input_length) && input_bytes[1] == '['))) {
+                                ply_buffer_clear (terminal_emulator->pending_character);
+                                ply_buffer_append_bytes (terminal_emulator->pending_character, "^", 1);
+                                terminal_emulator->pending_character_size = 1;
+                                ply_terminal_emulator_flush_pending_character_to_line (terminal_emulator);
+
+                                debug_string[0] = *input_bytes + PLY_TERMINAL_CONTROL_CODE_LETTER_OFFSET;
+                                input_bytes = debug_string;
+                        }
+                }
 
                 if (break_string == PLY_TERMINAL_EMULATOR_BREAK_STRING && terminal_emulator->state == PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
                         break_string = PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE;
@@ -1144,7 +1165,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
 
                 terminal_emulator->break_action = PLY_TERMINAL_EMULATOR_BREAK_STRING_ACTION_PRESERVE_CURSOR_COLUMN;
 
-                character_byte_type = ply_utf8_character_get_byte_type (input[i]);
+                character_byte_type = ply_utf8_character_get_byte_type (*input_bytes);
 
                 if (character_byte_type != PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION)
                         ply_buffer_clear (terminal_emulator->pending_character);
@@ -1162,7 +1183,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                         terminal_emulator->pending_character_state = PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE;
                         terminal_emulator->pending_character_size = ply_utf8_character_get_size_from_byte_type (character_byte_type);
 
-                        ply_buffer_append_bytes (terminal_emulator->pending_character, &input[i], 1);
+                        ply_buffer_append_bytes (terminal_emulator->pending_character, input_bytes, 1);
 
                         i++;
                         continue;
@@ -1180,7 +1201,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                         if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE) {
                                 /* Handle the auxiliary unicode byte if handling a multi-byte character */
                                 if (terminal_emulator->pending_character_state == PLY_TERMINAL_EMULATOR_UTF8_CHARACTER_PARSE_STATE_MULTI_BYTE)
-                                        ply_buffer_append_bytes (terminal_emulator->pending_character, &input[i], 1);
+                                        ply_buffer_append_bytes (terminal_emulator->pending_character, input_bytes, 1);
 
                                 i++;
 
@@ -1215,22 +1236,22 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
 
                 switch (terminal_emulator->state) {
                 case PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED:
-                        if (input[i] == '\e') {
+                        if (*input_bytes == '\e') {
                                 terminal_emulator->staged_command = ply_terminal_emulator_command_new ();
 
                                 terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_ESCAPED;
-                        } else if (iscntrl (input[i]) && input[i] != '\e') {
+                        } else if (iscntrl (*input_bytes) && *input_bytes != '\e') {
                                 terminal_emulator->staged_command = ply_terminal_emulator_command_new ();
-                                terminal_emulator->staged_command->code = input[i];
+                                terminal_emulator->staged_command->code = *input_bytes;
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_CONTROL_CHARACTER;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
                         } else {
-                                ply_buffer_append_bytes (terminal_emulator->pending_character, &input[i], 1);
+                                ply_buffer_append_bytes (terminal_emulator->pending_character, input_bytes, 1);
                                 break_string = ply_terminal_emulator_flush_pending_character_to_line (terminal_emulator);
                         }
                         break;
                 case PLY_TERMINAL_EMULATOR_TERMINAL_STATE_ESCAPED:
-                        if (input[i] == '[') {
+                        if (*input_bytes == '[') {
                                 terminal_emulator->pending_parameter_value = 0;
                                 terminal_emulator->staged_command->parameters = ply_array_new (PLY_ARRAY_ELEMENT_TYPE_UINT32);
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_CONTROL_SEQUENCE;
@@ -1240,7 +1261,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
 
                                 terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_CONTROL_SEQUENCE_PARAMETER;
                         } else {
-                                terminal_emulator->staged_command->code = input[i];
+                                terminal_emulator->staged_command->code = *input_bytes;
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_ESCAPE;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
                                 terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED;
@@ -1248,10 +1269,10 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                         break;
                 case PLY_TERMINAL_EMULATOR_TERMINAL_STATE_CONTROL_SEQUENCE_PARAMETER:
                         /* Characters that end the control sequence, and define the command */
-                        if ((unsigned char) input[i] >= PLY_TERMINAL_ESCAPE_CODE_COMMAND_MINIMUM &&
-                            (unsigned char) input[i] <= PLY_TERMINAL_ESCAPE_CODE_COMMAND_MAXIMUM) {
+                        if ((unsigned char) *input_bytes >= PLY_TERMINAL_ESCAPE_CODE_COMMAND_MINIMUM &&
+                            (unsigned char) *input_bytes <= PLY_TERMINAL_ESCAPE_CODE_COMMAND_MAXIMUM) {
                                 terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED;
-                                terminal_emulator->staged_command->code = input[i];
+                                terminal_emulator->staged_command->code = *input_bytes;
 
 
                                 ply_array_add_uint32_element (terminal_emulator->staged_command->parameters, terminal_emulator->pending_parameter_value);
@@ -1259,19 +1280,19 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
 
                                 break;
-                        } else if (iscntrl (input[i]) && input[i] != '\e') {
+                        } else if (iscntrl (*input_bytes) && *input_bytes != '\e') {
                                 ply_terminal_emulator_command_t *nested_command = ply_terminal_emulator_command_new ();
-                                nested_command->code = input[i];
+                                nested_command->code = *input_bytes;
                                 nested_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_CONTROL_CHARACTER;
                                 ply_list_append_data (terminal_emulator->pending_commands, nested_command);
-                        } else if (input[i] == ';' || (isdigit (input[i]))) {
-                                if (isdigit (input[i])) {
+                        } else if (*input_bytes == ';' || (isdigit (*input_bytes))) {
+                                if (isdigit (*input_bytes)) {
                                         /* If the previous character was an integer, and this one is an integer, it is probably the next digit */
                                         terminal_emulator->pending_parameter_value = terminal_emulator->pending_parameter_value * 10;
-                                        terminal_emulator->pending_parameter_value += input[i] - '0';
+                                        terminal_emulator->pending_parameter_value += *input_bytes - '0';
 
                                         terminal_emulator->last_parameter_was_integer = true;
-                                } else if (input[i] == ';') {
+                                } else if (*input_bytes == ';') {
                                         /* Double ;;'s imply a 0 */
                                         if (terminal_emulator->last_parameter_was_integer == false) {
                                                 ply_array_add_uint32_element (terminal_emulator->staged_command->parameters, 0);
