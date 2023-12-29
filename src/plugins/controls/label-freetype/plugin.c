@@ -537,6 +537,8 @@ load_glyphs (ply_label_plugin_control_t *label,
                 line_dimensions = alloca (sizeof(ply_rectangle_t));
                 line_dimensions->x = label->area.x;
                 line_dimensions->y = label->area.y;
+                line_dimensions->width = 0;
+                line_dimensions->height = 0;
                 label->area.width = 0;
                 label->area.height = 0;
         } else if (ply_array_get_size (label->dimensions_of_lines) == 0) {
