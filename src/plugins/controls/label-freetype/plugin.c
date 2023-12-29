@@ -660,8 +660,22 @@ load_glyphs (ply_label_plugin_control_t *label,
         } while (true);
 
         if (action == PLY_LOAD_GLYPH_ACTION_MEASURE) {
-                if (!is_first_character)
+                if (!is_first_character) {
+                        char *text = NULL;
+
                         finish_measuring_line (label, &glyph_x, &glyph_y, line_dimensions);
+
+                        if (ply_is_tracing ()) {
+                                if (label->rich_text != NULL)
+                                        text = ply_rich_text_get_string (label->rich_text, &label->span);
+
+                                ply_trace ("Text '%s' has dimensions %ldx%ld", text?: label->text,
+                                           line_dimensions->width,
+                                           line_dimensions->height);
+
+                                free (text);
+                        }
+                }
 
                 align_lines (label);
         }
