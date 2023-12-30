@@ -1799,10 +1799,8 @@ on_terminal_key_event (ply_renderer_input_source_t *input_source)
         ply_renderer_backend_t *backend = input_source->backend;
         int terminal_fd;
 
-        if (using_input_device (input_source)) {
-                ply_terminal_flush_input (backend->terminal);
+        if (using_input_device (input_source))
                 return;
-        }
 
         terminal_fd = ply_terminal_get_fd (backend->terminal);
 
@@ -1867,6 +1865,8 @@ watch_input_device (ply_renderer_backend_t *backend,
                                           (ply_input_device_input_handler_t) on_input_device_key,
                                           (ply_input_device_leds_changed_handler_t) on_input_leds_changed,
                                           &backend->input_source);
+
+        ply_terminal_set_disabled_input (backend->terminal);
 }
 
 static void
@@ -1941,6 +1941,7 @@ close_input_source (ply_renderer_backend_t      *backend,
                                                                   (ply_input_device_leds_changed_handler_t) on_input_leds_changed,
                                                                   &backend->input_source);
                 }
+                ply_terminal_set_unbuffered_input (backend->terminal);
         }
 
         if (input_source->terminal_input_watch != NULL) {
