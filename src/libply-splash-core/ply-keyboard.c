@@ -260,9 +260,16 @@ on_key_event (ply_keyboard_t *keyboard,
 {
         const char *bytes;
         size_t size, i;
+        bool debug_key_events = false;
+
+        if (ply_kernel_command_line_has_argument ("plymouth.debug-key-events"))
+                debug_key_events = true;
 
         bytes = ply_buffer_get_bytes (buffer);
         size = ply_buffer_get_size (buffer);
+
+        if (debug_key_events)
+                ply_trace ("key input buffer is %ld bytes [%s]", size, bytes);
 
         i = 0;
         while (i < size) {
@@ -276,6 +283,8 @@ on_key_event (ply_keyboard_t *keyboard,
                 if (bytes_left >= FUNCTION_KEY_SEQUENCE_MINIMUM_LENGTH &&
                     strncmp (bytes + i, FUNCTION_KEY_SEQUENCE_PREFIX,
                              strlen (FUNCTION_KEY_SEQUENCE_PREFIX)) == 0) {
+                        if (debug_key_events)
+                                ply_trace ("Function key detected");
                         /* Special case - CSI [ after which the next character
                          * is a function key
                          */
@@ -286,6 +295,10 @@ on_key_event (ply_keyboard_t *keyboard,
                            strncmp (bytes + i, CSI_SEQUENCE_PREFIX,
                                     strlen (CSI_SEQUENCE_PREFIX)) == 0) {
                         ssize_t csi_seq_size;
+
+                        if (debug_key_events)
+                                ply_trace ("Control sequence detected");
+
                         csi_seq_size = 0;
                         for (size_t j = strlen (CSI_SEQUENCE_PREFIX); j < bytes_left; j++) {
                                 if ((bytes[i + j] >= 0x40) &&
@@ -310,22 +323,33 @@ on_key_event (ply_keyboard_t *keyboard,
 
                 character_byte_type = ply_utf8_character_get_byte_type (bytes[i]);
 
-                if (PLY_UTF8_CHARACTER_BYTE_TYPE_IS_NOT_LEADING (character_byte_type))
+                if (PLY_UTF8_CHARACTER_BYTE_TYPE_IS_NOT_LEADING (character_byte_type)) {
+                        if (debug_key_events)
+                                ply_trace ("byte %ld from key input buffer is unexpectedly not the start of a character", i);
                         break;
+                }
 
                 /* If we're at a NUL character walk through it
                  */
                 if (character_byte_type == PLY_UTF8_CHARACTER_BYTE_TYPE_END_OF_STRING) {
+                        if (debug_key_events)
+                                ply_trace ("byte %ld from key input buffer is unexpectedly a NUL byte", i);
                         i++;
                         continue;
                 }
 
                 character_size = ply_utf8_character_get_size_from_byte_type (character_byte_type);
 
-                if (character_size > bytes_left)
+                if (character_size > bytes_left) {
+                        if (debug_key_events)
+                                ply_trace ("byte %lu from key input buffer is character of size %ld but there are only %lu bytes left", i, character_size, bytes_left);
                         break;
+                }
 
                 keyboard_input = strndup (bytes + i, character_size);
+
+                if (debug_key_events)
+                        ply_trace ("Processing input '%s'", keyboard_input);
 
                 process_keyboard_input (keyboard, keyboard_input, character_size);
 
@@ -334,8 +358,14 @@ on_key_event (ply_keyboard_t *keyboard,
                 free (keyboard_input);
         }
 
-        if (i > 0)
+        if (i > 0) {
                 ply_buffer_remove_bytes (buffer, i);
+
+                if (debug_key_events) {
+                        bytes = ply_buffer_get_bytes (buffer);
+                        ply_trace ("Removed %ld bytes from key input buffer, now [%s]", i, bytes);
+                }
+        }
 }
 
 static bool
@@ -343,9 +373,13 @@ ply_keyboard_watch_for_renderer_input (ply_keyboard_t *keyboard)
 {
         assert (keyboard != NULL);
 
+        ply_trace ("Watching for input from renderer");
+
         if (!ply_renderer_open_input_source (keyboard->provider.if_renderer->renderer,
-                                             keyboard->provider.if_renderer->input_source))
+                                             keyboard->provider.if_renderer->input_source)) {
+                ply_trace ("Could not open input source");
                 return false;
+        }
 
         ply_renderer_set_handler_for_input_source (keyboard->provider.if_renderer->renderer,
                                                    keyboard->provider.if_renderer->input_source,
@@ -358,6 +392,8 @@ ply_keyboard_watch_for_renderer_input (ply_keyboard_t *keyboard)
 static void
 ply_keyboard_stop_watching_for_renderer_input (ply_keyboard_t *keyboard)
 {
+        ply_trace ("Stopping watching for input from renderer");
+
         ply_renderer_set_handler_for_input_source (keyboard->provider.if_renderer->renderer,
                                                    keyboard->provider.if_renderer->input_source,
                                                    (ply_renderer_input_source_handler_t)
