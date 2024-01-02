@@ -373,7 +373,7 @@ ply_keyboard_watch_for_renderer_input (ply_keyboard_t *keyboard)
 {
         assert (keyboard != NULL);
 
-        ply_trace ("Watching for input from renderer");
+        ply_trace ("Watching for keyboard input from renderer");
 
         if (!ply_renderer_open_input_source (keyboard->provider.if_renderer->renderer,
                                              keyboard->provider.if_renderer->input_source)) {
@@ -392,7 +392,7 @@ ply_keyboard_watch_for_renderer_input (ply_keyboard_t *keyboard)
 static void
 ply_keyboard_stop_watching_for_renderer_input (ply_keyboard_t *keyboard)
 {
-        ply_trace ("Stopping watching for input from renderer");
+        ply_trace ("No longer watching for keyboard input from renderer");
 
         ply_renderer_set_handler_for_input_source (keyboard->provider.if_renderer->renderer,
                                                    keyboard->provider.if_renderer->input_source,
@@ -414,6 +414,9 @@ on_terminal_data (ply_keyboard_t *keyboard)
 {
         int terminal_fd;
 
+        if (ply_kernel_command_line_has_argument ("plymouth.debug-key-events"))
+                ply_trace ("New keyboard data from terminal");
+
         terminal_fd = ply_terminal_get_fd (keyboard->provider.if_terminal->terminal);
         ply_buffer_append_from_fd (keyboard->provider.if_terminal->key_buffer,
                                    terminal_fd);
@@ -434,6 +437,8 @@ ply_keyboard_watch_for_terminal_input (ply_keyboard_t *keyboard)
                 return false;
         }
 
+        ply_trace ("watching for keyboard input from terminal");
+
         ply_terminal_watch_for_input (keyboard->provider.if_terminal->terminal,
                                       (ply_terminal_input_handler_t) on_terminal_data,
                                       keyboard);
@@ -444,6 +449,8 @@ ply_keyboard_watch_for_terminal_input (ply_keyboard_t *keyboard)
 static void
 ply_keyboard_stop_watching_for_terminal_input (ply_keyboard_t *keyboard)
 {
+        ply_trace ("no longer watching for keyboard input from terminal");
+
         ply_terminal_stop_watching_for_input (keyboard->provider.if_terminal->terminal,
                                               (ply_terminal_input_handler_t)
                                               on_terminal_data,
