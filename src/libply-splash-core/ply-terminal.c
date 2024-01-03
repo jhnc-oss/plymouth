@@ -241,13 +241,14 @@ ply_terminal_set_unbuffered_input (ply_terminal_t *terminal)
 
         ply_terminal_unlock (terminal);
 
-        if (terminal->is_disabled)
+        if (terminal->is_disabled) {
                 ply_trace ("terminal input is getting enabled in unbuffered mode");
 
-        terminal->is_disabled = false;
+                if (ply_terminal_is_vt (terminal))
+                        ioctl (terminal->fd, KDSKBMODE, K_UNICODE);
 
-        if (ply_terminal_is_vt (terminal))
-                ioctl (terminal->fd, KDSKBMODE, K_UNICODE);
+                terminal->is_disabled = false;
+        }
 
         tcgetattr (terminal->fd, &term_attributes);
 
@@ -279,13 +280,14 @@ ply_terminal_set_buffered_input (ply_terminal_t *terminal)
 {
         struct termios term_attributes;
 
-        if (terminal->is_disabled)
+        if (terminal->is_disabled) {
                 ply_trace ("terminal input is getting enabled in buffered mode");
 
-        terminal->is_disabled = false;
+                if (ply_terminal_is_vt (terminal))
+                        ioctl (terminal->fd, KDSKBMODE, K_UNICODE);
 
-        if (ply_terminal_is_vt (terminal))
-                ioctl (terminal->fd, KDSKBMODE, K_UNICODE);
+                terminal->is_disabled = false;
+        }
 
         if (!terminal->is_unbuffered)
                 return true;
@@ -330,14 +332,15 @@ ply_terminal_set_buffered_input (ply_terminal_t *terminal)
 bool
 ply_terminal_set_disabled_input (ply_terminal_t *terminal)
 {
-        if (!terminal->is_disabled)
+        if (!terminal->is_disabled) {
                 ply_trace ("terminal input is getting disabled from %s mode",
                            terminal->is_unbuffered? "unbuffered" : "buffered");
 
-        terminal->is_disabled = true;
+                if (ply_terminal_is_vt (terminal))
+                        ioctl (terminal->fd, KDSKBMODE, K_OFF);
 
-        if (ply_terminal_is_vt (terminal))
-                ioctl (terminal->fd, KDSKBMODE, K_OFF);
+                terminal->is_disabled = true;
+        }
 
         return true;
 }
