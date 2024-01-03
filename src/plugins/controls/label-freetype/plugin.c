@@ -429,13 +429,13 @@ finish_measuring_line (ply_label_plugin_control_t *label,
 
         line_height.as_integer = label->face->size->metrics.ascender + -label->face->size->metrics.descender;
 
-        dimensions->x = label->area.x;
+        dimensions->x = label->area.x * label->scale_factor;
 
         dimensions->width = glyph_x->as_pixels_unit.pixels - dimensions->x;
-        label->area.width = MAX (label->area.width, dimensions->width);
+        label->area.width = MAX (label->area.width, dimensions->width / label->scale_factor);
 
         dimensions->height = line_height.as_pixels_unit.pixels;
-        label->area.height += dimensions->height;
+        label->area.height += dimensions->height / label->scale_factor;
 
         entry = calloc (1, sizeof(ply_rectangle_t));
         *entry = *dimensions;
@@ -459,6 +459,7 @@ align_lines (ply_label_plugin_control_t *label)
                 return;
 
         width = label->width > 0? label->width : label->area.width;
+        width *= label->scale_factor;
 
         dimensions_of_lines = (ply_rectangle_t **) ply_array_get_pointer_elements (label->dimensions_of_lines);
 
@@ -482,8 +483,8 @@ load_glyphs (ply_label_plugin_control_t *label,
         ply_utf8_string_iterator_t utf8_string_iterator;
         uint32_t *target = NULL;
         ply_rectangle_t target_size;
-        ply_freetype_unit_t glyph_x = { .as_pixels_unit = { .pixels = label->area.x } };
-        ply_freetype_unit_t glyph_y = { .as_pixels_unit = { .pixels = label->area.y } };
+        ply_freetype_unit_t glyph_x = { .as_pixels_unit = { .pixels = label->area.x * label->scale_factor } };
+        ply_freetype_unit_t glyph_y = { .as_pixels_unit = { .pixels = label->area.y * label->scale_factor } };
         FT_Error error;
         FT_UInt previous_glyph_index = 0;
         bool is_first_character = true;
@@ -510,8 +511,8 @@ load_glyphs (ply_label_plugin_control_t *label,
                 clear_dimensions_of_lines (label);
 
                 line_dimensions = alloca (sizeof(ply_rectangle_t));
-                line_dimensions->x = label->area.x;
-                line_dimensions->y = label->area.y;
+                line_dimensions->x = label->area.x * label->scale_factor;
+                line_dimensions->y = label->area.y * label->scale_factor;
                 line_dimensions->width = 0;
                 line_dimensions->height = 0;
                 label->area.width = 0;
@@ -535,6 +536,9 @@ load_glyphs (ply_label_plugin_control_t *label,
 
                 if (target_size.height == 0)
                         return;
+
+                target_size.width *= label->scale_factor;
+                target_size.height *= label->scale_factor;
         }
 
         /* Go through each line */
