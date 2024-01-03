@@ -121,16 +121,15 @@ static void load_glyphs (ply_label_plugin_control_t *label,
 static void size_control (ply_label_plugin_control_t *label,
                           bool                        force);
 
-/* Query fontconfig, if available, for the default font. */
 static const char *
-query_fc_match ()
+find_default_font_path (void)
 {
         FILE *fp;
         static char fc_match_out[PATH_MAX];
 
         fp = popen ("/usr/bin/fc-match -f %{file}", "r");
         if (!fp)
-                return NULL;
+                return FONT_FALLBACK;
 
         fgets (fc_match_out, sizeof(fc_match_out), fp);
 
@@ -139,45 +138,21 @@ query_fc_match ()
         return fc_match_out;
 }
 
-/* Query fontconfig, if available, for the default monospace font. */
 static const char *
-query_fc_match_monospace ()
+find_default_monospace_font_path (void)
 {
         FILE *fp;
         static char fc_match_out[PATH_MAX];
 
         fp = popen ("/usr/bin/fc-match -f %{file} monospace", "r");
         if (!fp)
-                return NULL;
+                return MONOSPACE_FONT_FALLBACK;
 
         fgets (fc_match_out, sizeof(fc_match_out), fp);
 
         pclose (fp);
 
         return fc_match_out;
-}
-
-static FT_Error
-set_font_with_fallback (ply_label_plugin_control_t *label,
-                        const char                 *primary_font_path,
-                        const char                 *fallback_font_path)
-{
-        FT_Error error;
-        if (primary_font_path != NULL)
-                error = FT_New_Face (label->library, primary_font_path, 0, &label->face);
-
-        if (fallback_font_path != NULL && error != 0) {
-                ply_trace ("Could not load font '%s', trying fallback font '%s' (error %d)",
-                           primary_font_path?: "(unset)", fallback_font_path, (int) error);
-
-                if (!ply_file_exists (fallback_font_path)) {
-                        ply_trace ("Fallback font '%s' does not exist!", fallback_font_path);
-                        return error;
-                }
-                error = FT_New_Face (label->library, fallback_font_path, 0, &label->face);
-        }
-
-        return error;
 }
 
 static ply_label_plugin_control_t *
@@ -798,19 +773,27 @@ set_font_for_control (ply_label_plugin_control_t *label,
         if (strstr (font, "Mono") || strstr (font, "mono")) {
                 if (!label->is_monospaced) {
                         FT_Done_Face (label->face);
-                        font_path = query_fc_match_monospace ();
-                        error = set_font_with_fallback (label, font_path, MONOSPACE_FONT_FALLBACK);
+
+                        font_path = find_default_monospace_font_path ();
+
+                        if (font_path != NULL)
+                                error = FT_New_Face (label->library, font_path, 0, &label->face);
+
                         label->is_monospaced = true;
                 }
         } else {
                 if (label->is_monospaced || label->face == NULL) {
                         FT_Done_Face (label->face);
-                        font_path = query_fc_match ();
-                        error = set_font_with_fallback (label, font_path, FONT_FALLBACK);
+
+                        font_path = find_default_font_path ();
+
+                        if (font_path != NULL)
+                                error = FT_New_Face (label->library, font_path, 0, &label->face);
+
                         label->is_monospaced = false;
                 }
         }
-        if (error) {
+        if (error != 0) {
                 FT_Done_Face (label->face);
                 label->face = NULL;
 
