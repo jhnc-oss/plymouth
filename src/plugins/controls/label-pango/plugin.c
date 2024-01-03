@@ -182,43 +182,26 @@ remove_hexboxes_from_pango_layout (PangoLayout *pango_layout)
 {
         PangoLayoutIter *iter;
         bool hexbox_removed = false;
-        ply_buffer_t *buffer = ply_buffer_new ();
-        const char *old_string = pango_layout_get_text (pango_layout);
 
         iter = pango_layout_get_iter (pango_layout);
-
         do {
                 PangoLayoutRun *run;
-                PangoGlyphItem *glyph_items;
-                PangoGlyphString *glyph_string;
 
-                run = pango_layout_iter_get_run_readonly (iter);
+                run = pango_layout_iter_get_run (iter);
                 if (!run)
                         continue;
 
-                glyph_items = (PangoGlyphItem *) run;
-                glyph_string = glyph_items->glyphs;
-
-                if (glyph_string->num_glyphs == 0)
-                        continue;
-
-                for (size_t i = 0; i < glyph_string->num_glyphs; i++) {
-                        if (glyph_string->glyphs[i].glyph & PANGO_GLYPH_UNKNOWN_FLAG) {
+                for (size_t i = 0; i < run->glyphs->num_glyphs; i++) {
+                        if (run->glyphs->glyphs[i].glyph & PANGO_GLYPH_UNKNOWN_FLAG) {
+                                run->glyphs->glyphs[i].glyph = PANGO_GLYPH_INVALID_INPUT;
                                 hexbox_removed = true;
-                                ply_buffer_append (buffer, "%c", '?');
-                        } else {
-                                ply_buffer_append_bytes (buffer, old_string + glyph_items->item->offset, glyph_items->item->length);
                         }
                 }
         } while (pango_layout_iter_next_run (iter));
         pango_layout_iter_free (iter);
 
-        if (hexbox_removed) {
-                const char *new_string = ply_buffer_get_bytes (buffer);
-                pango_layout_set_text (pango_layout, new_string, -1);
-        }
-
-        ply_buffer_free (buffer);
+        if (hexbox_removed)
+                pango_layout_context_changed (pango_layout);
 }
 
 void
