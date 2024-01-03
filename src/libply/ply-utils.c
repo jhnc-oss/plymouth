@@ -757,8 +757,10 @@ ply_utf8_character_get_byte_type (const char byte)
                 byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_3_BYTES;
         else if ((byte & 0xF8) == 0xF0)
                 byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_4_BYTES;
-        else
+        else if ((byte & 0xC0) == 0x80)
                 byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_CONTINUATION;
+        else
+                byte_type = PLY_UTF8_CHARACTER_BYTE_TYPE_INVALID;
 
         return byte_type;
 }
