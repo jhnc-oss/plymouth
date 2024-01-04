@@ -854,15 +854,19 @@ show_control (ply_label_plugin_control_t *label,
               long                        y)
 {
         ply_rectangle_t dirty_area;
+        bool force_resize = false;
 
         dirty_area = label->area;
         label->display = display;
-        label->area.x = x;
-        label->area.y = y;
+        if (label->area.x != x || label->area.y != y) {
+                label->area.x = x;
+                label->area.y = y;
+                force_resize = true;
+        }
 
         label->is_hidden = false;
 
-        size_control (label, false);
+        size_control (label, force_resize);
 
         if (!label->is_hidden && label->display != NULL)
                 ply_pixel_display_draw_area (label->display,
