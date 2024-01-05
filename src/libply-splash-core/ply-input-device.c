@@ -240,6 +240,8 @@ on_input (ply_input_device_t *input_device)
                         key_state = PLY_KEY_HELD;
                         xkb_key_direction = XKB_KEY_UP;
                         break;
+                default:
+                        continue;
                 }
 
                 /* According to
