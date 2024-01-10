@@ -627,13 +627,13 @@ create_plugin (ply_key_file_t *key_file)
         plugin->should_show_console_messages = false;
 
         /* Likely only able to set the font if the font is in the initrd */
-        plugin->monospace_font = ply_key_file_get_value (key_file, "two-step", "MonospaceFont");
+        plugin->monospace_font = ply_key_file_get_value (key_file, "space-flares", "MonospaceFont");
 
         if (plugin->monospace_font == NULL)
                 plugin->monospace_font = strdup ("monospace 10");
 
         plugin->console_text_color =
-                ply_key_file_get_long (key_file, "two-step",
+                ply_key_file_get_long (key_file, "space-flares",
                                        "ConsoleLogTextColor",
                                        PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
 
