@@ -1983,28 +1983,11 @@ get_any_input_device (ply_renderer_backend_t *backend)
         return NULL;
 }
 
-static ply_input_device_t *
-get_any_input_device_with_leds (ply_renderer_backend_t *backend)
-{
-        ply_list_node_t *node;
-
-        ply_list_foreach (backend->input_source.input_devices, node) {
-                ply_input_device_t *input_device;
-
-                input_device = ply_list_node_get_data (node);
-
-                if (ply_input_device_is_keyboard_with_leds (input_device))
-                        return input_device;
-        }
-
-        return NULL;
-}
-
 static bool
 get_capslock_state (ply_renderer_backend_t *backend)
 {
         if (using_input_device (&backend->input_source)) {
-                ply_input_device_t *dev = get_any_input_device_with_leds (backend);
+                ply_input_device_t *dev = get_any_input_device (backend);
                 if (!dev)
                         return false;
 
@@ -2043,7 +2026,7 @@ sync_input_devices (ply_renderer_backend_t *backend)
         ply_xkb_keyboard_state_t *xkb_state;
         ply_input_device_t *source_input_device;
 
-        source_input_device = get_any_input_device_with_leds (backend);
+        source_input_device = get_any_input_device (backend);
 
         if (source_input_device == NULL)
                 return;
