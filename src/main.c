@@ -1223,10 +1223,8 @@ hide_splash (state_t *state)
 
         cancel_pending_delayed_show (state);
 
-        if (state->boot_splash == NULL)
-                return;
-
-        ply_boot_splash_hide (state->boot_splash);
+        if (state->boot_splash != NULL)
+                ply_boot_splash_hide (state->boot_splash);
 
         if (state->local_console_terminal != NULL) {
                 ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_TEXT);
