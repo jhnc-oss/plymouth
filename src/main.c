@@ -216,6 +216,8 @@ on_change_mode (state_t    *state,
                 state->mode = PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE;
         else if (strcmp (mode, "system-reset") == 0)
                 state->mode = PLY_BOOT_SPLASH_MODE_SYSTEM_RESET;
+        else if (strcmp (mode, "presentation") == 0)
+                state->mode = PLY_BOOT_SPLASH_MODE_PRESENTATION;
         else
                 return;
 
@@ -232,6 +234,9 @@ on_change_mode (state_t    *state,
                 ply_trace ("failed to update splash");
                 return;
         }
+
+        if (state->mode == PLY_BOOT_SPLASH_MODE_PRESENTATION)
+                become_idle (state);
 }
 
 static void
@@ -699,6 +704,7 @@ get_cache_file_for_mode (ply_boot_splash_mode_t mode)
         case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
+        case PLY_BOOT_SPLASH_MODE_PRESENTATION:
                 filename = NULL;
                 break;
         case PLY_BOOT_SPLASH_MODE_INVALID:
@@ -734,6 +740,7 @@ get_log_file_for_state (state_t *state)
         case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
+        case PLY_BOOT_SPLASH_MODE_PRESENTATION:
                 filename = _PATH_DEVNULL;
                 break;
         case PLY_BOOT_SPLASH_MODE_INVALID:
@@ -762,6 +769,7 @@ get_log_spool_file_for_mode (ply_boot_splash_mode_t mode)
         case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
         case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
+        case PLY_BOOT_SPLASH_MODE_PRESENTATION:
                 filename = NULL;
                 break;
         case PLY_BOOT_SPLASH_MODE_INVALID:
@@ -1343,6 +1351,21 @@ on_boot_splash_idle (state_t *state)
 }
 
 static void
+become_idle (state_t *state)
+{
+        if (state->splash_is_becoming_idle)
+                return;
+
+        ply_trace ("becoming idle");
+
+        ply_boot_splash_become_idle (state->boot_splash,
+                                     (ply_boot_splash_on_idle_handler_t)
+                                     on_boot_splash_idle,
+                                     state);
+        state->splash_is_becoming_idle = true;
+}
+
+static void
 on_deactivate (state_t       *state,
                ply_trigger_t *deactivate_trigger)
 {
@@ -1369,13 +1392,7 @@ on_deactivate (state_t       *state,
         ply_device_manager_deactivate_keyboards (state->device_manager);
 
         if (state->boot_splash != NULL) {
-                if (!state->splash_is_becoming_idle) {
-                        ply_boot_splash_become_idle (state->boot_splash,
-                                                     (ply_boot_splash_on_idle_handler_t)
-                                                     on_boot_splash_idle,
-                                                     state);
-                        state->splash_is_becoming_idle = true;
-                }
+                become_idle (state);
         } else {
                 ply_trace ("deactivating splash");
                 deactivate_splash (state);
@@ -1451,13 +1468,7 @@ on_quit (state_t       *state,
                 dump_details_and_quit_splash (state);
                 quit_program (state);
         } else if (state->boot_splash != NULL) {
-                if (!state->splash_is_becoming_idle) {
-                        ply_boot_splash_become_idle (state->boot_splash,
-                                                     (ply_boot_splash_on_idle_handler_t)
-                                                     on_boot_splash_idle,
-                                                     state);
-                        state->splash_is_becoming_idle = true;
-                }
+                become_idle (state);
         } else {
                 quit_program (state);
         }
@@ -2419,6 +2430,8 @@ main (int    argc,
                         state.mode = PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE;
                 else if (strcmp (mode_string, "system-reset") == 0)
                         state.mode = PLY_BOOT_SPLASH_MODE_SYSTEM_RESET;
+                else if (strcmp (mode_string, "presentation") == 0)
+                        state.mode = PLY_BOOT_SPLASH_MODE_PRESENTATION;
                 else
                         state.mode = PLY_BOOT_SPLASH_MODE_BOOT_UP;
 
