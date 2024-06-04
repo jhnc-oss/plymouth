@@ -1308,7 +1308,7 @@ ply_get_random_number (long lower_bound,
                 seed_initialized = true;
         }
 
-        offset = mrand48 ();
+        offset = (mrand48 () << 32) | (mrand48 () & 0xffffffff);
 
         offset = labs (offset) % range;
 
