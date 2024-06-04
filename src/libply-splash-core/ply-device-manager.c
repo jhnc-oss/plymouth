@@ -380,7 +380,7 @@ static bool
 create_devices_for_udev_device (ply_device_manager_t *manager,
                                 struct udev_device   *device)
 {
-        const char *device_path, *device_sysname;
+        const char *device_path, *device_sysname, *device_syspath;
         bool created = false;
         bool force_fb = false;
 
@@ -389,6 +389,7 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
 
         device_path = udev_device_get_devnode (device);
         device_sysname = udev_device_get_sysname (device);
+        device_syspath = udev_device_get_syspath (device);
 
         if (device_path != NULL) {
                 const char *subsystem;
@@ -403,7 +404,10 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
                                 return false;
                         }
                         ply_trace ("found DRM device %s", device_path);
-                        renderer_type = PLY_RENDERER_TYPE_DRM;
+                        if (syspath_is_simpledrm (device_syspath))
+                                renderer_type = PLY_RENDERER_TYPE_SIMPLEDRM;
+                        else
+                                renderer_type = PLY_RENDERER_TYPE_DRM;
                 } else if (strcmp (subsystem, SUBSYSTEM_FRAME_BUFFER) == 0) {
                         ply_trace ("found frame buffer device %s", device_path);
                         if (!fb_device_has_drm_device (manager, device))
@@ -446,7 +450,8 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
                                                                                  terminal,
                                                                                  renderer_type);
                         if (created) {
-                                if (renderer_type == PLY_RENDERER_TYPE_DRM)
+                                if (renderer_type == PLY_RENDERER_TYPE_DRM ||
+                                    renderer_type == PLY_RENDERER_TYPE_SIMPLEDRM)
                                         manager->found_drm_device = 1;
                                 if (renderer_type == PLY_RENDERER_TYPE_FRAME_BUFFER)
                                         manager->found_fb_device = 1;

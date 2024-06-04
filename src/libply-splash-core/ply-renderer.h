@@ -41,6 +41,7 @@ typedef enum
         PLY_RENDERER_TYPE_NONE = -1,
         PLY_RENDERER_TYPE_AUTO,
         PLY_RENDERER_TYPE_DRM,
+        PLY_RENDERER_TYPE_SIMPLEDRM,
         PLY_RENDERER_TYPE_FRAME_BUFFER,
         PLY_RENDERER_TYPE_X11
 } ply_renderer_type_t;
