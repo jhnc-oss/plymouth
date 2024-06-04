@@ -490,6 +490,7 @@ create_devices_for_subsystem (ply_device_manager_t *manager,
         udev_list_entry_foreach (entry, udev_enumerate_get_list_entry (matches)){
                 struct udev_device *device = NULL;
                 const char *path, *node;
+                int initialized;
 
                 path = udev_list_entry_get_name (entry);
 
@@ -502,10 +503,11 @@ create_devices_for_subsystem (ply_device_manager_t *manager,
 
                 device = udev_device_new_from_syspath (manager->udev_context, path);
 
-                /* if device isn't fully initialized, we'll get an add event later
-                 */
-                if (udev_device_get_is_initialized (device)) {
-                        ply_trace ("device is initialized");
+                /* If device isn't fully initialized, we'll get an add event later */
+                initialized = udev_device_get_is_initialized (device);
+                /* Simpledrm can be handled uninitialized and this shows the splash sooner */
+                if (initialized || syspath_is_simpledrm (path)) {
+                        ply_trace ("device is initialized %d", initialized);
 
                         node = udev_device_get_devnode (device);
                         if (node != NULL) {
