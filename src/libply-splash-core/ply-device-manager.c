@@ -340,10 +340,14 @@ remove_input_device_from_renderers (ply_device_manager_t *manager,
 }
 
 static bool
+syspath_is_simpledrm (const char *syspath)
+{
+        return ply_string_has_suffix (syspath, "simple-framebuffer.0/drm/card0");
+}
+
+static bool
 verify_drm_device (struct udev_device *device)
 {
-        const char *id_path;
-
         /*
          * Simple-framebuffer devices driven by simpledrm lack information
          * like panel-rotation info and physical size, causing the splash
@@ -352,8 +356,7 @@ verify_drm_device (struct udev_device *device)
          * To avoid this treat simpledrm devices as fbdev devices and only
          * use them after the timeout.
          */
-        id_path = udev_device_get_property_value (device, "ID_PATH");
-        if (!ply_string_has_prefix (id_path, "platform-simple-framebuffer"))
+        if (!syspath_is_simpledrm (udev_device_get_syspath (device)))
                 return true; /* Not a SimpleDRM device */
 
         /*
