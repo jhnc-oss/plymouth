@@ -102,6 +102,12 @@ ply_renderer_get_device_name (ply_renderer_t *renderer)
         return renderer->device_name;
 }
 
+ply_renderer_type_t
+ply_renderer_get_type (ply_renderer_t *renderer)
+{
+        return renderer->type;
+}
+
 static bool
 ply_renderer_load_plugin (ply_renderer_t *renderer,
                           const char     *module_path)
