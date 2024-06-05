@@ -1080,6 +1080,18 @@ create_text_displays_for_terminal (ply_device_manager_t *manager,
                 manager->text_display_added_handler (manager->event_handler_data, display);
 }
 
+static void
+free_simpledrm_renderer (char                 *device_path,
+                         ply_renderer_t       *renderer,
+                         ply_device_manager_t *manager)
+{
+        if (ply_renderer_get_type (renderer) != PLY_RENDERER_TYPE_SIMPLEDRM)
+                return;
+
+        ply_trace ("removing simpledrm renderer %s", device_path);
+        free_devices_from_device_path (manager, device_path, true);
+}
+
 static bool
 create_devices_for_terminal_and_renderer_type (ply_device_manager_t *manager,
                                                const char           *device_path,
@@ -1095,6 +1107,18 @@ create_devices_for_terminal_and_renderer_type (ply_device_manager_t *manager,
         if (renderer != NULL) {
                 ply_trace ("ignoring device %s since it's already managed", device_path);
                 return true;
+        }
+
+        /*
+         * simpledrm udev remove events may arrive after normal drm device add
+         * events, leaving the local_console unmanaged breaking legacy input.
+         * Remove simpledrm renderers before adding drm renderers to avoid this.
+         */
+        if (renderer_type == PLY_RENDERER_TYPE_DRM) {
+                ply_hashtable_foreach (manager->renderers,
+                                       (ply_hashtable_foreach_func_t *)
+                                       free_simpledrm_renderer,
+                                       manager);
         }
 
         if (!terminal && !manager->local_console_managed &&
