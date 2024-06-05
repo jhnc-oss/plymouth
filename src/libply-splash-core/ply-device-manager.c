@@ -441,17 +441,9 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
                 }
 
                 if (renderer_type != PLY_RENDERER_TYPE_NONE) {
-                        ply_terminal_t *terminal = NULL;
-
-                        if (!manager->local_console_managed &&
-                            manager->local_console_terminal != NULL &&
-                            ply_terminal_is_vt (manager->local_console_terminal)) {
-                                terminal = manager->local_console_terminal;
-                        }
-
                         created = create_devices_for_terminal_and_renderer_type (manager,
                                                                                  device_path,
-                                                                                 terminal,
+                                                                                 NULL,
                                                                                  renderer_type);
                         if (created) {
                                 if (renderer_type == PLY_RENDERER_TYPE_DRM ||
@@ -1104,6 +1096,11 @@ create_devices_for_terminal_and_renderer_type (ply_device_manager_t *manager,
                 ply_trace ("ignoring device %s since it's already managed", device_path);
                 return true;
         }
+
+        if (!terminal && !manager->local_console_managed &&
+            manager->local_console_terminal != NULL &&
+            ply_terminal_is_vt (manager->local_console_terminal))
+                terminal = manager->local_console_terminal;
 
         ply_trace ("creating devices for %s (renderer type: %u) (terminal: %s)",
                    device_path ? : "", renderer_type, terminal ? ply_terminal_get_name (terminal) : "none");
