@@ -403,6 +403,10 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
                                 ply_trace ("ignoring since we only handle SimpleDRM devices after timeout");
                                 return false;
                         }
+                        if (ply_string_has_prefix (device_path, "/dev/dri/render")) {
+                                ply_trace ("ignoring since it is a render node");
+                                return false;
+                        }
                         ply_trace ("found DRM device %s", device_path);
                         if (syspath_is_simpledrm (device_syspath))
                                 renderer_type = PLY_RENDERER_TYPE_SIMPLEDRM;
