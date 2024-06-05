@@ -458,23 +458,22 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
         return created;
 }
 
-static bool
+static void
 create_devices_for_subsystem (ply_device_manager_t *manager,
                               const char           *subsystem)
 {
         struct udev_enumerate *matches;
         struct udev_list_entry *entry;
-        bool found_device = false;
 
         if (strcmp (subsystem, SUBSYSTEM_INPUT) == 0) {
                 if (ply_kernel_command_line_has_argument ("plymouth.use-legacy-input")) {
                         ply_trace ("Not creating devices for subsystem " SUBSYSTEM_INPUT " because plymouth.use-legacy-input on command line");
-                        return false;
+                        return;
                 }
 
                 if (manager->xkb_keymap == NULL) {
                         ply_trace ("Not creating devices for subsystem " SUBSYSTEM_INPUT " because there is no configure XKB layout");
-                        return false;
+                        return;
                 }
         }
 
@@ -512,7 +511,7 @@ create_devices_for_subsystem (ply_device_manager_t *manager,
                         node = udev_device_get_devnode (device);
                         if (node != NULL) {
                                 ply_trace ("found node %s", node);
-                                found_device = create_devices_for_udev_device (manager, device);
+                                create_devices_for_udev_device (manager, device);
                         }
                 } else {
                         ply_trace ("it's not initialized");
@@ -522,8 +521,6 @@ create_devices_for_subsystem (ply_device_manager_t *manager,
         }
 
         udev_enumerate_unref (matches);
-
-        return found_device;
 }
 
 static void
