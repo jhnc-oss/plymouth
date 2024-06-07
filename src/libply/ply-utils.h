@@ -109,6 +109,8 @@ char **ply_copy_string_array (const char *const *array);
 void ply_free_string_array (char **array);
 bool ply_string_has_prefix (const char *str,
                             const char *prefix);
+bool ply_string_has_suffix (const char *str,
+                            const char *suffix);
 double ply_get_timestamp (void);
 
 void ply_save_errno (void);

@@ -41,6 +41,7 @@ typedef enum
         PLY_RENDERER_TYPE_NONE = -1,
         PLY_RENDERER_TYPE_AUTO,
         PLY_RENDERER_TYPE_DRM,
+        PLY_RENDERER_TYPE_SIMPLEDRM,
         PLY_RENDERER_TYPE_FRAME_BUFFER,
         PLY_RENDERER_TYPE_X11
 } ply_renderer_type_t;
@@ -62,6 +63,7 @@ void ply_renderer_activate (ply_renderer_t *renderer);
 void ply_renderer_deactivate (ply_renderer_t *renderer);
 bool ply_renderer_is_active (ply_renderer_t *renderer);
 const char *ply_renderer_get_device_name (ply_renderer_t *renderer);
+ply_renderer_type_t ply_renderer_get_type (ply_renderer_t *renderer);
 ply_list_t *ply_renderer_get_heads (ply_renderer_t *renderer);
 ply_pixel_buffer_t *ply_renderer_get_buffer_for_head (ply_renderer_t      *renderer,
                                                       ply_renderer_head_t *head);

@@ -102,6 +102,12 @@ ply_renderer_get_device_name (ply_renderer_t *renderer)
         return renderer->device_name;
 }
 
+ply_renderer_type_t
+ply_renderer_get_type (ply_renderer_t *renderer)
+{
+        return renderer->type;
+}
+
 static bool
 ply_renderer_load_plugin (ply_renderer_t *renderer,
                           const char     *module_path)
@@ -269,6 +275,7 @@ ply_renderer_open (ply_renderer_t *renderer)
         {
                 { PLY_RENDERER_TYPE_X11,          PLYMOUTH_PLUGIN_PATH "renderers/x11.so"          },
                 { PLY_RENDERER_TYPE_DRM,          PLYMOUTH_PLUGIN_PATH "renderers/drm.so"          },
+                { PLY_RENDERER_TYPE_SIMPLEDRM,    PLYMOUTH_PLUGIN_PATH "renderers/drm.so"          },
                 { PLY_RENDERER_TYPE_FRAME_BUFFER, PLYMOUTH_PLUGIN_PATH "renderers/frame-buffer.so" },
                 { PLY_RENDERER_TYPE_NONE,         NULL                                             }
         };
