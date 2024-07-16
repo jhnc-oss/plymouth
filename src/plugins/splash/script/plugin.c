@@ -747,7 +747,8 @@ on_boot_output (ply_boot_splash_plugin_t *plugin,
                 display = ply_list_node_get_data (node);
                 next_node = ply_list_get_next_node (displays, node);
 
-                ply_console_viewer_write (display->console_viewer, output, size);
+                if (display->console_viewer != NULL)
+                        ply_console_viewer_write (display->console_viewer, output, size);
 
                 node = next_node;
         }

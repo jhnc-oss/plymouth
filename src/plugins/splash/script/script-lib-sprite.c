@@ -1074,7 +1074,8 @@ script_lib_sprite_console_viewer_show (script_lib_sprite_data_t *data)
                 display = ply_list_node_get_data (node);
                 next_node = ply_list_get_next_node (data->displays, node);
 
-                ply_console_viewer_show (display->console_viewer, display->pixel_display);
+                if (display->console_viewer != NULL)
+                        ply_console_viewer_show (display->console_viewer, display->pixel_display);
 
                 node = next_node;
         }
@@ -1103,7 +1104,8 @@ script_lib_sprite_console_viewer_hide (script_lib_sprite_data_t *data)
                 display = ply_list_node_get_data (node);
                 next_node = ply_list_get_next_node (data->displays, node);
 
-                ply_console_viewer_hide (display->console_viewer);
+                if (display->console_viewer != NULL)
+                        ply_console_viewer_hide (display->console_viewer);
 
                 node = next_node;
         }
