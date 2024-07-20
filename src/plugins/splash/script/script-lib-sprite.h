@@ -42,6 +42,7 @@ typedef struct
 
         ply_buffer_t              *boot_buffer;
         char                      *monospace_font;
+        uint32_t                   console_text_color;
         bool                       needs_redraw;
         bool                       plugin_console_messages_updating;
         bool                       should_show_console_messages;
@@ -79,7 +80,10 @@ typedef struct
 } sprite_t;
 
 script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
-                                                   ply_list_t     *displays);
+                                                   ply_list_t     *displays,
+                                                   ply_buffer_t   *boot_buffer,
+                                                   char           *monospace_font,
+                                                   uint32_t        console_text_color);
 void script_lib_sprite_pixel_display_added (script_lib_sprite_data_t *data,
                                             ply_pixel_display_t      *pixel_display);
 void script_lib_sprite_pixel_display_removed (script_lib_sprite_data_t *data,

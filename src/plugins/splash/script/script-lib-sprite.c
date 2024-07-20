@@ -602,11 +602,24 @@ add_display (script_lib_sprite_data_t *data,
                                             (ply_pixel_display_draw_handler_t)
                                             script_lib_sprite_draw_area, script_display);
 
+        if (ply_console_viewer_preferred ()) {
+                script_display->console_viewer = ply_console_viewer_new (script_display->pixel_display, data->monospace_font);
+                ply_console_viewer_set_text_color (script_display->console_viewer, data->console_text_color);
+
+                if (data->boot_buffer)
+                        ply_console_viewer_convert_boot_buffer (script_display->console_viewer, data->boot_buffer);
+        } else {
+                script_display->console_viewer = NULL;
+        }
+
         ply_list_append_data (data->displays, script_display);
 }
 
 script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
-                                                   ply_list_t     *pixel_displays)
+                                                   ply_list_t     *pixel_displays,
+                                                   ply_buffer_t   *boot_buffer,
+                                                   char           *monospace_font,
+                                                   uint32_t        console_text_color)
 {
         ply_list_node_t *node;
         script_lib_sprite_data_t *data = malloc (sizeof(script_lib_sprite_data_t));
@@ -615,6 +628,10 @@ script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
         data->class = script_obj_native_class_new (sprite_free, "sprite", data);
         data->sprite_list = ply_list_new ();
         data->displays = ply_list_new ();
+
+        data->boot_buffer = boot_buffer;
+        data->monospace_font = monospace_font;
+        data->console_text_color = console_text_color;
 
         for (node = ply_list_get_first_node (pixel_displays);
              node;
