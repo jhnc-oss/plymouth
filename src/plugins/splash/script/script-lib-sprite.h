@@ -33,7 +33,6 @@ typedef struct
         ply_list_t                *sprite_list;
         script_obj_native_class_t *class;
         script_op_t               *script_main_op;
-        script_op_t               *script_consoleviewer_op;
         uint32_t                   background_color_start;
         uint32_t                   background_color_end;
         bool                       full_refresh;
@@ -74,9 +73,6 @@ typedef struct
         bool                remove_me;
         ply_pixel_buffer_t *image;
         script_obj_t       *image_obj;
-        char               *monospace_font;
-        script_state_t     *state;
-        script_obj_t       *draw_func;
 } sprite_t;
 
 script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
