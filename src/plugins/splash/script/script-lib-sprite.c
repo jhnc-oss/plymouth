@@ -501,6 +501,9 @@ draw_area (script_lib_sprite_data_t *data,
 {
         ply_list_node_t *node;
 
+        if (!data->needs_redraw)
+                return;
+
         for (node = ply_list_get_first_node (data->displays);
              node;
              node = ply_list_get_next_node (data->displays, node)) {
@@ -512,6 +515,7 @@ draw_area (script_lib_sprite_data_t *data,
                                              width,
                                              height);
         }
+        data->needs_redraw = false;
 }
 
 static void
@@ -564,6 +568,8 @@ add_display (script_lib_sprite_data_t *data,
         }
 
         ply_list_append_data (data->displays, script_display);
+        data->full_refresh = true;
+        update_displays (data);
 }
 
 script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
@@ -723,6 +729,7 @@ script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
 
         data->should_show_console_messages = false;
         data->plugin_console_messages_updating = false;
+        data->console_viewer_needs_redraw = false;
 
         script_obj_unref (ret.object);
         return data;
@@ -804,14 +811,12 @@ script_lib_sprite_refresh (script_lib_sprite_data_t *data)
         if (!data)
                 return;
 
-        if (!data->needs_redraw)
-                return;
-
         region = ply_region_new ();
 
         ply_list_sort_stable (data->sprite_list, &sprite_compare_z);
 
         if (data->full_refresh) {
+                data->console_viewer_needs_redraw = true;
                 for (node = ply_list_get_first_node (data->displays);
                      node;
                      node = ply_list_get_next_node (data->displays, node)) {
@@ -895,9 +900,21 @@ script_lib_sprite_refresh (script_lib_sprite_data_t *data)
                            rectangle->height);
         }
 
-        ply_region_free (region);
+        if (data->console_viewer_needs_redraw == true) {
+                for (node = ply_list_get_first_node (data->displays);
+                     node;
+                     node = ply_list_get_next_node (data->displays, node)) {
+                        script_lib_display_t *display = ply_list_node_get_data (node);
+                        if (data->should_show_console_messages == true) {
+                                ply_console_viewer_show (display->console_viewer, display->pixel_display);
+                        } else {
+                                ply_console_viewer_hide (display->console_viewer);
+                        }
+                }
+                data->console_viewer_needs_redraw = false;
+        }
 
-        data->needs_redraw = false;
+        ply_region_free (region);
 }
 
 void script_lib_sprite_destroy (script_lib_sprite_data_t *data)
@@ -1006,59 +1023,22 @@ script_lib_sprite_console_viewer_clear_line (script_lib_sprite_data_t *data)
 void
 script_lib_sprite_console_viewer_show (script_lib_sprite_data_t *data)
 {
-        ply_list_node_t *node;
-
         data->should_show_console_messages = true;
-
-        data->plugin_console_messages_updating = true;
 
         data->full_refresh = true;
 
-        node = ply_list_get_first_node (data->displays);
-        while (node != NULL) {
-                script_lib_display_t *display;
-                ply_list_node_t *next_node;
-
-                display = ply_list_node_get_data (node);
-                next_node = ply_list_get_next_node (data->displays, node);
-
-                if (display->console_viewer != NULL)
-                        ply_console_viewer_show (display->console_viewer, display->pixel_display);
-
-                node = next_node;
-        }
 
         script_lib_sprite_set_needs_redraw (data);
-        data->plugin_console_messages_updating = false;
         script_lib_sprite_refresh (data);
 }
 
 void
 script_lib_sprite_console_viewer_hide (script_lib_sprite_data_t *data)
 {
-        ply_list_node_t *node;
-
         data->should_show_console_messages = false;
-
-        data->plugin_console_messages_updating = true;
 
         data->full_refresh = true;
 
-        node = ply_list_get_first_node (data->displays);
-        while (node != NULL) {
-                script_lib_display_t *display;
-                ply_list_node_t *next_node;
-
-                display = ply_list_node_get_data (node);
-                next_node = ply_list_get_next_node (data->displays, node);
-
-                if (display->console_viewer != NULL)
-                        ply_console_viewer_hide (display->console_viewer);
-
-                node = next_node;
-        }
-
         script_lib_sprite_set_needs_redraw (data);
-        data->plugin_console_messages_updating = false;
         script_lib_sprite_refresh (data);
 }

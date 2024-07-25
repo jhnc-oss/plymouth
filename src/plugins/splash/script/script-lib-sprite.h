@@ -45,6 +45,7 @@ typedef struct
         bool                       needs_redraw;
         bool                       plugin_console_messages_updating;
         bool                       should_show_console_messages;
+        bool                       console_viewer_needs_redraw;
 } script_lib_sprite_data_t;
 
 typedef struct
