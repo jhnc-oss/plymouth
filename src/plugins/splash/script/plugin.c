@@ -309,7 +309,6 @@ on_boot_progress (ply_boot_splash_plugin_t *plugin,
 static bool
 start_script_animation (ply_boot_splash_plugin_t *plugin)
 {
-        ply_list_t *displays;
         ply_list_node_t *node;
         script_obj_t *target_obj;
         script_obj_t *value_obj;
@@ -332,39 +331,16 @@ start_script_animation (ply_boot_splash_plugin_t *plugin)
         plugin->script_image_lib = script_lib_image_setup (plugin->script_state,
                                                            plugin->image_dir);
         plugin->script_sprite_lib = script_lib_sprite_setup (plugin->script_state,
-                                                             plugin->displays);
+                                                             plugin->displays,
+                                                             plugin->boot_buffer,
+                                                             plugin->monospace_font,
+                                                             plugin->console_text_color);
         plugin->script_plymouth_lib = script_lib_plymouth_setup (plugin->script_state,
                                                                  plugin->mode,
                                                                  FRAMES_PER_SECOND,
                                                                  plugin->keyboard);
         plugin->script_math_lib = script_lib_math_setup (plugin->script_state);
         plugin->script_string_lib = script_lib_string_setup (plugin->script_state);
-
-
-        displays = script_lib_get_displays (plugin->script_sprite_lib);
-        node = ply_list_get_first_node (displays);
-        while (node != NULL) {
-                script_lib_display_t *display;
-                ply_list_node_t *next_node;
-
-                display = ply_list_node_get_data (node);
-                next_node = ply_list_get_next_node (displays, node);
-
-                if (ply_console_viewer_preferred ()) {
-                        display->console_viewer = ply_console_viewer_new (display->pixel_display, plugin->monospace_font);
-                        ply_console_viewer_set_text_color (display->console_viewer, plugin->console_text_color);
-
-                        if (plugin->boot_buffer)
-                                ply_console_viewer_convert_boot_buffer (display->console_viewer, plugin->boot_buffer);
-                } else {
-                        display->console_viewer = NULL;
-                }
-
-                node = next_node;
-        }
-
-        plugin->script_sprite_lib->monospace_font = plugin->monospace_font;
-        plugin->script_sprite_lib->boot_buffer = plugin->boot_buffer;
 
         ply_trace ("executing script file");
         script_return_t ret = script_execute (plugin->script_state,
@@ -506,8 +482,6 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                     ply_buffer_t             *boot_buffer,
                     ply_boot_splash_mode_t    mode)
 {
-        ply_list_node_t *node;
-
         assert (plugin != NULL);
 
         if (ply_list_get_length (plugin->displays) == 0) {
@@ -747,7 +721,8 @@ on_boot_output (ply_boot_splash_plugin_t *plugin,
                 display = ply_list_node_get_data (node);
                 next_node = ply_list_get_next_node (displays, node);
 
-                ply_console_viewer_write (display->console_viewer, output, size);
+                if (display->console_viewer != NULL)
+                        ply_console_viewer_write (display->console_viewer, output, size);
 
                 node = next_node;
         }

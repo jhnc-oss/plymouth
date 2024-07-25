@@ -1,5 +1,0 @@
-ConsoleViewer |= fun ()
-{
-  new_console_viewer = ConsoleViewer._New() | [] | ConsoleViewer | Sprite;
-  return new_console_viewer;
-};
