@@ -951,6 +951,12 @@ void script_lib_sprite_destroy (script_lib_sprite_data_t *data)
         data = NULL;
 }
 
+void
+script_lib_update_displays (script_lib_sprite_data_t *data)
+{
+        update_displays (data);
+}
+
 ply_list_t *
 script_lib_get_displays (script_lib_sprite_data_t *data)
 {

@@ -87,6 +87,7 @@ void script_lib_sprite_pixel_display_removed (script_lib_sprite_data_t *data,
                                               ply_pixel_display_t      *pixel_display);
 void script_lib_sprite_refresh (script_lib_sprite_data_t *data);
 void script_lib_sprite_destroy (script_lib_sprite_data_t *data);
+void script_lib_update_displays (script_lib_sprite_data_t *data);
 ply_list_t *script_lib_get_displays (script_lib_sprite_data_t *data);
 void script_lib_sprite_set_needs_redraw (script_lib_sprite_data_t *data);
 void script_lib_sprite_console_viewer_print (script_lib_sprite_data_t *data,
