@@ -569,6 +569,7 @@ display_normal (ply_boot_splash_plugin_t *plugin)
         script_lib_plymouth_on_display_normal (plugin->script_state,
                                                plugin->script_plymouth_lib);
 
+        script_lib_update_displays (plugin->script_sprite_lib);
         script_lib_sprite_refresh (plugin->script_sprite_lib);
         plugin->state = PLY_BOOT_SPLASH_DISPLAY_NORMAL;
         unpause_displays (plugin);
@@ -586,6 +587,7 @@ display_password (ply_boot_splash_plugin_t *plugin,
                                                  plugin->script_plymouth_lib,
                                                  prompt,
                                                  bullets);
+        script_lib_update_displays (plugin->script_sprite_lib);
         script_lib_sprite_refresh (plugin->script_sprite_lib);
         unpause_displays (plugin);
 }
@@ -602,6 +604,7 @@ display_question (ply_boot_splash_plugin_t *plugin,
                                                  plugin->script_plymouth_lib,
                                                  prompt,
                                                  entry_text);
+        script_lib_update_displays (plugin->script_sprite_lib);
         script_lib_sprite_refresh (plugin->script_sprite_lib);
         unpause_displays (plugin);
 }
@@ -638,6 +641,7 @@ display_prompt (ply_boot_splash_plugin_t *plugin,
                                                prompt,
                                                entry_text,
                                                is_secret);
+        script_lib_update_displays (plugin->script_sprite_lib);
         script_lib_sprite_refresh (plugin->script_sprite_lib);
         unpause_displays (plugin);
 }
@@ -652,6 +656,7 @@ display_message (ply_boot_splash_plugin_t *plugin,
                                                 message);
         script_lib_sprite_console_viewer_print (plugin->script_sprite_lib,
                                                 message);
+        script_lib_update_displays (plugin->script_sprite_lib);
         script_lib_sprite_refresh (plugin->script_sprite_lib);
         unpause_displays (plugin);
 }
@@ -664,6 +669,7 @@ hide_message (ply_boot_splash_plugin_t *plugin,
         script_lib_plymouth_on_hide_message (plugin->script_state,
                                              plugin->script_plymouth_lib,
                                              message);
+        script_lib_update_displays (plugin->script_sprite_lib);
         script_lib_sprite_refresh (plugin->script_sprite_lib);
         unpause_displays (plugin);
 }
