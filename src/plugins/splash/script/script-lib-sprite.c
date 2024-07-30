@@ -501,9 +501,6 @@ draw_area (script_lib_sprite_data_t *data,
 {
         ply_list_node_t *node;
 
-        if (!data->needs_redraw)
-                return;
-
         for (node = ply_list_get_first_node (data->displays);
              node;
              node = ply_list_get_next_node (data->displays, node)) {
@@ -515,7 +512,6 @@ draw_area (script_lib_sprite_data_t *data,
                                              width,
                                              height);
         }
-        data->needs_redraw = false;
 }
 
 static void
@@ -811,6 +807,9 @@ script_lib_sprite_refresh (script_lib_sprite_data_t *data)
         if (!data)
                 return;
 
+        if (!data->needs_redraw)
+                return;
+
         region = ply_region_new ();
 
         ply_list_sort_stable (data->sprite_list, &sprite_compare_z);
@@ -914,6 +913,7 @@ script_lib_sprite_refresh (script_lib_sprite_data_t *data)
                 data->console_viewer_needs_redraw = false;
         }
 
+        data->needs_redraw = false;
         ply_region_free (region);
 }
 
