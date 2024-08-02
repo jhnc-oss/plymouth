@@ -211,6 +211,7 @@ struct _ply_boot_splash_plugin
         uint32_t                       should_show_console_messages : 1;
         ply_buffer_t                  *boot_buffer;
         uint32_t                       console_text_color;
+        uint32_t                       console_viewer_preserve_background;
 };
 
 ply_boot_splash_plugin_interface_t *ply_boot_splash_plugin_get_interface (void);
@@ -636,6 +637,9 @@ create_plugin (ply_key_file_t *key_file)
                 ply_key_file_get_long (key_file, "space-flares",
                                        "ConsoleLogTextColor",
                                        PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
+
+        plugin->console_viewer_preserve_background =
+                ply_key_file_get_bool (key_file, "space-flares", "ConsoleViewerPreserveBackground");
 
         plugin->state = PLY_BOOT_SPLASH_DISPLAY_NORMAL;
         plugin->progress = 0;
@@ -1478,7 +1482,7 @@ draw_background (view_t             *view,
         image_area.width = ply_image_get_width (view->scaled_background_image);
         image_area.height = ply_image_get_height (view->scaled_background_image);
 
-        if (plugin->should_show_console_messages) {
+        if (plugin->should_show_console_messages && plugin->console_viewer_preserve_background == false) {
                 ply_pixel_buffer_fill_with_hex_color (pixel_buffer, &area, 0);
                 return;
         }
@@ -1486,6 +1490,9 @@ draw_background (view_t             *view,
         ply_pixel_buffer_fill_with_argb32_data_with_clip (pixel_buffer,
                                                           &image_area, &area,
                                                           ply_image_get_data (view->scaled_background_image));
+
+        if (plugin->should_show_console_messages)
+                return;
 
         image_area.x = image_area.width - ply_image_get_width (plugin->star_image);
         image_area.y = image_area.height - ply_image_get_height (plugin->star_image);
