@@ -113,6 +113,7 @@ struct _ply_boot_splash_plugin
         uint32_t                       should_show_console_messages : 1;
         ply_buffer_t                  *boot_buffer;
         uint32_t                       console_text_color;
+        uint32_t                       console_viewer_preserve_background;
 };
 
 ply_boot_splash_plugin_interface_t *ply_boot_splash_plugin_get_interface (void);
@@ -257,6 +258,9 @@ create_plugin (ply_key_file_t *key_file)
                 ply_key_file_get_long (key_file, "fade-throbber",
                                        "ConsoleLogTextColor",
                                        PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
+
+        plugin->console_viewer_preserve_background =
+                ply_key_file_get_bool (key_file, "fade-throbber", "ConsoleViewerPreserveBackground");
 
         plugin->image_dir = image_dir;
 
@@ -734,7 +738,7 @@ draw_background (view_t             *view,
 
         plugin = view->plugin;
 
-        if (plugin->should_show_console_messages) {
+        if (plugin->should_show_console_messages && plugin->console_viewer_preserve_background == false) {
                 ply_pixel_buffer_fill_with_hex_color (pixel_buffer, &area, 0);
         } else {
                 ply_pixel_buffer_fill_with_gradient (pixel_buffer, &area,
