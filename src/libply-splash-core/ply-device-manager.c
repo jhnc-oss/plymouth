@@ -974,7 +974,9 @@ add_consoles_from_file (ply_device_manager_t *manager,
         contents_length = read (fd, contents, sizeof(contents) - 1);
 
         if (contents_length <= 0) {
-                ply_trace ("couldn't read it: %m");
+                if (contents_length < 0)
+                        ply_trace ("couldn't read it: %m");
+
                 close (fd);
                 return false;
         }

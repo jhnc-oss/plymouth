@@ -885,6 +885,19 @@ sh_is_init (state_t *state)
 }
 
 static bool
+kernel_console_is_ttynull (void)
+{
+        char *kernel_console = ply_get_primary_kernel_console_type ();
+
+        /* If the primary console is ttynull, the kernel console is virtual.
+         */
+        if (strcmp (kernel_console, "ttynull") == 0)
+                return true;
+
+        return false;
+}
+
+static bool
 plymouth_should_show_default_splash (state_t *state)
 {
         ply_trace ("checking if plymouth should show default splash");
@@ -925,7 +938,7 @@ plymouth_should_show_default_splash (state_t *state)
         }
 
         if (state->should_force_default_splash) {
-                ply_trace ("using default splash because kernel command line has option \"plymouth.graphical\"");
+                ply_trace ("using default splash because forced by \"plymouth.graphical\" or no active kernel console");
                 return true;
         }
 
@@ -2457,7 +2470,7 @@ main (int    argc,
         signal (SIGSEGV, on_crash);
         signal (SIGFPE, on_crash);
 
-        if (graphical_boot || ply_kernel_command_line_has_argument ("plymouth.graphical")) {
+        if (graphical_boot || ply_kernel_command_line_has_argument ("plymouth.graphical") || kernel_console_is_ttynull ()) {
                 state.should_force_default_splash = true;
                 ignore_serial_consoles = true;
         }

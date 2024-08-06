@@ -176,6 +176,8 @@ bool ply_kernel_command_line_has_argument (const char *argument);
 void ply_kernel_command_line_override (const char *command_line);
 char *ply_kernel_command_line_get_key_value (const char *key);
 
+char *ply_get_primary_kernel_console_type (void);
+
 double ply_strtod (const char *str);
 
 bool ply_is_secure_boot_enabled (void);
