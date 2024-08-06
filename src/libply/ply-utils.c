@@ -1259,6 +1259,34 @@ ply_kernel_command_line_override (const char *command_line)
         kernel_command_line_is_set = true;
 }
 
+char *
+ply_get_primary_kernel_console_type (void)
+{
+        int fd;
+        int len;
+        char proc_consoles[4096] = "";
+        size_t return_length;
+
+        if (ply_file_exists ("/proc/consoles")) {
+                ply_trace ("opening /proc/consoles");
+
+                fd = open ("/proc/consoles", O_RDONLY);
+                len = read (fd, proc_consoles, sizeof(proc_consoles));
+                close (fd);
+
+                /* The device type for /dev/ttyS0 is "ttyS".
+                 * for /dev/ttynull it is "ttynull", which appears as "ttynull0" in /proc/consoles. Exclude any numbers at the end.
+                 */
+                for (return_length = 0; return_length < len; return_length++) {
+                        /* Read until the next digit or space, the digit should be first */
+                        if (isdigit (proc_consoles[return_length]) || isspace (proc_consoles[return_length]))
+                                return strndup (proc_consoles, return_length);
+                }
+        }
+
+        return NULL;
+}
+
 double ply_strtod (const char *str)
 {
         char *old_locale;
