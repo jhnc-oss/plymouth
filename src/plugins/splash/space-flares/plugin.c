@@ -211,6 +211,7 @@ struct _ply_boot_splash_plugin
         uint32_t                       should_show_console_messages : 1;
         ply_buffer_t                  *boot_buffer;
         uint32_t                       console_text_color;
+        uint32_t                       console_background_color;
         uint32_t                       console_viewer_preserve_background;
 };
 
@@ -637,6 +638,11 @@ create_plugin (ply_key_file_t *key_file)
                 ply_key_file_get_long (key_file, "space-flares",
                                        "ConsoleLogTextColor",
                                        PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
+
+        plugin->console_background_color =
+                ply_key_file_get_long (key_file, "space-flares",
+                                       "ConsoleLogBackgroundColor",
+                                       0x00000000);
 
         plugin->console_viewer_preserve_background =
                 ply_key_file_get_bool (key_file, "space-flares", "ConsoleViewerPreserveBackground");
