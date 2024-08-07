@@ -113,7 +113,7 @@ struct _ply_boot_splash_plugin
         uint32_t                       should_show_console_messages : 1;
         ply_buffer_t                  *boot_buffer;
         uint32_t                       console_text_color;
-        uint32_t                       console_viewer_preserve_background;
+        uint32_t                       console_background_color;
 };
 
 ply_boot_splash_plugin_interface_t *ply_boot_splash_plugin_get_interface (void);
@@ -259,8 +259,10 @@ create_plugin (ply_key_file_t *key_file)
                                        "ConsoleLogTextColor",
                                        PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
 
-        plugin->console_viewer_preserve_background =
-                ply_key_file_get_bool (key_file, "fade-throbber", "ConsoleViewerPreserveBackground");
+        plugin->console_background_color =
+                ply_key_file_get_long (key_file, "fade-throbber",
+                                       "ConsoleLogBackgroundColor",
+                                       0x00000000);
 
         plugin->image_dir = image_dir;
 
@@ -738,13 +740,12 @@ draw_background (view_t             *view,
 
         plugin = view->plugin;
 
-        if (plugin->should_show_console_messages && plugin->console_viewer_preserve_background == false) {
-                ply_pixel_buffer_fill_with_hex_color (pixel_buffer, &area, 0);
-        } else {
-                ply_pixel_buffer_fill_with_gradient (pixel_buffer, &area,
-                                                     PLYMOUTH_BACKGROUND_START_COLOR,
-                                                     PLYMOUTH_BACKGROUND_END_COLOR);
-        }
+        ply_pixel_buffer_fill_with_gradient (pixel_buffer, &area,
+                                             PLYMOUTH_BACKGROUND_START_COLOR,
+                                             PLYMOUTH_BACKGROUND_END_COLOR);
+
+        if (plugin->should_show_console_messages)
+                ply_pixel_buffer_fill_with_hex_color (pixel_buffer, &area, plugin->console_background_color);
 }
 
 static void

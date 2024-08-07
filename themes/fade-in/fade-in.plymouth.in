@@ -5,4 +5,4 @@ ModuleName=fade-throbber
 
 [fade-throbber]
 ImageDir=@PLYMOUTH_THEME_PATH@/fade-in
-ConsoleViewerPreserveBackground=false
+ConsoleLogBackgroundColor=0x00000000

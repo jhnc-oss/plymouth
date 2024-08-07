@@ -5,4 +5,4 @@ ModuleName=space-flares
 
 [space-flares]
 ImageDir=@PLYMOUTH_THEME_PATH@/solar
-ConsoleViewerPreserveBackground=false
+ConsoleLogBackgroundColor=0x00000000
