@@ -62,10 +62,16 @@ struct _ply_label_plugin_control
         PangoAlignment       alignment;
         PangoAttrList       *attribute_list;
         long                 width;
-        float                red;
-        float                green;
-        float                blue;
-        float                alpha;
+
+        float                foreground_red;
+        float                foreground_green;
+        float                foreground_blue;
+        float                foreground_alpha;
+
+        float                background_red;
+        float                background_green;
+        float                background_blue;
+        float                background_alpha;
 
         uint32_t             is_hidden : 1;
         uint32_t             needs_size_update : 1;
@@ -365,10 +371,10 @@ draw_control (ply_label_plugin_control_t *label,
                        label->area.x - center_x,
                        label->area.y - center_y);
         cairo_set_source_rgba (cairo_context,
-                               label->red,
-                               label->green,
-                               label->blue,
-                               label->alpha);
+                               label->foreground_red,
+                               label->foreground_green,
+                               label->foreground_blue,
+                               label->foreground_alpha);
         pango_cairo_show_layout (cairo_context,
                                  pango_layout);
 
@@ -640,6 +646,16 @@ set_rich_text_for_control (ply_label_plugin_control_t *label,
                         pango_attribute->start_index = start_index;
                         pango_attribute->end_index = start_index + length;
                         stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+                } else {
+                        pango_attribute = pango_attr_background_new (label->background_red, label->background_green, label->background_blue);
+                        pango_attribute->start_index = start_index;
+                        pango_attribute->end_index = start_index + length;
+                        stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+
+                        pango_attribute = pango_attr_background_alpha_new (label->background_alpha);
+                        pango_attribute->start_index = start_index;
+                        pango_attribute->end_index = start_index + length;
+                        stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
                 }
 
                 pango_attribute = pango_attr_weight_new (bold_style);
@@ -704,10 +720,47 @@ set_color_for_control (ply_label_plugin_control_t *label,
                        float                       blue,
                        float                       alpha)
 {
-        label->red = red;
-        label->green = green;
-        label->blue = blue;
-        label->alpha = alpha;
+        label->foreground_red = red;
+        label->foreground_green = green;
+        label->foreground_blue = blue;
+        label->foreground_alpha = alpha;
+
+        if (!label->is_hidden && label->display != NULL)
+                ply_pixel_display_draw_area (label->display,
+                                             label->area.x, label->area.y,
+                                             label->area.width, label->area.height);
+}
+
+static void
+set_background_color_for_control (ply_label_plugin_control_t *label,
+                                  float                       red,
+                                  float                       green,
+                                  float                       blue,
+                                  float                       alpha)
+{
+        PangoAttribute *pango_attribute = NULL;
+        PangoAttribute *staged_attributes[PANGO_ATTR_FONT_SCALE + 1] = { NULL };
+
+        label->background_red = red * 0xffff;
+        label->background_green = green * 0xffff;
+        label->background_blue = blue * 0xffff;
+        label->background_alpha = alpha * 0xffff;
+
+        /* Full alpha doesn't apply */
+        if (label->background_alpha == 0)
+                label->background_alpha++;
+
+        pango_attribute = pango_attr_background_new (label->background_red, label->background_green, label->background_blue);
+        pango_attribute->start_index = 0;
+        pango_attribute->end_index = 65535;
+        stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+
+        pango_attribute = pango_attr_background_alpha_new (label->background_alpha);
+        pango_attribute->start_index = 0;
+        pango_attribute->end_index = 65535;
+        stage_pango_attribute_for_list (label->attribute_list, staged_attributes, pango_attribute);
+
+        flush_pango_attributes_to_list (label->attribute_list, staged_attributes);
 
         if (!label->is_hidden && label->display != NULL)
                 ply_pixel_display_draw_area (label->display,
@@ -780,20 +833,21 @@ ply_label_plugin_get_interface (void)
 {
         static ply_label_plugin_interface_t plugin_interface =
         {
-                .create_control            = create_control,
-                .destroy_control           = destroy_control,
-                .show_control              = show_control,
-                .hide_control              = hide_control,
-                .draw_control              = draw_control,
-                .is_control_hidden         = is_control_hidden,
-                .set_text_for_control      = set_text_for_control,
-                .set_rich_text_for_control = set_rich_text_for_control,
-                .set_alignment_for_control = set_alignment_for_control,
-                .set_width_for_control     = set_width_for_control,
-                .set_font_for_control      = set_font_for_control,
-                .set_color_for_control     = set_color_for_control,
-                .get_width_of_control      = get_width_of_control,
-                .get_height_of_control     = get_height_of_control
+                .create_control                   = create_control,
+                .destroy_control                  = destroy_control,
+                .show_control                     = show_control,
+                .hide_control                     = hide_control,
+                .draw_control                     = draw_control,
+                .is_control_hidden                = is_control_hidden,
+                .set_text_for_control             = set_text_for_control,
+                .set_rich_text_for_control        = set_rich_text_for_control,
+                .set_alignment_for_control        = set_alignment_for_control,
+                .set_width_for_control            = set_width_for_control,
+                .set_font_for_control             = set_font_for_control,
+                .set_color_for_control            = set_color_for_control,
+                .set_background_color_for_control = set_background_color_for_control,
+                .get_width_of_control             = get_width_of_control,
+                .get_height_of_control            = get_height_of_control
         };
 
         return &plugin_interface;
