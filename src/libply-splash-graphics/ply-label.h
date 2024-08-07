@@ -79,6 +79,13 @@ void ply_label_set_color (ply_label_t *label,
                           float        green,
                           float        blue,
                           float        alpha);
+void ply_label_set_hex_background_color (ply_label_t *label,
+                                         uint32_t     hex_color);
+void ply_label_set_background_color (ply_label_t *label,
+                                     float        red,
+                                     float        green,
+                                     float        blue,
+                                     float        alpha);
 
 long ply_label_get_width (ply_label_t *label);
 long ply_label_get_height (ply_label_t *label);

@@ -71,6 +71,11 @@ typedef struct
                                           ply_label_alignment_t       alignment);
         void (*set_width_for_control)(ply_label_plugin_control_t *label,
                                       long                        width);
+        void (*set_background_color_for_control)(ply_label_plugin_control_t *label,
+                                                 float                       red,
+                                                 float                       green,
+                                                 float                       blue,
+                                                 float                       alpha);
 } ply_label_plugin_interface_t;
 
 #endif /* PLY_LABEL_PLUGIN_H */

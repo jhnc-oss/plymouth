@@ -53,10 +53,16 @@ struct _ply_label
         ply_label_alignment_t               alignment;
         long                                width;
         char                               *font;
-        float                               red;
-        float                               green;
-        float                               blue;
-        float                               alpha;
+
+        float                               text_red;
+        float                               text_green;
+        float                               text_blue;
+        float                               text_alpha;
+
+        float                               background_red;
+        float                               background_green;
+        float                               background_blue;
+        float                               background_alpha;
 };
 
 typedef const ply_label_plugin_interface_t *
@@ -70,10 +76,16 @@ ply_label_new (void)
         ply_label_t *label;
 
         label = calloc (1, sizeof(struct _ply_label));
-        label->red = 1;
-        label->green = 1;
-        label->blue = 1;
-        label->alpha = 1;
+
+        label->text_red = 1;
+        label->text_green = 1;
+        label->text_blue = 1;
+        label->text_alpha = 1;
+
+        label->background_red = 0;
+        label->background_green = 0;
+        label->background_blue = 0;
+        label->background_alpha = 0;
         label->alignment = PLY_LABEL_ALIGN_LEFT;
         label->width = -1;
         return label;
@@ -169,10 +181,15 @@ ply_label_load_plugin (ply_label_t *label)
         label->plugin_interface->set_width_for_control (label->control,
                                                         label->width);
         label->plugin_interface->set_color_for_control (label->control,
-                                                        label->red,
-                                                        label->green,
-                                                        label->blue,
-                                                        label->alpha);
+                                                        label->text_red,
+                                                        label->text_green,
+                                                        label->text_blue,
+                                                        label->text_alpha);
+        label->plugin_interface->set_background_color_for_control (label->control,
+                                                                   label->background_red,
+                                                                   label->background_green,
+                                                                   label->background_blue,
+                                                                   label->background_alpha);
         return true;
 }
 
@@ -367,10 +384,10 @@ ply_label_set_color (ply_label_t *label,
                      float        blue,
                      float        alpha)
 {
-        label->red = red;
-        label->green = green;
-        label->blue = blue;
-        label->alpha = alpha;
+        label->text_red = red;
+        label->text_green = green;
+        label->text_blue = blue;
+        label->text_alpha = alpha;
 
         if (label->plugin_interface == NULL)
                 return;
@@ -380,6 +397,53 @@ ply_label_set_color (ply_label_t *label,
                                                         green,
                                                         blue,
                                                         alpha);
+}
+
+
+void
+ply_label_set_hex_background_color (ply_label_t *label,
+                                    uint32_t     hex_color)
+{
+        double red;
+        double green;
+        double blue;
+        double alpha;
+
+        red = ((double) (hex_color & 0xff000000) / 0xff000000);
+        green = ((double) (hex_color & 0x00ff0000) / 0x00ff0000);
+        blue = ((double) (hex_color & 0x0000ff00) / 0x0000ff00);
+        alpha = ((double) (hex_color & 0x000000ff) / 0x000000ff);
+
+        if (label->plugin_interface == NULL)
+                return;
+
+        label->plugin_interface->set_background_color_for_control (label->control,
+                                                                   red,
+                                                                   green,
+                                                                   blue,
+                                                                   alpha);
+}
+
+void
+ply_label_set_background_color (ply_label_t *label,
+                                float        red,
+                                float        green,
+                                float        blue,
+                                float        alpha)
+{
+        label->background_red = red;
+        label->background_green = green;
+        label->background_blue = blue;
+        label->background_alpha = alpha;
+
+        if (label->plugin_interface == NULL)
+                return;
+
+        label->plugin_interface->set_background_color_for_control (label->control,
+                                                                   red,
+                                                                   green,
+                                                                   blue,
+                                                                   alpha);
 }
 
 long
