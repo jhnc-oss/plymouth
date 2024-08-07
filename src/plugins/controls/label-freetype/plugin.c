@@ -853,6 +853,22 @@ set_color_for_control (ply_label_plugin_control_t *label,
         trigger_redraw (label, false);
 }
 
+static void
+set_background_color_for_control (ply_label_plugin_control_t *label,
+                                  float                       red,
+                                  float                       green,
+                                  float                       blue,
+                                  float                       alpha)
+{
+        (void) label;
+        (void) red;
+        (void) green;
+        (void) blue;
+        (void) alpha;
+
+        return;
+}
+
 static bool
 show_control (ply_label_plugin_control_t *label,
               ply_pixel_display_t        *display,
@@ -907,20 +923,21 @@ ply_label_plugin_get_interface (void)
 {
         static ply_label_plugin_interface_t plugin_interface =
         {
-                .create_control            = create_control,
-                .destroy_control           = destroy_control,
-                .show_control              = show_control,
-                .hide_control              = hide_control,
-                .draw_control              = draw_control,
-                .is_control_hidden         = is_control_hidden,
-                .set_text_for_control      = set_text_for_control,
-                .set_rich_text_for_control = set_rich_text_for_control,
-                .set_alignment_for_control = set_alignment_for_control,
-                .set_width_for_control     = set_width_for_control,
-                .set_font_for_control      = set_font_for_control,
-                .set_color_for_control     = set_color_for_control,
-                .get_width_of_control      = get_width_of_control,
-                .get_height_of_control     = get_height_of_control
+                .create_control                   = create_control,
+                .destroy_control                  = destroy_control,
+                .show_control                     = show_control,
+                .hide_control                     = hide_control,
+                .draw_control                     = draw_control,
+                .is_control_hidden                = is_control_hidden,
+                .set_text_for_control             = set_text_for_control,
+                .set_rich_text_for_control        = set_rich_text_for_control,
+                .set_alignment_for_control        = set_alignment_for_control,
+                .set_width_for_control            = set_width_for_control,
+                .set_font_for_control             = set_font_for_control,
+                .set_color_for_control            = set_color_for_control,
+                .set_background_color_for_control = set_background_color_for_control,
+                .get_width_of_control             = get_width_of_control,
+                .get_height_of_control            = get_height_of_control
         };
 
         return &plugin_interface;

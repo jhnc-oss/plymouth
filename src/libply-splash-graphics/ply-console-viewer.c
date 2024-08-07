@@ -52,6 +52,7 @@ struct _ply_console_viewer
         int                      line_max_chars;
 
         uint32_t                 text_color;
+        uint32_t                 background_color;
 };
 
 static void update_console_messages (ply_console_viewer_t *console_viewer);
@@ -112,6 +113,7 @@ ply_console_viewer_new (ply_pixel_display_t *display,
         ply_label_set_font (measure_label, console_viewer->font);
 
         console_viewer->text_color = PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR;
+        console_viewer->background_color = 0x00000000;
 
         console_viewer->font_height = ply_label_get_height (measure_label);
         console_viewer->font_width = ply_label_get_width (measure_label);
@@ -252,7 +254,7 @@ void
 ply_console_viewer_show (ply_console_viewer_t *console_viewer,
                          ply_pixel_display_t  *display)
 {
-        uint32_t label_color;
+        uint32_t label_color, background_color;
         size_t label_index;
         ply_list_node_t *node;
 
@@ -262,6 +264,7 @@ ply_console_viewer_show (ply_console_viewer_t *console_viewer,
         console_viewer->is_hidden = false;
 
         label_color = console_viewer->text_color;
+        background_color = console_viewer->background_color;
 
         label_index = 0;
         ply_list_foreach (console_viewer->message_labels, node) {
@@ -271,6 +274,7 @@ ply_console_viewer_show (ply_console_viewer_t *console_viewer,
                                 console_viewer->font_width / 2,
                                 console_viewer->font_height * label_index);
                 ply_label_set_hex_color (console_message_label, label_color);
+                ply_label_set_hex_background_color (console_message_label, background_color);
                 label_index++;
         }
 
@@ -349,6 +353,13 @@ ply_console_viewer_set_text_color (ply_console_viewer_t *console_viewer,
                                    uint32_t              hex_color)
 {
         console_viewer->text_color = hex_color;
+}
+
+void
+ply_console_viewer_set_background_color (ply_console_viewer_t *console_viewer,
+                                         uint32_t              hex_color)
+{
+        console_viewer->background_color = hex_color;
 }
 
 void
