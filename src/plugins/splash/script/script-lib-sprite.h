@@ -42,6 +42,7 @@ typedef struct
         ply_buffer_t              *boot_buffer;
         char                      *monospace_font;
         uint32_t                   console_text_color;
+        uint32_t                   console_background_color;
         bool                       console_viewer_preserve_background;
         bool                       needs_redraw;
         bool                       plugin_console_messages_updating;
@@ -82,6 +83,7 @@ script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
                                                    ply_buffer_t   *boot_buffer,
                                                    char           *monospace_font,
                                                    uint32_t        console_text_color,
+                                                   uint32_t        console_background_color,
                                                    bool            console_viewer_preserve_background);
 void script_lib_sprite_pixel_display_added (script_lib_sprite_data_t *data,
                                             ply_pixel_display_t      *pixel_display);
