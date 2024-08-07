@@ -201,6 +201,7 @@ struct _ply_boot_splash_plugin
         uint32_t                            should_show_console_messages : 1;
         ply_buffer_t                       *boot_buffer;
         uint32_t                            console_text_color;
+        uint32_t                            console_viewer_preserve_background;
 };
 
 ply_boot_splash_plugin_interface_t *ply_boot_splash_plugin_get_interface (void);
@@ -1289,6 +1290,9 @@ create_plugin (ply_key_file_t *key_file)
                                        "ConsoleLogTextColor",
                                        PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
 
+        plugin->console_viewer_preserve_background =
+                ply_key_file_get_bool (key_file, "two-step", "ConsoleViewerPreserveBackground");
+
         plugin->transition_duration =
                 ply_key_file_get_double (key_file, "two-step",
                                          "TransitionDuration", 0.0);
@@ -1616,7 +1620,7 @@ draw_background (view_t             *view,
             using_fw_background && plugin->dialog_clears_firmware_background)
                 use_black_background = true;
 
-        if (plugin->should_show_console_messages) {
+        if (plugin->should_show_console_messages && plugin->console_viewer_preserve_background == false) {
                 use_black_background = true;
         }
 

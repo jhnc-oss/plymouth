@@ -401,7 +401,7 @@ static void script_lib_draw_brackground (ply_pixel_buffer_t       *pixel_buffer,
                                          ply_rectangle_t          *clip_area,
                                          script_lib_sprite_data_t *data)
 {
-        if (data->should_show_console_messages) {
+        if (data->should_show_console_messages && data->console_viewer_preserve_background == false) {
                 ply_pixel_buffer_fill_with_hex_color (pixel_buffer, clip_area, 0);
                 return;
         }
@@ -572,7 +572,8 @@ script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
                                                    ply_list_t     *pixel_displays,
                                                    ply_buffer_t   *boot_buffer,
                                                    char           *monospace_font,
-                                                   uint32_t        console_text_color)
+                                                   uint32_t        console_text_color,
+                                                   bool            console_viewer_preserve_background)
 {
         ply_list_node_t *node;
         script_lib_sprite_data_t *data = malloc (sizeof(script_lib_sprite_data_t));
@@ -584,6 +585,7 @@ script_lib_sprite_data_t *script_lib_sprite_setup (script_state_t *state,
         data->boot_buffer = boot_buffer;
         data->monospace_font = monospace_font;
         data->console_text_color = console_text_color;
+        data->console_viewer_preserve_background = console_viewer_preserve_background;
 
         for (node = ply_list_get_first_node (pixel_displays);
              node;
