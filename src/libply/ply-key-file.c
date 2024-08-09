@@ -420,6 +420,43 @@ ply_key_file_get_long (ply_key_file_t *key_file,
         return strtol (raw_value, NULL, 0);
 }
 
+double
+ply_key_file_get_color (ply_key_file_t *key_file,
+                        const char     *group,
+                        const char     *key,
+                        long            default_value)
+{
+        char *raw_value = ply_key_file_get_raw_value (key_file, group, key);
+        long numerical_value;
+        bool pad_alpha_by_raw_value = false;
+
+        if (!raw_value)
+                return default_value;
+
+        /* Plymouth historically would determine if the color specified was 0xrrggbb vs 0xrrggbbaa
+         * by ANDing 0xff000000, this assumed that there was always at least some red. Because
+         * fixing it might break compatibility with themes that accepted an incorrect color,
+         * colors to be handled the text way, it is now Value=:0xrrggbb or Value=:0xrrggbbaa */
+        if (raw_value[0] == ':') {
+                pad_alpha_by_raw_value = true;
+                raw_value++;
+        }
+
+        numerical_value = strtol (raw_value, NULL, 0);
+
+        if (pad_alpha_by_raw_value == true) {
+                /* If 6 hex bytes in the text value, (rrggbb, not rrggbbaa) assume an RGB value, fully opaque. */
+                if ((strlen (raw_value) == 8) && ply_string_has_prefix (raw_value, "0x"))
+                        numerical_value = (numerical_value << 8) | 0xff;
+        } else {
+                /* If 0xff000000 ands to nothing, assume an RGB value, fully opaque. This is legacy behavior in Plymouth */
+                if ((numerical_value & 0xff000000) == 0)
+                        numerical_value = (numerical_value << 8) | 0xff;
+        }
+
+        return numerical_value;
+}
+
 static void
 ply_key_file_foreach_entry_entries (void *key,
                                     void *data,
