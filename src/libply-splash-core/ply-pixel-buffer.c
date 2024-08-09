@@ -616,11 +616,6 @@ ply_pixel_buffer_fill_with_hex_color_at_opacity (ply_pixel_buffer_t *buffer,
 
         assert (buffer != NULL);
 
-        /* if they only gave an rgb hex number, assume an alpha of 0xff
-         */
-        if ((hex_color & 0xff000000) == 0)
-                hex_color = (hex_color << 8) | 0xff;
-
         red = ((double) (hex_color & 0xff000000) / 0xff000000);
         green = ((double) (hex_color & 0x00ff0000) / 0x00ff0000);
         blue = ((double) (hex_color & 0x0000ff00) / 0x0000ff00);

@@ -59,6 +59,10 @@ double ply_key_file_get_long (ply_key_file_t *key_file,
                               const char     *group,
                               const char     *key,
                               long            default_value);
+double ply_key_file_get_color (ply_key_file_t *key_file,
+                               const char     *group,
+                               const char     *key,
+                               long            default_value);
 void ply_key_file_foreach_entry (ply_key_file_t             *key_file,
                                  ply_key_file_foreach_func_t func,
                                  void                       *user_data);
