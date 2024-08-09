@@ -1622,10 +1622,6 @@ draw_background (view_t             *view,
             using_fw_background && plugin->dialog_clears_firmware_background)
                 use_black_background = true;
 
-        if (plugin->should_show_console_messages && plugin->console_background_color == 0x00000000) {
-                use_black_background = true;
-        }
-
         if (use_black_background)
                 ply_pixel_buffer_fill_with_hex_color (pixel_buffer, &area, 0);
         else if (view->background_buffer != NULL)
