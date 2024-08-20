@@ -1470,6 +1470,10 @@ on_quit (state_t       *state,
                         state->splash_is_becoming_idle = true;
                 }
         } else {
+                if (!state->should_retain_splash) {
+                        hide_splash (state);
+                }
+                quit_splash (state);
                 quit_program (state);
         }
 }
