@@ -812,6 +812,7 @@ on_change_mode_request (state_t    *state,
         bool system_upgrade = false;
         bool firmware_upgrade = false;
         bool system_reset = false;
+        bool presentation = false;
         const char *mode = NULL;
 
         ply_command_parser_get_command_options (state->command_parser,
@@ -823,6 +824,7 @@ on_change_mode_request (state_t    *state,
                                                 "system-upgrade", &system_upgrade,
                                                 "firmware-upgrade", &firmware_upgrade,
                                                 "system-reset", &system_reset,
+                                                "presentation", &presentation,
                                                 NULL);
 
         if (boot_up)
@@ -839,6 +841,8 @@ on_change_mode_request (state_t    *state,
                 mode = "firmware-upgrade";
         else if (system_reset)
                 mode = "system-reset";
+        else if (presentation)
+                mode = "presentation";
 
         if (mode) {
                 ply_boot_client_change_mode (state->client, mode,
@@ -935,6 +939,8 @@ main (int    argc,
                                         "firmware-upgrade", "Upgrading firmware to a new version",
                                         PLY_COMMAND_OPTION_TYPE_FLAG,
                                         "system-reset", "Resetting the OS and erasing all user data",
+                                        PLY_COMMAND_OPTION_TYPE_FLAG,
+                                        "presentation", "Display static banner without progress indication",
                                         PLY_COMMAND_OPTION_TYPE_FLAG,
                                         NULL);
 
