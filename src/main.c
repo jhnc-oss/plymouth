@@ -1236,10 +1236,8 @@ hide_splash (state_t *state)
 
         cancel_pending_delayed_show (state);
 
-        if (state->boot_splash == NULL)
-                return;
-
-        ply_boot_splash_hide (state->boot_splash);
+        if (state->boot_splash != NULL)
+                ply_boot_splash_hide (state->boot_splash);
 
         if (state->local_console_terminal != NULL) {
                 ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_TEXT);
@@ -1472,6 +1470,10 @@ on_quit (state_t       *state,
                         state->splash_is_becoming_idle = true;
                 }
         } else {
+                if (!state->should_retain_splash) {
+                        hide_splash (state);
+                }
+                quit_splash (state);
                 quit_program (state);
         }
 }
