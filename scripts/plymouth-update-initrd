@@ -4,7 +4,7 @@ set -e
 
 mainFunction () {
 	if [[ -f "/bin/mkinitcpio" ]]; then
-		updateWithPio
+		updateWithCpio
 	elif [[ -f "/bin/dracut" ]]; then
 		so dracut -f
 	else
@@ -38,7 +38,7 @@ so () {
 }
 
 
-updateWithPio () {
+updateWithCpio () {
 	local preset
 
 	find /etc/mkinitcpio.d -name "*.preset" -and -not -name "example.preset" |
