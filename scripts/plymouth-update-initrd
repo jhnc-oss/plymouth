@@ -15,13 +15,22 @@ mainFunction () {
 }
 
 
+checkPermissions () {
+	if [[ "$(id --user)" -ne 0 ]]; then
+		echo "No permissions" >&2
+		echo "Get them with: \"sudo\" or \"su\"" >&2
+		exit 1
+	fi
+}
+
+
 so () {
 	local commands="${*}"
 	local maxLines=20
 	local error=""
 
 	#shellcheck disable=SC2068
-	if ! error="$(sudo ${commands[@]} 2>&1 >"/dev/null")"; then
+	if ! error="$(${commands[@]} 2>&1 >"/dev/null")"; then
 		if [[ -z "${error}" ]] ; then
 			error="Command failed: ${commands[*]}"
 		else
@@ -48,4 +57,5 @@ updateWithCpio () {
 }
 
 
+checkPermissions
 mainFunction
