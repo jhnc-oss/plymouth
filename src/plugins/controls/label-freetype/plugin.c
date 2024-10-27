@@ -156,7 +156,7 @@ find_default_monospace_font_path (void)
         pclose (fp);
 
         if (strcmp (fc_match_out, "") == 0)
-                return FONT_FALLBACK;
+                return MONOSPACE_FONT_FALLBACK;
 
         return fc_match_out;
 }
