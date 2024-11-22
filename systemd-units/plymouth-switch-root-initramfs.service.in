@@ -12,5 +12,3 @@ ConditionPathExists=|/run/initramfs/shutdown
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=-@PLYMOUTH_CLIENT_DIR@/plymouth update-root-fs --new-root-dir=/run/initramfs
-Type=oneshot
-RemainAfterExit=yes
