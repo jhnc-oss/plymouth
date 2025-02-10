@@ -61,7 +61,7 @@ ply_keymap_normalize_keymap (const char *keymap_with_variant)
         int i, length;
 
         /* Special case for dvorak layouts */
-        if (strstr (keymap_with_variant, "dvorak"))
+        if (strcasestr (keymap_with_variant, "dvorak"))
                 return strdup ("dvorak");
 
         /* Check for and skip sun / mac prefixes */
