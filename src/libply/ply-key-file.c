@@ -406,7 +406,7 @@ ply_key_file_get_double (ply_key_file_t *key_file,
         return ply_strtod (raw_value);
 }
 
-double
+long
 ply_key_file_get_long (ply_key_file_t *key_file,
                        const char     *group,
                        const char     *key,
