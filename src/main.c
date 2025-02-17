@@ -102,6 +102,7 @@ typedef struct
         double                  splash_delay;
         double                  device_timeout;
         int                     device_scale;
+        int                     use_simpledrm;
 
         uint32_t                no_boot_log : 1;
         uint32_t                showing_details : 1;
@@ -345,6 +346,12 @@ load_settings (state_t    *state,
                 }
         }
 
+        if (state->use_simpledrm == -1 &&
+            ply_key_file_has_key (key_file, "Daemon", "UseSimpledrm")) {
+                state->use_simpledrm = ply_key_file_get_bool (key_file, "Daemon", "UseSimpledrm");
+                ply_trace ("UseSimpledrm set to %d", state->use_simpledrm);
+        }
+
         settings_loaded = true;
 out:
         free (splash_string);
@@ -407,6 +414,16 @@ find_override_splash (state_t *state)
                 if (val > 0) {
                         state->device_scale = val;
                         ply_set_device_scale (state->device_scale);
+                }
+        }
+
+        if (state->use_simpledrm == -1) {
+                value = ply_kernel_command_line_get_key_value ("plymouth.use-simpledrm=");
+                if (value) {
+                        state->use_simpledrm = ply_str_to_bool (value);
+                        free (value);
+                } else if (ply_kernel_command_line_has_argument ("plymouth.use-simpledrm")) {
+                        state->use_simpledrm = 1;
                 }
         }
 }
@@ -2530,6 +2547,7 @@ main (int    argc,
         state.splash_delay = NAN;
         state.device_timeout = NAN;
         state.device_scale = -1;
+        state.use_simpledrm = -1;
 
         ply_progress_load_cache (state.progress,
                                  get_cache_file_for_mode (state.mode));
@@ -2569,6 +2587,9 @@ main (int    argc,
                 /* don't ever delay showing the detailed splash */
                 state.splash_delay = NAN;
         }
+
+        if (state.use_simpledrm == 1)
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_USE_SIMPLEDRM;
 
         load_devices (&state, device_manager_flags);
 
