@@ -378,28 +378,23 @@ show_detailed_splash (state_t *state)
 static void
 find_override_splash (state_t *state)
 {
-        char *splash_string;
+        const char *string;
+        char *value;
 
         if (state->override_splash_path != NULL)
                 return;
 
-        splash_string = ply_kernel_command_line_get_key_value ("plymouth.splash=");
-
-        if (splash_string != NULL) {
-                ply_trace ("Splash is configured to be '%s'", splash_string);
-
-                get_theme_path (splash_string, NULL, &state->override_splash_path);
-
-                free (splash_string);
+        value = ply_kernel_command_line_get_key_value ("plymouth.splash=");
+        if (value != NULL) {
+                ply_trace ("Splash is configured to be '%s'", value);
+                get_theme_path (value, NULL, &state->override_splash_path);
+                free (value);
         }
 
         if (isnan (state->splash_delay)) {
-                const char *delay_string;
-
-                delay_string = ply_kernel_command_line_get_string_after_prefix ("plymouth.splash-delay=");
-
-                if (delay_string != NULL)
-                        state->splash_delay = ply_strtod (delay_string);
+                string = ply_kernel_command_line_get_string_after_prefix ("plymouth.splash-delay=");
+                if (string != NULL)
+                        state->splash_delay = ply_strtod (string);
         }
 }
 
