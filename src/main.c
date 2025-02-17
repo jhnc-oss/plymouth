@@ -101,6 +101,7 @@ typedef struct
         double                  start_time;
         double                  splash_delay;
         double                  device_timeout;
+        int                     device_scale;
 
         uint32_t                no_boot_log : 1;
         uint32_t                showing_details : 1;
@@ -307,7 +308,6 @@ load_settings (state_t    *state,
 {
         ply_key_file_t *key_file = NULL;
         bool settings_loaded = false;
-        char *scale_string = NULL;
         char *splash_string = NULL;
 
         ply_trace ("Trying to load %s", path);
@@ -336,12 +336,8 @@ load_settings (state_t    *state,
                 ply_trace ("Device timeout is set to %lf", state->device_timeout);
         }
 
-        scale_string = ply_key_file_get_value (key_file, "Daemon", "DeviceScale");
-
-        if (scale_string != NULL) {
-                ply_set_device_scale (strtoul (scale_string, NULL, 0));
-                free (scale_string);
-        }
+        if (state->device_scale == -1)
+                state->device_scale = ply_key_file_get_ulong (key_file, "Daemon", "DeviceScale", -1);
 
         settings_loaded = true;
 out:
@@ -401,17 +397,9 @@ find_override_splash (state_t *state)
                 if (delay_string != NULL)
                         state->splash_delay = ply_strtod (delay_string);
         }
-}
 
-static void
-find_force_scale (state_t *state)
-{
-        const char *scale_string;
-
-        scale_string = ply_kernel_command_line_get_string_after_prefix ("plymouth.force-scale=");
-
-        if (scale_string != NULL)
-                ply_set_device_scale (strtoul (scale_string, NULL, 0));
+        if (state->device_scale == -1)
+                state->device_scale = ply_kernel_command_line_get_ulong ("plymouth.force-scale=", -1);
 }
 
 static void
@@ -2532,6 +2520,7 @@ main (int    argc,
         state.progress = ply_progress_new ();
         state.splash_delay = NAN;
         state.device_timeout = NAN;
+        state.device_scale = -1;
 
         ply_progress_load_cache (state.progress,
                                  get_cache_file_for_mode (state.mode));
@@ -2572,7 +2561,8 @@ main (int    argc,
                 state.splash_delay = NAN;
         }
 
-        find_force_scale (&state);
+        if (state.device_scale != -1)
+                ply_set_device_scale (state.device_scale);
 
         load_devices (&state, device_manager_flags);
 
