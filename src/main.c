@@ -101,6 +101,8 @@ typedef struct
         double                  start_time;
         double                  splash_delay;
         double                  device_timeout;
+        int                     device_scale;
+        int                     use_simpledrm;
 
         uint32_t                no_boot_log : 1;
         uint32_t                showing_details : 1;
@@ -307,7 +309,6 @@ load_settings (state_t    *state,
 {
         ply_key_file_t *key_file = NULL;
         bool settings_loaded = false;
-        char *scale_string = NULL;
         char *splash_string = NULL;
 
         ply_trace ("Trying to load %s", path);
@@ -336,11 +337,19 @@ load_settings (state_t    *state,
                 ply_trace ("Device timeout is set to %lf", state->device_timeout);
         }
 
-        scale_string = ply_key_file_get_value (key_file, "Daemon", "DeviceScale");
+        if (state->device_scale == -1) {
+                int val = ply_key_file_get_long (key_file, "Daemon", "DeviceScale", -1);
+                if (val > 0) {
+                        state->device_scale = val;
+                        ply_set_device_scale (state->device_scale);
+                        ply_trace ("Device scale is set to %d", state->device_scale);
+                }
+        }
 
-        if (scale_string != NULL) {
-                ply_set_device_scale (strtoul (scale_string, NULL, 0));
-                free (scale_string);
+        if (state->use_simpledrm == -1 &&
+            ply_key_file_has_key (key_file, "Daemon", "UseSimpledrm")) {
+                state->use_simpledrm = ply_key_file_get_bool (key_file, "Daemon", "UseSimpledrm");
+                ply_trace ("UseSimpledrm set to %d", state->use_simpledrm);
         }
 
         settings_loaded = true;
@@ -378,40 +387,45 @@ show_detailed_splash (state_t *state)
 static void
 find_override_splash (state_t *state)
 {
-        char *splash_string;
+        const char *string;
+        char *value;
+        int val = 0;
 
         if (state->override_splash_path != NULL)
                 return;
 
-        splash_string = ply_kernel_command_line_get_key_value ("plymouth.splash=");
-
-        if (splash_string != NULL) {
-                ply_trace ("Splash is configured to be '%s'", splash_string);
-
-                get_theme_path (splash_string, NULL, &state->override_splash_path);
-
-                free (splash_string);
+        value = ply_kernel_command_line_get_key_value ("plymouth.splash=");
+        if (value != NULL) {
+                ply_trace ("Splash is configured to be '%s'", value);
+                get_theme_path (value, NULL, &state->override_splash_path);
+                free (value);
         }
 
         if (isnan (state->splash_delay)) {
-                const char *delay_string;
-
-                delay_string = ply_kernel_command_line_get_string_after_prefix ("plymouth.splash-delay=");
-
-                if (delay_string != NULL)
-                        state->splash_delay = ply_strtod (delay_string);
+                string = ply_kernel_command_line_get_string_after_prefix ("plymouth.splash-delay=");
+                if (string != NULL)
+                        state->splash_delay = ply_strtod (string);
         }
-}
 
-static void
-find_force_scale (state_t *state)
-{
-        const char *scale_string;
+        if (state->device_scale == -1) {
+                string = ply_kernel_command_line_get_string_after_prefix ("plymouth.force-scale=");
+                if (string)
+                        val = strtoul (string, NULL, 0);
+                if (val > 0) {
+                        state->device_scale = val;
+                        ply_set_device_scale (state->device_scale);
+                }
+        }
 
-        scale_string = ply_kernel_command_line_get_string_after_prefix ("plymouth.force-scale=");
-
-        if (scale_string != NULL)
-                ply_set_device_scale (strtoul (scale_string, NULL, 0));
+        if (state->use_simpledrm == -1) {
+                value = ply_kernel_command_line_get_key_value ("plymouth.use-simpledrm=");
+                if (value) {
+                        state->use_simpledrm = ply_str_to_bool (value);
+                        free (value);
+                } else if (ply_kernel_command_line_has_argument ("plymouth.use-simpledrm")) {
+                        state->use_simpledrm = 1;
+                }
+        }
 }
 
 static void
@@ -2532,6 +2546,8 @@ main (int    argc,
         state.progress = ply_progress_new ();
         state.splash_delay = NAN;
         state.device_timeout = NAN;
+        state.device_scale = -1;
+        state.use_simpledrm = -1;
 
         ply_progress_load_cache (state.progress,
                                  get_cache_file_for_mode (state.mode));
@@ -2572,7 +2588,8 @@ main (int    argc,
                 state.splash_delay = NAN;
         }
 
-        find_force_scale (&state);
+        if (state.use_simpledrm == 1)
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_USE_SIMPLEDRM;
 
         load_devices (&state, device_manager_flags);
 

@@ -179,6 +179,7 @@ char *ply_kernel_command_line_get_key_value (const char *key);
 char *ply_get_primary_kernel_console_type (void);
 
 double ply_strtod (const char *str);
+bool ply_str_to_bool (const char *str);
 
 bool ply_is_secure_boot_enabled (void);
 
