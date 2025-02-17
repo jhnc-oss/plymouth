@@ -346,7 +346,8 @@ syspath_is_simpledrm (const char *syspath)
 }
 
 static bool
-verify_drm_device (struct udev_device *device)
+verify_drm_device (ply_device_manager_t *manager,
+                   struct udev_device   *device)
 {
         /*
          * Simple-framebuffer devices driven by simpledrm lack information
@@ -359,21 +360,7 @@ verify_drm_device (struct udev_device *device)
         if (!syspath_is_simpledrm (udev_device_get_syspath (device)))
                 return true; /* Not a SimpleDRM device */
 
-        /*
-         * With nomodeset, no native drivers will load, so SimpleDRM devices
-         * should be used immediately.
-         */
-        if (ply_kernel_command_line_has_argument ("nomodeset"))
-                return true;
-
-        /*
-         * Some firmwares leave the panel black at boot. Allow enabling SimpleDRM
-         * use from the cmdline to show something to the user ASAP.
-         */
-        if (ply_kernel_command_line_has_argument ("plymouth.use-simpledrm"))
-                return true;
-
-        return false;
+        return manager->flags & PLY_DEVICE_MANAGER_FLAGS_USE_SIMPLEDRM;
 }
 
 static bool
@@ -399,7 +386,8 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
                 ply_trace ("device subsystem is %s", subsystem);
 
                 if (strcmp (subsystem, SUBSYSTEM_DRM) == 0) {
-                        if (!manager->device_timeout_elapsed && !verify_drm_device (device)) {
+                        if (!manager->device_timeout_elapsed &&
+                            !verify_drm_device (manager, device)) {
                                 ply_trace ("ignoring since we only handle SimpleDRM devices after timeout");
                                 return false;
                         }

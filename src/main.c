@@ -102,6 +102,7 @@ typedef struct
         double                  splash_delay;
         double                  device_timeout;
         int                     device_scale;
+        int                     use_simpledrm;
 
         uint32_t                no_boot_log : 1;
         uint32_t                showing_details : 1;
@@ -339,6 +340,9 @@ load_settings (state_t    *state,
         if (state->device_scale == -1)
                 state->device_scale = ply_key_file_get_ulong (key_file, "Daemon", "DeviceScale", -1);
 
+        if (state->use_simpledrm == -1)
+                state->use_simpledrm = ply_key_file_get_ulong (key_file, "Daemon", "UseSimpledrm", -1);
+
         settings_loaded = true;
 out:
         free (splash_string);
@@ -400,6 +404,16 @@ find_override_splash (state_t *state)
 
         if (state->device_scale == -1)
                 state->device_scale = ply_kernel_command_line_get_ulong ("plymouth.force-scale=", -1);
+
+        if (state->use_simpledrm == -1)
+                state->use_simpledrm = ply_kernel_command_line_get_ulong ("plymouth.use-simpledrm=", -1);
+
+        if (state->use_simpledrm == -1) {
+                if (ply_kernel_command_line_has_argument ("plymouth.use-simpledrm"))
+                        state->use_simpledrm = 1;
+                else if (ply_kernel_command_line_has_argument ("nomodeset"))
+                        state->use_simpledrm = 1;
+        }
 }
 
 static void
@@ -2521,6 +2535,7 @@ main (int    argc,
         state.splash_delay = NAN;
         state.device_timeout = NAN;
         state.device_scale = -1;
+        state.use_simpledrm = -1;
 
         ply_progress_load_cache (state.progress,
                                  get_cache_file_for_mode (state.mode));
@@ -2563,6 +2578,9 @@ main (int    argc,
 
         if (state.device_scale != -1)
                 ply_set_device_scale (state.device_scale);
+
+        if (state.use_simpledrm >= 1)
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_USE_SIMPLEDRM;
 
         load_devices (&state, device_manager_flags);
 
