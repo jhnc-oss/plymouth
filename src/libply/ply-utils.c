@@ -1300,6 +1300,21 @@ double ply_strtod (const char *str)
         return ret;
 }
 
+bool ply_str_to_bool (const char *str)
+{
+        if (!str)
+                return false;
+
+        /* We treat "1", "y" and "yes" and "true" as true, all else is false */
+        if (strcasecmp (str, "1") == 0 ||
+            strcasecmp (str, "y") == 0 ||
+            strcasecmp (str, "yes") == 0 ||
+            strcasecmp (str, "true") == 0)
+                return true;
+
+        return false;
+}
+
 static bool
 check_secure_boot_settings (const char *filename)
 {

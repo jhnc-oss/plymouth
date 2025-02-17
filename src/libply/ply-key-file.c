@@ -377,19 +377,7 @@ ply_key_file_get_bool (ply_key_file_t *key_file,
                        const char     *group,
                        const char     *key)
 {
-        char *raw_value = ply_key_file_get_raw_value (key_file, group, key);
-
-        if (!raw_value)
-                return false;
-
-        /* We treat "1", "y" and "yes" and "true" as true, all else is false */
-        if (strcasecmp (raw_value, "1") == 0 ||
-            strcasecmp (raw_value, "y") == 0 ||
-            strcasecmp (raw_value, "yes") == 0 ||
-            strcasecmp (raw_value, "true") == 0)
-                return true;
-
-        return false;
+        return ply_str_to_bool (ply_key_file_get_raw_value (key_file, group, key));
 }
 
 double
