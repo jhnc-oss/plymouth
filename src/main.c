@@ -412,7 +412,7 @@ find_override_splash (state_t *state)
                 if (ply_kernel_command_line_has_argument ("plymouth.use-simpledrm"))
                         state->use_simpledrm = 1;
                 else if (ply_kernel_command_line_has_argument ("nomodeset"))
-                        state->use_simpledrm = 1;
+                        state->use_simpledrm = 2;
         }
 }
 
@@ -2581,6 +2581,9 @@ main (int    argc,
 
         if (state.use_simpledrm >= 1)
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_USE_SIMPLEDRM;
+
+        if (state.use_simpledrm >= 2)
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_OPEN;
 
         load_devices (&state, device_manager_flags);
 

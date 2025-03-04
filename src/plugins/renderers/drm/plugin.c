@@ -1563,7 +1563,8 @@ has_32bpp_support (ply_renderer_backend_t *backend)
 }
 
 static bool
-query_device (ply_renderer_backend_t *backend)
+query_device (ply_renderer_backend_t *backend,
+              bool                    force)
 {
         bool ret = true;
 

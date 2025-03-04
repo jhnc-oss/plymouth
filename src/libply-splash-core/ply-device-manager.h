@@ -35,6 +35,7 @@ typedef enum
         PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS         = 1 << 2,
         PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER     = 1 << 3,
         PLY_DEVICE_MANAGER_FLAGS_USE_SIMPLEDRM          = 1 << 4,
+        PLY_DEVICE_MANAGER_FLAGS_FORCE_OPEN             = 1 << 5,
 } ply_device_manager_flags_t;
 
 typedef struct _ply_device_manager ply_device_manager_t;
