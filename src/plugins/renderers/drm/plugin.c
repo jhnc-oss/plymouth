@@ -1391,12 +1391,37 @@ check_if_output_has_changed (ply_renderer_backend_t *backend,
         return true;
 }
 
+/* Sometimes the EFI firmware sets up the framebuffer at 800x600 or 1024x768
+ * instead of the native panel resolution. In this case it is better to wait
+ * for the native driver to load, so we return false from query_device ().
+ */
+static bool
+check_simpledrm_resolution (ply_renderer_backend_t *backend,
+                            ply_output_t           *output)
+{
+        if (!backend->simpledrm)
+                return true;
+
+        if (!output->connected)
+                return true;
+
+        if ((output->mode.hdisplay == 800 && output->mode.vdisplay == 600) ||
+            (output->mode.hdisplay == 1024 && output->mode.vdisplay == 768)) {
+                ply_trace ("Skipping simpledrm device with mode %dx%d",
+                           output->mode.hdisplay, output->mode.vdisplay);
+                return false;
+        }
+
+        return true;
+}
+
 /* Update our outputs array to match the hardware state and
  * create and/or remove heads as necessary.
  * Returns true if any heads were modified.
  */
 static bool
 create_heads_for_active_connectors (ply_renderer_backend_t *backend,
+                                    bool                    force,
                                     bool                    change)
 {
         int i, j, number_of_setup_outputs, outputs_len;
@@ -1419,6 +1444,11 @@ create_heads_for_active_connectors (ply_renderer_backend_t *backend,
         backend->connected_count = 0;
         for (i = 0; i < outputs_len; i++) {
                 get_output_info (backend, backend->resources->connectors[i], &outputs[i]);
+
+                if (!force && !check_simpledrm_resolution (backend, &outputs[i])) {
+                        free (outputs);
+                        return false;
+                }
 
                 if (check_if_output_has_changed (backend, &outputs[i]))
                         changed = true;
@@ -1578,7 +1608,7 @@ query_device (ply_renderer_backend_t *backend,
                 return false;
         }
 
-        if (!create_heads_for_active_connectors (backend, false)) {
+        if (!create_heads_for_active_connectors (backend, force, false)) {
                 ply_trace ("Could not initialize heads");
                 ret = false;
         } else if (!has_32bpp_support (backend)) {
@@ -1603,7 +1633,7 @@ handle_change_event (ply_renderer_backend_t *backend)
                 return false;
         }
 
-        ret = create_heads_for_active_connectors (backend, true);
+        ret = create_heads_for_active_connectors (backend, true, true);
 
         drmModeFreeResources (backend->resources);
         backend->resources = NULL;
