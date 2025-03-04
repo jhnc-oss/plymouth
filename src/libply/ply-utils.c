@@ -1251,6 +1251,28 @@ ply_kernel_command_line_get_key_value (const char *key)
         return strndup (value, strcspn (value, " \n"));
 }
 
+unsigned long
+ply_kernel_command_line_get_ulong (const char   *key,
+                                   unsigned long default_value)
+{
+        const char *raw_value;
+        char *endptr = NULL;
+        unsigned long u;
+
+        raw_value = ply_kernel_command_line_get_string_after_prefix (key);
+        if (raw_value == NULL || raw_value[0] == '\0')
+                return default_value;
+
+        u = strtoul (raw_value, &endptr, 0);
+        if (!isspace ((int) *endptr) && *endptr != '\0') {
+                ply_trace ("'%s' argument '%s' is not a valid unsigned number",
+                           key, raw_value);
+                return default_value;
+        }
+
+        return u;
+}
+
 void
 ply_kernel_command_line_override (const char *command_line)
 {
