@@ -1030,6 +1030,21 @@ ply_set_device_scale (int device_scale)
 static bool guess_device_scale;
 
 static int
+get_device_scale_guess (uint32_t width,
+                        uint32_t height)
+{
+        /* Swap width <-> height for portrait screens */
+        if (height > width) {
+                uint32_t tmp = width;
+                width = height;
+                height = tmp;
+        }
+
+        return (width >= HIDPI_MIN_WIDTH &&
+                height >= HIDPI_MIN_HEIGHT) ? 2 : 1;
+}
+
+static int
 get_device_scale (uint32_t width,
                   uint32_t height,
                   uint32_t width_mm,
@@ -1048,10 +1063,8 @@ get_device_scale (uint32_t width,
         if (overridden_device_scale != 0)
                 return overridden_device_scale;
 
-        if (guess) {
-                return (width >= HIDPI_MIN_WIDTH &&
-                        height >= HIDPI_MIN_HEIGHT) ? 2 : 1;
-        }
+        if (guess)
+                return get_device_scale_guess (width, height);
 
         /* Somebody encoded the aspect ratio (16/9 or 16/10)
          * instead of the physical size */
