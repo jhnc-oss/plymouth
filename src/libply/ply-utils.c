@@ -1048,8 +1048,8 @@ get_device_scale_guess (uint32_t width,
                 return (width >= 1800 &&
                         height >= 1200) ? 2 : 1;
 
-        return (width >= 2560 &&
-                height >= 1200) ? 2 : 1;
+        return (width >= 2880 &&
+                height >= 1620) ? 2 : 1;
 }
 
 static int
