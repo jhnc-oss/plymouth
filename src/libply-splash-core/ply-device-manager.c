@@ -345,18 +345,11 @@ syspath_is_simpledrm (const char *syspath)
         return ply_string_has_suffix (syspath, "simple-framebuffer.0/drm/card0");
 }
 
+/* Only use SimpleDRM devices if requested to do so */
 static bool
 verify_drm_device (ply_device_manager_t *manager,
                    struct udev_device   *device)
 {
-        /*
-         * Simple-framebuffer devices driven by simpledrm lack information
-         * like panel-rotation info and physical size, causing the splash
-         * to briefly render on its side / without HiDPI scaling, switching
-         * to the correct rendering when the native driver loads.
-         * To avoid this treat simpledrm devices as fbdev devices and only
-         * use them after the timeout.
-         */
         if (!syspath_is_simpledrm (udev_device_get_syspath (device)))
                 return true; /* Not a SimpleDRM device */
 
