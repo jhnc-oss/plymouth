@@ -345,35 +345,15 @@ syspath_is_simpledrm (const char *syspath)
         return ply_string_has_suffix (syspath, "simple-framebuffer.0/drm/card0");
 }
 
+/* Only use SimpleDRM devices if requested to do so */
 static bool
-verify_drm_device (struct udev_device *device)
+verify_drm_device (ply_device_manager_t *manager,
+                   struct udev_device   *device)
 {
-        /*
-         * Simple-framebuffer devices driven by simpledrm lack information
-         * like panel-rotation info and physical size, causing the splash
-         * to briefly render on its side / without HiDPI scaling, switching
-         * to the correct rendering when the native driver loads.
-         * To avoid this treat simpledrm devices as fbdev devices and only
-         * use them after the timeout.
-         */
         if (!syspath_is_simpledrm (udev_device_get_syspath (device)))
                 return true; /* Not a SimpleDRM device */
 
-        /*
-         * With nomodeset, no native drivers will load, so SimpleDRM devices
-         * should be used immediately.
-         */
-        if (ply_kernel_command_line_has_argument ("nomodeset"))
-                return true;
-
-        /*
-         * Some firmwares leave the panel black at boot. Allow enabling SimpleDRM
-         * use from the cmdline to show something to the user ASAP.
-         */
-        if (ply_kernel_command_line_has_argument ("plymouth.use-simpledrm"))
-                return true;
-
-        return false;
+        return manager->flags & PLY_DEVICE_MANAGER_FLAGS_USE_SIMPLEDRM;
 }
 
 static bool
@@ -399,7 +379,8 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
                 ply_trace ("device subsystem is %s", subsystem);
 
                 if (strcmp (subsystem, SUBSYSTEM_DRM) == 0) {
-                        if (!manager->device_timeout_elapsed && !verify_drm_device (device)) {
+                        if (!manager->device_timeout_elapsed &&
+                            !verify_drm_device (manager, device)) {
                                 ply_trace ("ignoring since we only handle SimpleDRM devices after timeout");
                                 return false;
                         }
@@ -1132,9 +1113,12 @@ create_devices_for_terminal_and_renderer_type (ply_device_manager_t *manager,
 
         if (renderer_type != PLY_RENDERER_TYPE_NONE) {
                 ply_renderer_t *old_renderer = NULL;
+                bool force = manager->device_timeout_elapsed ||
+                             (manager->flags & PLY_DEVICE_MANAGER_FLAGS_FORCE_OPEN);
+
                 renderer = ply_renderer_new (renderer_type, device_path, terminal);
 
-                if (renderer != NULL && !ply_renderer_open (renderer)) {
+                if (renderer != NULL && !ply_renderer_open (renderer, force)) {
                         ply_trace ("could not open renderer for %s", device_path);
                         ply_renderer_free (renderer);
                         renderer = NULL;

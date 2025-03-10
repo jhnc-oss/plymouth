@@ -175,6 +175,8 @@ const char *ply_kernel_command_line_get_string_after_prefix (const char *prefix)
 bool ply_kernel_command_line_has_argument (const char *argument);
 void ply_kernel_command_line_override (const char *command_line);
 char *ply_kernel_command_line_get_key_value (const char *key);
+unsigned long ply_kernel_command_line_get_ulong (const char   *key,
+                                                 unsigned long default_value);
 
 char *ply_get_primary_kernel_console_type (void);
 

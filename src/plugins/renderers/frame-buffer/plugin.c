@@ -420,7 +420,8 @@ static const char *get_visual_name (int visual)
 }
 
 static bool
-query_device (ply_renderer_backend_t *backend)
+query_device (ply_renderer_backend_t *backend,
+              bool                    force)
 {
         struct fb_var_screeninfo variable_screen_info;
         struct fb_fix_screeninfo fixed_screen_info;

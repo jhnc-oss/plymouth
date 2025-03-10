@@ -55,7 +55,8 @@ ply_renderer_t *ply_renderer_new (ply_renderer_type_t renderer_type,
                                   const char         *device_name,
                                   ply_terminal_t     *terminal);
 void ply_renderer_free (ply_renderer_t *renderer);
-bool ply_renderer_open (ply_renderer_t *renderer);
+bool ply_renderer_open (ply_renderer_t *renderer,
+                        bool            force);
 void ply_renderer_close (ply_renderer_t *renderer);
 /* Returns true when the heads have changed as a result of the change event */
 bool ply_renderer_handle_change_event (ply_renderer_t *renderer);

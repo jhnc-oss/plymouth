@@ -255,14 +255,14 @@ create_plugin (ply_key_file_t *key_file)
                 plugin->monospace_font = strdup ("monospace 10");
 
         plugin->console_text_color =
-                ply_key_file_get_long (key_file, "fade-throbber",
-                                       "ConsoleLogTextColor",
-                                       PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
+                ply_key_file_get_ulong (key_file, "fade-throbber",
+                                        "ConsoleLogTextColor",
+                                        PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
 
         plugin->console_background_color =
-                ply_key_file_get_long (key_file, "fade-throbber",
-                                       "ConsoleLogBackgroundColor",
-                                       0x00000000);
+                ply_key_file_get_ulong (key_file, "fade-throbber",
+                                        "ConsoleLogBackgroundColor",
+                                        0x00000000);
 
         plugin->image_dir = image_dir;
 
