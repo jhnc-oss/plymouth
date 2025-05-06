@@ -199,12 +199,13 @@ ply_renderer_close_device (ply_renderer_t *renderer)
 }
 
 static bool
-ply_renderer_query_device (ply_renderer_t *renderer)
+ply_renderer_query_device (ply_renderer_t *renderer,
+                           bool            force)
 {
         assert (renderer != NULL);
         assert (renderer->plugin_interface != NULL);
 
-        return renderer->plugin_interface->query_device (renderer->backend);
+        return renderer->plugin_interface->query_device (renderer->backend, force);
 }
 
 static bool
@@ -236,7 +237,8 @@ ply_renderer_unmap_from_device (ply_renderer_t *renderer)
 
 static bool
 ply_renderer_open_plugin (ply_renderer_t *renderer,
-                          const char     *plugin_path)
+                          const char     *plugin_path,
+                          bool            force)
 {
         ply_trace ("trying to open renderer plugin %s", plugin_path);
 
@@ -250,7 +252,7 @@ ply_renderer_open_plugin (ply_renderer_t *renderer,
                 return false;
         }
 
-        if (!ply_renderer_query_device (renderer)) {
+        if (!ply_renderer_query_device (renderer, force)) {
                 ply_trace ("could not query rendering device for plugin %s",
                            plugin_path);
                 ply_renderer_close_device (renderer);
@@ -263,7 +265,8 @@ ply_renderer_open_plugin (ply_renderer_t *renderer,
 }
 
 bool
-ply_renderer_open (ply_renderer_t *renderer)
+ply_renderer_open (ply_renderer_t *renderer,
+                   bool            force)
 {
         int i;
 
@@ -284,7 +287,7 @@ ply_renderer_open (ply_renderer_t *renderer)
         for (i = 0; known_plugins[i].type != PLY_RENDERER_TYPE_NONE; i++) {
                 if (renderer->type == known_plugins[i].type ||
                     renderer->type == PLY_RENDERER_TYPE_AUTO) {
-                        if (ply_renderer_open_plugin (renderer, known_plugins[i].path)) {
+                        if (ply_renderer_open_plugin (renderer, known_plugins[i].path, force)) {
                                 renderer->is_active = true;
                                 goto out;
                         }

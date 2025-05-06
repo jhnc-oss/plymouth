@@ -43,7 +43,8 @@ typedef struct
         void (*destroy_backend)(ply_renderer_backend_t *backend);
         bool (*open_device)(ply_renderer_backend_t *backend);
         void (*close_device)(ply_renderer_backend_t *backend);
-        bool (*query_device)(ply_renderer_backend_t *backend);
+        bool (*query_device)(ply_renderer_backend_t *backend,
+                             bool                    force);
         bool (*handle_change_event)(ply_renderer_backend_t *backend);
         bool (*map_to_device)(ply_renderer_backend_t *backend);
         void (*unmap_from_device)(ply_renderer_backend_t *backend);

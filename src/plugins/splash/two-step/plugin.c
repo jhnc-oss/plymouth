@@ -1286,44 +1286,44 @@ create_plugin (ply_key_file_t *key_file)
 
 
         plugin->console_text_color =
-                ply_key_file_get_long (key_file, "two-step",
-                                       "ConsoleLogTextColor",
-                                       PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
+                ply_key_file_get_ulong (key_file, "two-step",
+                                        "ConsoleLogTextColor",
+                                        PLY_CONSOLE_VIEWER_LOG_TEXT_COLOR);
 
         plugin->console_background_color =
-                ply_key_file_get_long (key_file, "two-step",
-                                       "ConsoleLogBackgroundColor",
-                                       0x00000000);
+                ply_key_file_get_ulong (key_file, "two-step",
+                                        "ConsoleLogBackgroundColor",
+                                        0x00000000);
 
         plugin->transition_duration =
                 ply_key_file_get_double (key_file, "two-step",
                                          "TransitionDuration", 0.0);
 
         plugin->background_start_color =
-                ply_key_file_get_long (key_file, "two-step",
-                                       "BackgroundStartColor",
-                                       PLYMOUTH_BACKGROUND_START_COLOR);
+                ply_key_file_get_ulong (key_file, "two-step",
+                                        "BackgroundStartColor",
+                                        PLYMOUTH_BACKGROUND_START_COLOR);
         plugin->background_end_color =
-                ply_key_file_get_long (key_file, "two-step",
-                                       "BackgroundEndColor",
-                                       PLYMOUTH_BACKGROUND_END_COLOR);
+                ply_key_file_get_ulong (key_file, "two-step",
+                                        "BackgroundEndColor",
+                                        PLYMOUTH_BACKGROUND_END_COLOR);
 
         plugin->progress_bar_bg_color =
-                ply_key_file_get_long (key_file, "two-step",
-                                       "ProgressBarBackgroundColor",
-                                       0xffffff /* white */);
+                ply_key_file_get_ulong (key_file, "two-step",
+                                        "ProgressBarBackgroundColor",
+                                        0xffffff /* white */);
         plugin->progress_bar_fg_color =
-                ply_key_file_get_long (key_file, "two-step",
-                                       "ProgressBarForegroundColor",
-                                       0x000000 /* black */);
+                ply_key_file_get_ulong (key_file, "two-step",
+                                        "ProgressBarForegroundColor",
+                                        0x000000 /* black */);
         plugin->progress_bar_width =
-                ply_key_file_get_long (key_file, "two-step",
-                                       "ProgressBarWidth",
-                                       PROGRESS_BAR_WIDTH);
+                ply_key_file_get_ulong (key_file, "two-step",
+                                        "ProgressBarWidth",
+                                        PROGRESS_BAR_WIDTH);
         plugin->progress_bar_height =
-                ply_key_file_get_long (key_file, "two-step",
-                                       "ProgressBarHeight",
-                                       PROGRESS_BAR_HEIGHT);
+                ply_key_file_get_ulong (key_file, "two-step",
+                                        "ProgressBarHeight",
+                                        PROGRESS_BAR_HEIGHT);
 
         load_mode_settings (plugin, key_file, "boot-up", PLY_BOOT_SPLASH_MODE_BOOT_UP);
         load_mode_settings (plugin, key_file, "shutdown", PLY_BOOT_SPLASH_MODE_SHUTDOWN);

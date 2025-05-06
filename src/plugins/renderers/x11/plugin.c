@@ -284,7 +284,8 @@ create_fullscreen_single_head_setup (ply_renderer_backend_t *backend)
 }
 
 static bool
-query_device (ply_renderer_backend_t *backend)
+query_device (ply_renderer_backend_t *backend,
+              bool                    force)
 {
         assert (backend != NULL);
 
