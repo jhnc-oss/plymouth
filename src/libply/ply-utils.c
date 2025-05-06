@@ -1020,14 +1020,37 @@ ply_set_device_scale (int device_scale)
         ply_trace ("Device scale is set to %d", device_scale);
 }
 
-#define HIDPI_MIN_HEIGHT 1200
-#define HIDPI_MIN_WIDTH 2560 /* For heuristic / guessed device-scale */
-
 /*
  * If we have guessed the scale once, keep guessing to avoid
  * changing the scale on simpledrm -> native driver switch.
  */
 static bool guess_device_scale;
+
+static int
+get_device_scale_guess (uint32_t width,
+                        uint32_t height)
+{
+        double aspect;
+
+        /* Swap width <-> height for portrait screens */
+        if (height > width) {
+                uint32_t tmp = width;
+                width = height;
+                height = tmp;
+        }
+
+        /*
+         * Special case for 3:2 screens which are only used in mobile form
+         * factors, with a lower threshold to enable 2x hiDPI scaling.
+         */
+        aspect = (double) width / height;
+        if (aspect == 1.5)
+                return (width >= 1800 &&
+                        height >= 1200) ? 2 : 1;
+
+        return (width >= 2880 &&
+                height >= 1620) ? 2 : 1;
+}
 
 static int
 get_device_scale (uint32_t width,
@@ -1048,10 +1071,8 @@ get_device_scale (uint32_t width,
         if (overridden_device_scale != 0)
                 return overridden_device_scale;
 
-        if (guess) {
-                return (width >= HIDPI_MIN_WIDTH &&
-                        height >= HIDPI_MIN_HEIGHT) ? 2 : 1;
-        }
+        if (guess)
+                return get_device_scale_guess (width, height);
 
         /* Somebody encoded the aspect ratio (16/9 or 16/10)
          * instead of the physical size */
