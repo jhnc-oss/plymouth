@@ -89,6 +89,10 @@ static int overridden_device_scale = 0;
 static char kernel_command_line[PLY_MAX_COMMAND_LINE_SIZE];
 static bool kernel_command_line_is_set;
 
+static int cached_current_log_level = 0;
+static int cached_default_log_level = 0;
+static double log_level_update_time = 0.0;
+
 bool
 ply_open_unidirectional_pipe (int *sender_fd,
                               int *receiver_fd)
@@ -673,20 +677,6 @@ ply_create_file_link (const char *source,
         return true;
 }
 
-void
-ply_show_new_kernel_messages (bool should_show)
-{
-        int type;
-
-        if (should_show)
-                type = PLY_ENABLE_CONSOLE_PRINTK;
-        else
-                type = PLY_DISABLE_CONSOLE_PRINTK;
-
-        if (klogctl (type, NULL, 0) < 0)
-                ply_trace ("could not toggle printk visibility: %m");
-}
-
 ply_daemon_handle_t *
 ply_create_daemon (void)
 {
@@ -1118,25 +1108,13 @@ int ply_guess_device_scale (uint32_t width,
         return get_device_scale (width, height, 0, 0, true);
 }
 
-void
-ply_get_kmsg_log_levels (int *current_log_level,
-                         int *default_log_level)
+static void
+ply_get_kmsg_log_levels_uncached (int *current_log_level,
+                                  int *default_log_level)
 {
-        static double last_update_time = 0;
-        static int cached_current_log_level = 0;
-        static int cached_default_log_level = 0;
         char log_levels[4096] = "";
-        double current_time;
         char *field, *fields;
         int fd;
-
-        current_time = ply_get_timestamp ();
-
-        if ((current_time - last_update_time) < 1.0) {
-                *current_log_level = cached_current_log_level;
-                *default_log_level = cached_default_log_level;
-                return;
-        }
 
         ply_trace ("opening /proc/sys/kernel/printk");
         fd = open ("/proc/sys/kernel/printk", O_RDONLY);
@@ -1171,11 +1149,48 @@ ply_get_kmsg_log_levels (int *current_log_level,
         }
 
         *default_log_level = atoi (field);
+}
 
-        cached_current_log_level = *current_log_level;
-        cached_default_log_level = *default_log_level;
+void
+ply_get_kmsg_log_levels (int *current_log_level,
+                         int *default_log_level)
+{
+        double current_time;
+        bool no_cache;
+        bool cache_expired;
 
-        last_update_time = current_time;
+        no_cache = cached_current_log_level == 0 || cached_default_log_level == 0;
+        current_time = ply_get_timestamp ();
+        cache_expired = log_level_update_time > 0.0 && (current_time - log_level_update_time) >= 1.0;
+
+        if (no_cache || cache_expired) {
+                ply_get_kmsg_log_levels_uncached (&cached_current_log_level, &cached_default_log_level);
+                log_level_update_time = current_time;
+        }
+
+        *current_log_level = cached_current_log_level;
+        *default_log_level = cached_default_log_level;
+}
+
+void
+ply_show_new_kernel_messages (bool should_show)
+{
+        int type;
+
+        if (should_show) {
+                type = PLY_ENABLE_CONSOLE_PRINTK;
+
+                cached_current_log_level = cached_default_log_level = 0;
+                log_level_update_time = 0.0;
+        } else {
+                type = PLY_DISABLE_CONSOLE_PRINTK;
+
+                ply_get_kmsg_log_levels_uncached (&cached_current_log_level, &cached_default_log_level);
+                log_level_update_time = -1.0; /* Disable expiration */
+        }
+
+        if (klogctl (type, NULL, 0) < 0)
+                ply_trace ("could not toggle printk visibility: %m");
 }
 
 static const char *
