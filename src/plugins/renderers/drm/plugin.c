@@ -1231,7 +1231,9 @@ get_output_info (ply_renderer_backend_t *backend,
         output->mode = *mode;
 
         if (backend->simpledrm)
-                output->device_scale = ply_guess_device_scale (mode->hdisplay, mode->vdisplay);
+                output->device_scale = ply_guess_device_scale (mode->hdisplay, mode->vdisplay,
+                                                               connector->mmWidth,
+                                                               connector->mmHeight);
         else
                 output->device_scale = ply_get_device_scale (mode->hdisplay, mode->vdisplay,
                                                              (!has_90_rotation) ? connector->mmWidth : connector->mmHeight,
