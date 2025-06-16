@@ -86,10 +86,13 @@ handle_kmsg_message (ply_kmsg_reader_t *kmsg_reader,
 
                 fields = strtok_r (read_buffer, ";", &message);
 
-                /* Messages end in \n, any following lines are machine readable. Actual multiline messages are expanded with unhexmangle_to_buffer */
+                /* While most messages end with \n, we may receive multipart messages (e.g. when pr_cont() is used in kernel code). Actual multiline messages are expanded with unhexmangle_to_buffer */
                 msgptr = strchr (message, '\n');
-                if (*msgptr && *msgptr != '\n')
+                if (msgptr == NULL) {
+                        msgptr = read_buffer + bytes_read - 1;
+                } else if (*msgptr && *msgptr != '\n') {
                         msgptr--;
+                }
 
                 unhexmangle_to_buffer (message, (char *) message, msgptr - message + 1);
 
