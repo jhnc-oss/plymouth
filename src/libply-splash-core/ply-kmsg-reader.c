@@ -76,7 +76,7 @@ handle_kmsg_message (ply_kmsg_reader_t *kmsg_reader,
 
         bytes_read = read (fd, read_buffer, sizeof(read_buffer) - 1);
         if (bytes_read > 0) {
-                ply_terminal_style_attributes_t bold_enabled = PLY_TERMINAL_ATTRIBUTE_NO_BOLD;
+                bool bold_enabled = false;
                 ply_terminal_color_t color = PLY_TERMINAL_ATTRIBUTE_FOREGROUND_COLOR_OFFSET + PLY_TERMINAL_COLOR_DEFAULT;
                 char *fields, *field_prefix, *field_sequence, *field_timestamp, *message, *message_substr, *msgptr, *saveptr, *format_begin, *new_message;
                 int prefix, priority, facility;
@@ -116,7 +116,7 @@ handle_kmsg_message (ply_kmsg_reader_t *kmsg_reader,
                         return 0;
 
                 if (priority < LOG_ALERT)
-                        bold_enabled = PLY_TERMINAL_ATTRIBUTE_BOLD;
+                        bold_enabled = true;
 
                 switch (priority) {
                 case LOG_EMERG:
@@ -132,7 +132,7 @@ handle_kmsg_message (ply_kmsg_reader_t *kmsg_reader,
                         color = PLY_TERMINAL_ATTRIBUTE_FOREGROUND_COLOR_OFFSET + PLY_TERMINAL_COLOR_GREEN;
                         break;
                 }
-                asprintf (&format_begin, "\033[0;%i;%im", bold_enabled, color);
+                asprintf (&format_begin, bold_enabled ? "\033[0;1;%im" : "\033[0;%im", color);
 
                 message_substr = strtok_r (message, "\n", &saveptr);
                 while (message_substr != NULL) {
