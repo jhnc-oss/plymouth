@@ -166,7 +166,9 @@ int ply_get_device_scale (uint32_t width,
                           uint32_t height_mm);
 
 int ply_guess_device_scale (uint32_t width,
-                            uint32_t height);
+                            uint32_t height,
+                            uint32_t width_mm,
+                            uint32_t height_mm);
 
 void ply_get_kmsg_log_levels (int *current_log_level,
                               int *default_log_level);
