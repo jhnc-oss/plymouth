@@ -343,6 +343,29 @@ load_settings (state_t    *state,
         if (state->use_simpledrm == -1)
                 state->use_simpledrm = ply_key_file_get_ulong (key_file, "Daemon", "UseSimpledrm", -1);
 
+        /*
+         * Check the special UseSimpledrmNoLuks config file keyword this enables
+         * simpledrm use except when using LUKS. Showing the LUKS unlock screen
+         * using simpledrm has 2 problems:
+         * 1. If the GPU drivers are built into the initrd then typically the
+         *    unlock screen will briefly show and then the screen goes black
+         *    while the native GPU driver loads leading to a jarring experience.
+         * 2. The i915 driver uses the firmware framebuffer as fallback when
+         *    userspace has not installed a fb to scan out from. This happens
+         *    e.g. on logout between the user-session and the display-manager.
+         *    Drawing the unlock screen on the simpledrm fb results in it briefly
+         *    showing when logging out, which looks quite ugly. Also see:
+         *    https://bugzilla.redhat.com/show_bug.cgi?id=2359283
+         */
+        if (state->use_simpledrm == -1) {
+                state->use_simpledrm = ply_key_file_get_ulong (key_file, "Daemon", "UseSimpledrmNoLuks", -1);
+                if (state->use_simpledrm != -1 &&
+                    ply_kernel_command_line_get_string_after_prefix ("rd.luks.uuid=")) {
+                        ply_trace ("Ignoring UseSimpledrmNoLuks because of LUKS use");
+                        state->use_simpledrm = -1;
+                }
+        }
+
         settings_loaded = true;
 out:
         free (splash_string);
