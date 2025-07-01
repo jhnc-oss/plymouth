@@ -754,18 +754,16 @@ static bool
 open_input_source (ply_renderer_backend_t      *backend,
                    ply_renderer_input_source_t *input_source)
 {
-        int terminal_fd;
-
         assert (backend != NULL);
         assert (has_input_source (backend, input_source));
 
         if (!backend->input_source_is_open)
                 watch_input_devices (backend);
 
-        if (backend->terminal != NULL) {
-                terminal_fd = ply_terminal_get_fd (backend->terminal);
-
-                input_source->terminal_input_watch = ply_event_loop_watch_fd (backend->loop, terminal_fd, PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
+        if (backend->terminal != NULL && ply_terminal_get_fd (backend->terminal) >= 0) {
+                input_source->terminal_input_watch = ply_event_loop_watch_fd (backend->loop,
+                                                                              ply_terminal_get_fd (backend->terminal),
+                                                                              PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
                                                                               (ply_event_handler_t) on_terminal_key_event,
                                                                               (ply_event_handler_t)
                                                                               on_input_source_disconnected, input_source);
