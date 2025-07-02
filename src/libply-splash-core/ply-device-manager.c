@@ -1116,7 +1116,8 @@ create_devices_for_terminal_and_renderer_type (ply_device_manager_t *manager,
                 bool force = manager->device_timeout_elapsed ||
                              (manager->flags & PLY_DEVICE_MANAGER_FLAGS_FORCE_OPEN);
 
-                renderer = ply_renderer_new (renderer_type, device_path, terminal);
+                renderer = ply_renderer_new (renderer_type, device_path,
+                                             terminal, manager->local_console_terminal);
 
                 if (renderer != NULL && !ply_renderer_open (renderer, force)) {
                         ply_trace ("could not open renderer for %s", device_path);
