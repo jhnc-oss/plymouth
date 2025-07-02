@@ -138,6 +138,7 @@ struct _ply_renderer_backend
 {
         ply_event_loop_t           *loop;
         ply_terminal_t             *terminal;
+        ply_terminal_t             *local_console_terminal;
 
         int                         device_fd;
         bool                        simpledrm;
@@ -880,7 +881,8 @@ free_heads (ply_renderer_backend_t *backend)
 
 static ply_renderer_backend_t *
 create_backend (const char     *device_name,
-                ply_terminal_t *terminal)
+                ply_terminal_t *terminal,
+                ply_terminal_t *local_console_terminal)
 {
         ply_renderer_backend_t *backend;
 
@@ -900,6 +902,7 @@ create_backend (const char     *device_name,
         backend->input_source.key_buffer = ply_buffer_new ();
         backend->input_source.input_devices = ply_list_new ();
         backend->terminal = terminal;
+        backend->local_console_terminal = local_console_terminal;
         backend->requires_explicit_flushing = true;
         backend->output_buffers = ply_hashtable_new (ply_hashtable_direct_hash,
                                                      ply_hashtable_direct_compare);
@@ -2025,10 +2028,10 @@ get_capslock_state (ply_renderer_backend_t *backend)
 
                 return ply_input_device_get_capslock_state (dev);
         }
-        if (!backend->terminal)
+        if (!backend->local_console_terminal)
                 return false;
 
-        return ply_terminal_get_capslock_state (backend->terminal);
+        return ply_terminal_get_capslock_state (backend->local_console_terminal);
 }
 
 static const char *
@@ -2045,10 +2048,10 @@ get_keymap (ply_renderer_backend_t *backend)
                         return keymap;
                 }
         }
-        if (!backend->terminal)
+        if (!backend->local_console_terminal)
                 return NULL;
 
-        return ply_terminal_get_keymap (backend->terminal);
+        return ply_terminal_get_keymap (backend->local_console_terminal);
 }
 
 static void

@@ -51,6 +51,7 @@ struct _ply_renderer
         ply_renderer_type_t                    type;
         char                                  *device_name;
         ply_terminal_t                        *terminal;
+        ply_terminal_t                        *local_console_terminal;
 
         uint32_t                               input_source_is_open : 1;
         uint32_t                               is_mapped : 1;
@@ -65,7 +66,8 @@ static void ply_renderer_unload_plugin (ply_renderer_t *renderer);
 ply_renderer_t *
 ply_renderer_new (ply_renderer_type_t renderer_type,
                   const char         *device_name,
-                  ply_terminal_t     *terminal)
+                  ply_terminal_t     *terminal,
+                  ply_terminal_t     *local_console_terminal)
 {
         ply_renderer_t *renderer;
 
@@ -77,6 +79,7 @@ ply_renderer_new (ply_renderer_type_t renderer_type,
                 renderer->device_name = strdup (device_name);
 
         renderer->terminal = terminal;
+        renderer->local_console_terminal = local_console_terminal;
 
         return renderer;
 }
@@ -148,7 +151,8 @@ ply_renderer_load_plugin (ply_renderer_t *renderer,
         }
 
         renderer->backend = renderer->plugin_interface->create_backend (renderer->device_name,
-                                                                        renderer->terminal);
+                                                                        renderer->terminal,
+                                                                        renderer->local_console_terminal);
 
         if (renderer->backend == NULL) {
                 ply_save_errno ();
