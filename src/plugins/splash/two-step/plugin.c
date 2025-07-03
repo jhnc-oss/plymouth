@@ -1071,6 +1071,9 @@ view_show_prompt (view_t     *view,
                 ply_label_set_alignment (view->label, PLY_LABEL_ALIGN_CENTER);
                 ply_label_set_width (view->label, label_width);
 
+                /* Add 10 pixels padding between text-entry field and prompt */
+                dialog_bottom += 10;
+
                 x = (screen_width - label_width) / 2;
                 y = dialog_bottom;
 
