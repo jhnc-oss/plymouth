@@ -998,8 +998,8 @@ view_show_prompt (view_t     *view,
         unsigned long screen_width, screen_height, entry_width, entry_height;
         unsigned long keyboard_indicator_width, keyboard_indicator_height;
         bool show_keyboard_indicators = false;
+        int x, y, prompt_len;
         long dialog_bottom;
-        int x, y;
 
         assert (view != NULL);
 
@@ -1053,13 +1053,26 @@ view_show_prompt (view_t     *view,
 
         dialog_bottom = view->dialog_area.y + view->dialog_area.height;
 
-        if (prompt != NULL) {
+        if (prompt != NULL && prompt[0]) {
+                char buf[128];
+
+                /* Strip ':' at end of prompt since we show it below the text-entry */
+                prompt_len = strlen (prompt);
+                if (prompt[prompt_len - 1] == ':' && prompt_len < sizeof(buf)) {
+                        strcpy (buf, prompt);
+                        buf[prompt_len - 1] = 0;
+                        prompt = buf;
+                }
+
                 ply_label_set_text (view->label, prompt);
 
                 /* We center the prompt in the middle and use 80% of the horizontal space */
                 int label_width = screen_width * 100 / 80;
                 ply_label_set_alignment (view->label, PLY_LABEL_ALIGN_CENTER);
                 ply_label_set_width (view->label, label_width);
+
+                /* Add 10 pixels padding between text-entry field and prompt */
+                dialog_bottom += 10;
 
                 x = (screen_width - label_width) / 2;
                 y = dialog_bottom;
