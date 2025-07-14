@@ -243,7 +243,8 @@ flush_area_to_xrgb32_device (ply_renderer_backend_t *backend,
 
 static ply_renderer_backend_t *
 create_backend (const char     *device_name,
-                ply_terminal_t *terminal)
+                ply_terminal_t *terminal,
+                ply_terminal_t *local_console_terminal)
 {
         ply_renderer_backend_t *backend;
 

@@ -53,7 +53,8 @@ typedef void (*ply_renderer_input_source_handler_t) (void                       
 #ifndef PLY_HIDE_FUNCTION_DECLARATIONS
 ply_renderer_t *ply_renderer_new (ply_renderer_type_t renderer_type,
                                   const char         *device_name,
-                                  ply_terminal_t     *terminal);
+                                  ply_terminal_t     *terminal,
+                                  ply_terminal_t     *local_console_terminal);
 void ply_renderer_free (ply_renderer_t *renderer);
 bool ply_renderer_open (ply_renderer_t *renderer,
                         bool            force);
