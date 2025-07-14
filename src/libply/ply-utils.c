@@ -1102,8 +1102,26 @@ ply_get_device_scale (uint32_t width,
 }
 
 int ply_guess_device_scale (uint32_t width,
-                            uint32_t height)
+                            uint32_t height,
+                            uint32_t width_mm,
+                            uint32_t height_mm)
 {
+        /* Simpledrm might know the actual physical dimensions of the its
+         * display. If it has no information it assumes 96 DPI. Calculate the
+         * pixel density to test if its larger than 96 DPI.
+         * Since DRM_MODE_RES_MM() truncates the the result add 1 to to width
+         * and height. This ensures that the calculated pixel density is only
+         * above 96 DPI if simpledrm has physical information.
+         */
+        uint32_t h_dpi = (width * 254) / ((width_mm + 1) * 10);
+        uint32_t v_dpi = (height * 254) / ((height_mm + 1) * 10);
+        if (h_dpi > 96 && v_dpi > 96) {
+                ply_trace ("simpledrm with valid dimensions (%u x %u mm)",
+                           width_mm, height_mm);
+                return get_device_scale (width, height, width_mm, height_mm,
+                                         false);
+        }
+
         guess_device_scale = true;
         return get_device_scale (width, height, 0, 0, true);
 }
