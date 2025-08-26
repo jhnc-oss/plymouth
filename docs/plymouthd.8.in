@@ -1,0 +1,64 @@
+.TH plymouthd 8 "2025-08-25" @version@
+.SH NAME
+plymouthd \- The plymouthd daemon
+
+.SH SYNOPSIS
+.SY plymouthd
+.RI [ option ]\.\.\.
+.YS
+
+.SH DESCRIPTION
+The
+.B plymouthd
+daemon is usually run out of the initrd. It does the heavy lifting of the
+plymouth system, logging the session and showing the splash screen.
+.P
+The
+.BR plymouth (1)
+command is used to send commands to plymouthd that control its behaviour.
+
+.SH OPTIONS
+The following options are understood:
+.TP
+.B \-\-help
+Show summary of options.
+.TP
+.B \-\-attach\-to\-session
+Redirect console messages from screen to log.
+.TP
+.B \-\-no\-daemon
+Do not daemonize.
+.TP
+.B \-\-debug
+Output debugging information.
+.TP
+.BI \-\-debug\-file= string
+File to output debugging information to.
+.TP
+.BI \-\-mode= string
+mode is one of boot, shutdown, reboot, updates, system-upgrade, firmware-upgrade and system-reset.
+.TP
+.BI \-\-pid-file= string
+Write the pid of the daemon to a file.
+.TP
+.BI \-\-kernel-command-line= string
+Fake kernel command line to use.
+.TP
+.BI \-\-tty= string
+TTY to use instead of default.
+.TP
+.B \-\-no\-boot\-log
+Do not write boot log file.
+.TP
+.B \-\-ignore\-serial\-consoles
+Ignore serial consoles.
+.TP
+.B \-\-graphical\-boot
+Use graphical splashes even if the kernel console is not a VT.
+
+.SH SEE ALSO
+.BR plymouth (1),
+.BR grub (8),
+.BR plymouth (8),
+.UR http://www.freedesktop.org/wiki/Software/Plymouth
+.UE
