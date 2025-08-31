@@ -237,7 +237,10 @@ ply_key_file_load_groups (ply_key_file_t *key_file)
 
                 ply_key_file_group_t *group;
 
-                first_byte = fgetc (key_file->fp);
+                do {
+                        first_byte = fgetc (key_file->fp);
+                } while (isspace (first_byte));
+
                 if (first_byte == '#') {
                         char *line_to_toss;
                         size_t number_of_bytes;
