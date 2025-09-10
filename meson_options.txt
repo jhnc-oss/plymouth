@@ -78,6 +78,11 @@ option('drm',
   value: true,
   description: 'Build with drm kms support',
 )
+option('wayland',
+  type: 'feature',
+  value: 'enabled',
+  description: 'Build with wayland support',
+)
 option('docs',
   type: 'boolean',
   value: true,
