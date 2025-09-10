@@ -280,6 +280,7 @@ ply_renderer_open (ply_renderer_t *renderer,
                 const char         *path;
         } known_plugins[] =
         {
+                { PLY_RENDERER_TYPE_WAYLAND,      PLYMOUTH_PLUGIN_PATH "renderers/wayland.so"      },
                 { PLY_RENDERER_TYPE_X11,          PLYMOUTH_PLUGIN_PATH "renderers/x11.so"          },
                 { PLY_RENDERER_TYPE_DRM,          PLYMOUTH_PLUGIN_PATH "renderers/drm.so"          },
                 { PLY_RENDERER_TYPE_SIMPLEDRM,    PLYMOUTH_PLUGIN_PATH "renderers/drm.so"          },
