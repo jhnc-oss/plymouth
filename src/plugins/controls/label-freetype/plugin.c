@@ -834,7 +834,7 @@ set_font_for_control (ply_label_plugin_control_t *label,
         free (label->font);
         label->font = new_font;
 
-        if (strstr (font, "Mono") || strstr (font, "mono")) {
+        if (strstr (new_font, "Mono") || strstr (new_font, "mono")) {
                 if (!label->is_monospaced) {
                         FT_Done_Face (label->face);
                         FT_Done_Face (label->bold_face);
@@ -889,7 +889,7 @@ set_font_for_control (ply_label_plugin_control_t *label,
 
         /* Format is "Family 1[,Family 2[,..]] [25[px]]" .
          * [] means optional. */
-        size_str = strrchr (font, ' ');
+        size_str = strrchr (new_font, ' ');
 
         if (size_str) {
                 unsigned long parsed_size;
