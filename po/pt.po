@@ -6,7 +6,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: https://gitlab.freedesktop.org/plymouth/plymouth/"
 "issues\n"
 "POT-Creation-Date: 2025-07-14 05:46-0300\n"
-"PO-Revision-Date: 2025-06-12 10:02+0000\n"
+"PO-Revision-Date: 2025-08-30 15:53+0000\n"
 "Last-Translator: Américo Monteiro <a_monteiro@gmx.com>\n"
 "Language-Team: Portuguese <https://translate.fedoraproject.org/projects/"
 "plymouth/master/pt/>\n"
@@ -15,7 +15,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Weblate 5.11.4\n"
+"X-Generator: Weblate 5.13\n"
 
 #: src/plugins/splash/two-step/plugin.c:1993
 #, c-format
@@ -52,10 +52,8 @@ msgstr "A atualizar o Firmware..."
 
 #: themes/bgrt/bgrt.plymouth.desktop:64
 #: themes/spinner/spinner.plymouth.desktop:60
-#, fuzzy
-#| msgid "Upgrading System..."
 msgid "Resetting System..."
-msgstr "A atualizar o sistema..."
+msgstr "A Reiniciar o Sistema..."
 
 #: themes/spinner/spinner.plymouth.desktop:2
 msgid "Spinner"
