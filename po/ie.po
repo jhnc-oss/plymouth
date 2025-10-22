@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: plymouth 0.9.5\n"
 "Report-Msgid-Bugs-To: https://gitlab.freedesktop.org/plymouth/plymouth/"
 "issues\n"
-"POT-Creation-Date: 2020-07-08 14:59-0400\n"
+"POT-Creation-Date: 2025-07-14 05:46-0300\n"
 "PO-Revision-Date: 2023-02-19 10:20+0000\n"
 "Last-Translator: Olga Smirnova <mistresssilvara@hotmail.com>\n"
 "Language-Team: Occidental <https://translate.fedoraproject.org/projects/"
@@ -19,38 +19,46 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 "X-Generator: Weblate 4.15.2\n"
 
-#: src/plugins/splash/two-step/plugin.c:1727
+#: src/plugins/splash/two-step/plugin.c:1993
 #, c-format
 msgid "%d%% complete"
 msgstr "%d%% compleet"
 
-#: themes/bgrt/bgrt.plymouth.desktop:3
+#: themes/bgrt/bgrt.plymouth.desktop:2
 msgid "BGRT"
 msgstr "BGRT"
 
-#: themes/bgrt/bgrt.plymouth.desktop:44
-#: themes/spinner/spinner.plymouth.desktop:40
+#: themes/bgrt/bgrt.plymouth.desktop:43
+#: themes/spinner/spinner.plymouth.desktop:39
 msgid "Installing Updates..."
 msgstr "Installante actualisamentes..."
 
-#: themes/bgrt/bgrt.plymouth.desktop:45 themes/bgrt/bgrt.plymouth.desktop:52
-#: themes/bgrt/bgrt.plymouth.desktop:59
-#: themes/spinner/spinner.plymouth.desktop:41
-#: themes/spinner/spinner.plymouth.desktop:48
-#: themes/spinner/spinner.plymouth.desktop:55
+#: themes/bgrt/bgrt.plymouth.desktop:44 themes/bgrt/bgrt.plymouth.desktop:51
+#: themes/bgrt/bgrt.plymouth.desktop:58 themes/bgrt/bgrt.plymouth.desktop:65
+#: themes/spinner/spinner.plymouth.desktop:40
+#: themes/spinner/spinner.plymouth.desktop:47
+#: themes/spinner/spinner.plymouth.desktop:54
+#: themes/spinner/spinner.plymouth.desktop:61
 msgid "Do not turn off your computer"
 msgstr "Ne extinte vor computator"
 
-#: themes/bgrt/bgrt.plymouth.desktop:51
-#: themes/spinner/spinner.plymouth.desktop:47
+#: themes/bgrt/bgrt.plymouth.desktop:50
+#: themes/spinner/spinner.plymouth.desktop:46
 msgid "Upgrading System..."
 msgstr "Actualisante li sistema..."
 
-#: themes/bgrt/bgrt.plymouth.desktop:58
-#: themes/spinner/spinner.plymouth.desktop:54
+#: themes/bgrt/bgrt.plymouth.desktop:57
+#: themes/spinner/spinner.plymouth.desktop:53
 msgid "Upgrading Firmware..."
 msgstr "Actualisante firmware..."
 
-#: themes/spinner/spinner.plymouth.desktop:3
+#: themes/bgrt/bgrt.plymouth.desktop:64
+#: themes/spinner/spinner.plymouth.desktop:60
+#, fuzzy
+#| msgid "Upgrading System..."
+msgid "Resetting System..."
+msgstr "Actualisante li sistema..."
+
+#: themes/spinner/spinner.plymouth.desktop:2
 msgid "Spinner"
 msgstr "Volante"
