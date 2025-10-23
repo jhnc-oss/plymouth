@@ -264,7 +264,10 @@ ply_renderer_buffer_free (ply_renderer_backend_t *backend,
         struct drm_mode_destroy_dumb destroy_dumb_buffer_request;
 
         if (buffer->added_fb)
-                drmModeRmFB (backend->device_fd, buffer->id);
+                /* Use CloseFB if possible, to avoid screen flicker when handing
+                 * over to the login manager */
+                if (drmModeCloseFB (backend->device_fd, buffer->id) == -EINVAL)
+                        drmModeRmFB (backend->device_fd, buffer->id);
 
         if (buffer->map_address != MAP_FAILED) {
                 munmap (buffer->map_address, buffer->map_size);
