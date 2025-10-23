@@ -7,3 +7,7 @@ endif
 if gtk3_dep.found()
   subdir('x11')
 endif
+
+if wayland_dep.found()
+  subdir('wayland')
+endif
