@@ -1,2 +1,61 @@
-#!/bin/bash
-dracut -f
+#! /bin/bash
+set -e
+
+
+mainFunction () {
+	if [[ -f "/bin/mkinitcpio" ]]; then
+		updateWithCpio
+	elif [[ -f "/bin/dracut" ]]; then
+		so dracut -f
+	else
+		echo "No compatible tool found for updating the initial ram disk" >&2
+		echo "Compatible tools are: mkinitcpio dracut" >&2
+		exit 1
+	fi
+}
+
+
+checkPermissions () {
+	if [[ "$(id --user)" -ne 0 ]]; then
+		echo "No permissions" >&2
+		echo "Get them with: \"sudo\" or \"su\"" >&2
+		exit 1
+	fi
+}
+
+
+so () {
+	local commands="${*}"
+	local maxLines=20
+	local error=""
+
+	#shellcheck disable=SC2068
+	if ! error="$(${commands[@]} 2>&1 >"/dev/null")"; then
+		if [[ -z "${error}" ]] ; then
+			error="Command failed: ${commands[*]}"
+		else
+			if [[ "$(echo "${error}" | wc --lines)" -gt "${maxLines}" ]]; then
+				error="$(echo "${error}" | tail -n "${maxLines}")"
+				error="$(printf "...\n%s", "${error}")"
+			fi
+
+			echo "${error}" >&2
+		fi
+
+		exit 1
+	fi
+}
+
+
+updateWithCpio () {
+	local preset
+
+	find /etc/mkinitcpio.d -name "*.preset" -and -not -name "example.preset" |
+	while read -r preset; do
+		so mkinitcpio --preset "${preset}"
+	done
+}
+
+
+checkPermissions
+mainFunction
