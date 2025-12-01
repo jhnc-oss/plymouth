@@ -284,7 +284,7 @@ static script_return_t sprite_window_get_x (script_state_t *state,
              node;
              node = ply_list_get_next_node (data->displays, node)) {
                 display = ply_list_node_get_data (node);
-                x = MAX (x, display->x);
+                x = MIN (x, display->x);
         }
         return script_return_obj (script_obj_new_number (x));
 }
@@ -319,7 +319,7 @@ static script_return_t sprite_window_get_y (script_state_t *state,
              node;
              node = ply_list_get_next_node (data->displays, node)) {
                 display = ply_list_node_get_data (node);
-                y = MAX (y, display->y);
+                y = MIN (y, display->y);
         }
         return script_return_obj (script_obj_new_number (y));
 }
