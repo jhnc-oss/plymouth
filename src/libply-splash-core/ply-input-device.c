@@ -531,7 +531,7 @@ ply_input_device_get_keymap (ply_input_device_t *input_device)
          *
          * This string shouldn't be used as a unique indentifier for a keymap
          */
-        return xkb_keymap_layout_get_name (input_device->keymap, num_indices - 1);
+        return xkb_keymap_layout_get_name (input_device->keymap, 0);
 }
 
 int
