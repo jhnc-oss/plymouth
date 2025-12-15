@@ -2,34 +2,38 @@
 # Copyright (C) YEAR Plymouth contributors
 # This file is distributed under the same license as the plymouth package.
 # Priit Jõerüüt <jrtkbfdr@users.noreply.translate.fedoraproject.org>, 2025.
+# Weblate Translation Memory <noreply-mt-weblate-translation-memory@weblate.org>, 2025.
 msgid ""
 msgstr ""
 "Project-Id-Version: plymouth 25.218.144\n"
 "Report-Msgid-Bugs-To: https://gitlab.freedesktop.org/plymouth/plymouth/"
 "issues\n"
 "POT-Creation-Date: 2025-07-14 05:46-0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2025-12-15 04:13+0000\n"
+"Last-Translator: Weblate Translation Memory <noreply-mt-weblate-translation-"
+"memory@weblate.org>\n"
+"Language-Team: Estonian <https://translate.fedoraproject.org/projects/"
+"plymouth/master/et/>\n"
 "Language: et\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.14.3\n"
 
 #: src/plugins/splash/two-step/plugin.c:1993
 #, c-format
 msgid "%d%% complete"
-msgstr ""
+msgstr "%d%% valmis"
 
 #: themes/bgrt/bgrt.plymouth.desktop:2
 msgid "BGRT"
-msgstr ""
+msgstr "BGRT"
 
 #: themes/bgrt/bgrt.plymouth.desktop:43
 #: themes/spinner/spinner.plymouth.desktop:39
 msgid "Installing Updates..."
-msgstr ""
+msgstr "Paigaldan uuendused..."
 
 #: themes/bgrt/bgrt.plymouth.desktop:44 themes/bgrt/bgrt.plymouth.desktop:51
 #: themes/bgrt/bgrt.plymouth.desktop:58 themes/bgrt/bgrt.plymouth.desktop:65
@@ -38,17 +42,17 @@ msgstr ""
 #: themes/spinner/spinner.plymouth.desktop:54
 #: themes/spinner/spinner.plymouth.desktop:61
 msgid "Do not turn off your computer"
-msgstr ""
+msgstr "Ära lülita oma arvutit välja"
 
 #: themes/bgrt/bgrt.plymouth.desktop:50
 #: themes/spinner/spinner.plymouth.desktop:46
 msgid "Upgrading System..."
-msgstr ""
+msgstr "Uuendan süsteemi..."
 
 #: themes/bgrt/bgrt.plymouth.desktop:57
 #: themes/spinner/spinner.plymouth.desktop:53
 msgid "Upgrading Firmware..."
-msgstr ""
+msgstr "Uuendan püsivara..."
 
 #: themes/bgrt/bgrt.plymouth.desktop:64
 #: themes/spinner/spinner.plymouth.desktop:60
