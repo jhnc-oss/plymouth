@@ -163,6 +163,9 @@ struct _ply_boot_splash_plugin
 
         double                              animation_horizontal_alignment;
         double                              animation_vertical_alignment;
+
+        double                              animation_horizontal_anchor;
+        double                              animation_vertical_anchor;
         char                               *animation_dir;
 
         ply_progress_animation_transition_t transition;
@@ -873,8 +876,8 @@ view_start_end_animation (view_t        *view,
         screen_height = ply_pixel_display_get_height (view->display);
         width = ply_animation_get_width (view->end_animation);
         height = ply_animation_get_height (view->end_animation);
-        x = plugin->animation_horizontal_alignment * screen_width - width / 2.0;
-        y = plugin->animation_vertical_alignment * screen_height - height / 2.0;
+        x = plugin->animation_horizontal_alignment * screen_width - width * plugin->animation_horizontal_anchor;
+        y = plugin->animation_vertical_alignment * screen_height - height * plugin->animation_vertical_anchor;
 
         ply_trace ("starting end sequence animation for %ldx%ld view", width, height);
         ply_animation_start (view->end_animation,
@@ -929,8 +932,8 @@ view_start_progress_animation (view_t *view)
             view->throbber != NULL) {
                 width = ply_throbber_get_width (view->throbber);
                 height = ply_throbber_get_height (view->throbber);
-                x = plugin->animation_horizontal_alignment * screen_width - width / 2.0;
-                y = plugin->animation_vertical_alignment * screen_height - height / 2.0;
+                x = plugin->animation_horizontal_alignment * screen_width - width * plugin->animation_horizontal_anchor;
+                y = plugin->animation_vertical_alignment * screen_height - height * plugin->animation_vertical_anchor;
                 ply_throbber_start (view->throbber,
                                     plugin->loop,
                                     view->display, x, y);
@@ -949,8 +952,8 @@ view_start_progress_animation (view_t *view)
             view->progress_animation != NULL) {
                 width = ply_progress_animation_get_width (view->progress_animation);
                 height = ply_progress_animation_get_height (view->progress_animation);
-                x = plugin->animation_horizontal_alignment * screen_width - width / 2.0;
-                y = plugin->animation_vertical_alignment * screen_height - height / 2.0;
+                x = plugin->animation_horizontal_alignment * screen_width - width * plugin->animation_horizontal_anchor;
+                y = plugin->animation_vertical_alignment * screen_height - height * plugin->animation_vertical_anchor;
                 ply_progress_animation_show (view->progress_animation,
                                              view->display, x, y);
 
@@ -1231,6 +1234,14 @@ create_plugin (ply_key_file_t *key_file)
         plugin->animation_vertical_alignment =
                 ply_key_file_get_double (key_file, "two-step",
                                          "VerticalAlignment", 0.5);
+
+        /* Throbber, progress- and end-animation anchor */
+        plugin->animation_horizontal_anchor =
+                ply_key_file_get_double (key_file, "two-step",
+                                         "HorizontalAnchor", 0.5);
+        plugin->animation_vertical_anchor =
+                ply_key_file_get_double (key_file, "two-step",
+                                         "VerticalAnchor", 0.5);
 
         /* Progress bar alignment, this defaults to the animation alignment
          * for compatibility with older themes.
@@ -2400,4 +2411,3 @@ ply_boot_splash_plugin_get_interface (void)
 
         return &plugin_interface;
 }
-
