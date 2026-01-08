@@ -116,6 +116,7 @@ typedef struct
         uint32_t                should_force_details : 1;
         uint32_t                should_force_default_splash : 1;
         uint32_t                splash_is_becoming_idle : 1;
+        uint32_t                should_show_password_clear_text : 1;
 
         char                   *override_splash_path;
         char                   *system_default_splash_path;
@@ -154,6 +155,7 @@ static void tell_systemd_to_stop_printing_details (state_t *state);
 #endif
 static const char *get_cache_file_for_mode (ply_boot_splash_mode_t mode);
 static void on_escape_pressed (state_t *state);
+static void on_tab_pressed (state_t *state);
 static void on_enter (state_t    *state,
                       const char *line);
 static void on_keyboard_input (state_t    *state,
@@ -1106,6 +1108,10 @@ on_keyboard_added (state_t        *state,
         ply_keyboard_add_escape_handler (keyboard,
                                          (ply_keyboard_escape_handler_t)
                                          on_escape_pressed, state);
+        ply_trace ("listening for tab");
+        ply_keyboard_add_tab_handler (keyboard,
+                                         (ply_keyboard_tab_handler_t)
+                                         on_tab_pressed, state);
         ply_trace ("listening for backspace");
         ply_keyboard_add_backspace_handler (keyboard,
                                             (ply_keyboard_backspace_handler_t)
@@ -1133,6 +1139,10 @@ on_keyboard_removed (state_t        *state,
         ply_keyboard_remove_escape_handler (keyboard,
                                             (ply_keyboard_escape_handler_t)
                                             on_escape_pressed);
+        ply_trace ("no longer listening for tab");
+        ply_keyboard_remove_tab_handler (keyboard,
+                                         (ply_keyboard_tab_handler_t)
+                                         on_tab_pressed);
         ply_trace ("no longer listening for backspace");
         ply_keyboard_remove_backspace_handler (keyboard,
                                                (ply_keyboard_backspace_handler_t)
@@ -1577,6 +1587,69 @@ validate_input (state_t    *state,
         return input_valid;
 }
 
+static void
+handle_ply_entry_trigger_type_password(state_t *state,
+                                       ply_entry_trigger_t *entry_trigger)
+{
+        bool show_password_clear_text =
+                state->should_show_password_clear_text &&
+                ply_boot_splash_can_display_password_clear_text (state->boot_splash);
+        if (show_password_clear_text)
+        {
+                /* WARNING: entry_text contains cleartext password.
+                * Must not be stored beyond immediate rendering.
+                */
+                const char *raw_bytes = (const char*)ply_buffer_get_bytes (state->entry_buffer);
+                size_t raw_size = ply_buffer_get_size (state->entry_buffer);
+
+                if (!raw_bytes) {
+                        ply_error ("Failed to get bytes from entry buffer");
+                        return;
+                }
+
+                char *password_copy = calloc(1, raw_size + 1);
+
+                if (!password_copy) {
+                        ply_error ("Failed to allocate memory for password copy: %m");
+                        return;
+                }
+
+                /* Safely copy raw bytes to password_copy and ensure null-termination */
+                memcpy(password_copy, raw_bytes, raw_size);
+                password_copy[raw_size] = '\0';
+
+                ply_trace ("WARNING: cleartext password display enabled");
+                ply_boot_splash_display_password_clear_text (state->boot_splash,
+                                                             entry_trigger->prompt,
+                                                             password_copy);
+                /* Securely erase password copy from memory */
+                #ifdef HAVE_EXPLICIT_BZERO
+                explicit_bzero(password_copy, raw_size);
+                #else
+                volatile char *p = (volatile char *)password_copy;
+                size_t i = 0;
+                while (i < raw_size) {
+                        p[i] = 0;
+                        i++;
+                }
+                #endif
+
+                free(password_copy);
+        }
+        else {
+                int bullets = ply_utf8_string_get_length (ply_buffer_get_bytes (state->entry_buffer),
+                                                          ply_buffer_get_size (state->entry_buffer));
+                bullets = MAX (0, bullets);
+                ply_boot_splash_display_password (state->boot_splash,
+                                                  entry_trigger->prompt,
+                                                  bullets);
+        }
+        ply_boot_splash_display_prompt (state->boot_splash,
+                                        entry_trigger->prompt,
+                                        ply_buffer_get_bytes (state->entry_buffer),
+                                        true);
+}
+
 
 static void
 update_display (state_t *state)
@@ -1585,32 +1658,24 @@ update_display (state_t *state)
 
         ply_list_node_t *node;
         node = ply_list_get_first_node (state->entry_triggers);
-        if (node) {
-                ply_entry_trigger_t *entry_trigger = ply_list_node_get_data (node);
-                if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_PASSWORD) {
-                        int bullets = ply_utf8_string_get_length (ply_buffer_get_bytes (state->entry_buffer),
-                                                                  ply_buffer_get_size (state->entry_buffer));
-                        bullets = MAX (0, bullets);
-                        ply_boot_splash_display_password (state->boot_splash,
-                                                          entry_trigger->prompt,
-                                                          bullets);
-                        ply_boot_splash_display_prompt (state->boot_splash,
-                                                        entry_trigger->prompt,
-                                                        ply_buffer_get_bytes (state->entry_buffer),
-                                                        true);
-                } else if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_QUESTION) {
-                        ply_boot_splash_display_question (state->boot_splash,
-                                                          entry_trigger->prompt,
-                                                          ply_buffer_get_bytes (state->entry_buffer));
-                        ply_boot_splash_display_prompt (state->boot_splash,
-                                                        entry_trigger->prompt,
-                                                        ply_buffer_get_bytes (state->entry_buffer),
-                                                        false);
-                } else {
-                        ply_trace ("unkown entry type");
-                }
-        } else {
+        if (!node) {
                 ply_boot_splash_display_normal (state->boot_splash);
+                return;
+        }
+
+        ply_entry_trigger_t *entry_trigger = ply_list_node_get_data (node);
+        if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_PASSWORD)
+            handle_ply_entry_trigger_type_password(state, entry_trigger);
+        else if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_QUESTION) {
+                ply_boot_splash_display_question (state->boot_splash,
+                                                  entry_trigger->prompt,
+                                                  ply_buffer_get_bytes (state->entry_buffer));
+                ply_boot_splash_display_prompt (state->boot_splash,
+                                                entry_trigger->prompt,
+                                                ply_buffer_get_bytes (state->entry_buffer),
+                                                false);
+        } else {
+                ply_trace ("unknown entry type");
         }
 }
 
@@ -1649,6 +1714,36 @@ on_escape_pressed (state_t *state)
 
         if (validate_input (state, "", "\e") && has_vt_consoles == true)
                 toggle_between_splash_and_details (state);
+}
+
+static void
+toggle_between_bullets_and_clear_text (state_t *state)
+{
+        ply_trace ("toggling between bullets and clear text");
+
+        if (!state->should_show_password_clear_text) {
+                state->should_show_password_clear_text = true;
+        } else {
+                state->should_show_password_clear_text = false;
+        }
+        update_display (state);
+}
+
+static void
+on_tab_pressed (state_t *state)
+{
+        ply_trace ("tab key pressed");
+        bool has_vt_consoles = true;
+
+        if (state->local_console_terminal != NULL) {
+                if (!ply_terminal_is_vt (state->local_console_terminal))
+                        has_vt_consoles = false;
+        } else {
+                has_vt_consoles = false;
+        }
+
+        if (validate_input (state, "", "\t") && has_vt_consoles == true)
+            toggle_between_bullets_and_clear_text(state);
 }
 
 static void
