@@ -1595,43 +1595,11 @@ handle_ply_entry_trigger_type_password (state_t             *state,
                 state->should_show_password_clear_text &&
                 ply_boot_splash_can_display_password_clear_text (state->boot_splash);
         if (show_password_clear_text) {
-                /* WARNING: entry_text contains cleartext password.
-                 * Must not be stored beyond immediate rendering.
-                 */
-                const char *raw_bytes = (const char *) ply_buffer_get_bytes (state->entry_buffer);
-                size_t raw_size = ply_buffer_get_size (state->entry_buffer);
-
-                if (!raw_bytes) {
-                        ply_error ("Failed to get bytes from entry buffer");
-                        return;
-                }
-
-                char *password_copy = calloc (1, raw_size + 1);
-
-                if (!password_copy) {
-                        ply_error ("Failed to allocate memory for password copy: %m");
-                        return;
-                }
-
-                memcpy (password_copy, raw_bytes, raw_size);
-
+                const char *entry_text = (const char *) ply_buffer_get_bytes (state->entry_buffer);
                 ply_trace ("WARNING: cleartext password display enabled");
                 ply_boot_splash_display_password_clear_text (state->boot_splash,
                                                              entry_trigger->prompt,
-                                                             password_copy);
-                /* Securely erase password copy from memory */
-#ifdef HAVE_EXPLICIT_BZERO
-                explicit_bzero (password_copy, raw_size);
-#else
-                volatile char *p = (volatile char *) password_copy;
-                size_t i = 0;
-                while (i < raw_size) {
-                        p[i] = 0;
-                        i++;
-                }
-#endif
-
-                free (password_copy);
+                                                             entry_text);
         } else {
                 int bullets = ply_utf8_string_get_length (ply_buffer_get_bytes (state->entry_buffer),
                                                           ply_buffer_get_size (state->entry_buffer));
