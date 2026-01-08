@@ -845,3 +845,4 @@ ply_boot_splash_uses_pixel_displays (ply_boot_splash_t *splash)
 {
         return splash->plugin_interface->add_pixel_display != NULL;
 }
+

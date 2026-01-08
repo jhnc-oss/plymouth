@@ -2264,7 +2264,10 @@ display_password_clear_text (ply_boot_splash_plugin_t *plugin,
         if (!plugin->allow_password_clear_text_toggle) {
                 // if function is disabled, fall back to masked bullet mode,
                 // as dynamically setting function to NULL is not possible
-                display_password_internal (plugin, prompt, NULL, 0);
+                int bullets = ply_utf8_string_get_length (entry_text,
+                                                          strlen (entry_text));
+                bullets = MAX (0, bullets);
+                display_password_internal (plugin, prompt, NULL, bullets);
                 return;
         }
         display_password_internal (plugin, prompt, entry_text, -1);
@@ -2430,3 +2433,4 @@ ply_boot_splash_plugin_get_interface (void)
 
         return &plugin_interface;
 }
+

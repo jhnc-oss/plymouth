@@ -1613,9 +1613,7 @@ handle_ply_entry_trigger_type_password (state_t             *state,
                         return;
                 }
 
-                /* Safely copy raw bytes to password_copy and ensure null-termination */
                 memcpy (password_copy, raw_bytes, raw_size);
-                password_copy[raw_size] = '\0';
 
                 ply_trace ("WARNING: cleartext password display enabled");
                 ply_boot_splash_display_password_clear_text (state->boot_splash,
@@ -1731,16 +1729,8 @@ static void
 on_tab_pressed (state_t *state)
 {
         ply_trace ("tab key pressed");
-        bool has_vt_consoles = true;
 
-        if (state->local_console_terminal != NULL) {
-                if (!ply_terminal_is_vt (state->local_console_terminal))
-                        has_vt_consoles = false;
-        } else {
-                has_vt_consoles = false;
-        }
-
-        if (validate_input (state, "", "\t") && has_vt_consoles == true)
+        if (validate_input (state, "", "\t"))
                 toggle_between_bullets_and_clear_text (state);
 }
 
