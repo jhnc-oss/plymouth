@@ -1110,8 +1110,8 @@ on_keyboard_added (state_t        *state,
                                          on_escape_pressed, state);
         ply_trace ("listening for tab");
         ply_keyboard_add_tab_handler (keyboard,
-                                         (ply_keyboard_tab_handler_t)
-                                         on_tab_pressed, state);
+                                      (ply_keyboard_tab_handler_t)
+                                      on_tab_pressed, state);
         ply_trace ("listening for backspace");
         ply_keyboard_add_backspace_handler (keyboard,
                                             (ply_keyboard_backspace_handler_t)
@@ -1588,18 +1588,17 @@ validate_input (state_t    *state,
 }
 
 static void
-handle_ply_entry_trigger_type_password(state_t *state,
-                                       ply_entry_trigger_t *entry_trigger)
+handle_ply_entry_trigger_type_password (state_t             *state,
+                                        ply_entry_trigger_t *entry_trigger)
 {
         bool show_password_clear_text =
                 state->should_show_password_clear_text &&
                 ply_boot_splash_can_display_password_clear_text (state->boot_splash);
-        if (show_password_clear_text)
-        {
+        if (show_password_clear_text) {
                 /* WARNING: entry_text contains cleartext password.
-                * Must not be stored beyond immediate rendering.
-                */
-                const char *raw_bytes = (const char*)ply_buffer_get_bytes (state->entry_buffer);
+                 * Must not be stored beyond immediate rendering.
+                 */
+                const char *raw_bytes = (const char *) ply_buffer_get_bytes (state->entry_buffer);
                 size_t raw_size = ply_buffer_get_size (state->entry_buffer);
 
                 if (!raw_bytes) {
@@ -1607,7 +1606,7 @@ handle_ply_entry_trigger_type_password(state_t *state,
                         return;
                 }
 
-                char *password_copy = calloc(1, raw_size + 1);
+                char *password_copy = calloc (1, raw_size + 1);
 
                 if (!password_copy) {
                         ply_error ("Failed to allocate memory for password copy: %m");
@@ -1615,7 +1614,7 @@ handle_ply_entry_trigger_type_password(state_t *state,
                 }
 
                 /* Safely copy raw bytes to password_copy and ensure null-termination */
-                memcpy(password_copy, raw_bytes, raw_size);
+                memcpy (password_copy, raw_bytes, raw_size);
                 password_copy[raw_size] = '\0';
 
                 ply_trace ("WARNING: cleartext password display enabled");
@@ -1623,20 +1622,19 @@ handle_ply_entry_trigger_type_password(state_t *state,
                                                              entry_trigger->prompt,
                                                              password_copy);
                 /* Securely erase password copy from memory */
-                #ifdef HAVE_EXPLICIT_BZERO
-                explicit_bzero(password_copy, raw_size);
-                #else
-                volatile char *p = (volatile char *)password_copy;
+#ifdef HAVE_EXPLICIT_BZERO
+                explicit_bzero (password_copy, raw_size);
+#else
+                volatile char *p = (volatile char *) password_copy;
                 size_t i = 0;
                 while (i < raw_size) {
                         p[i] = 0;
                         i++;
                 }
-                #endif
+#endif
 
-                free(password_copy);
-        }
-        else {
+                free (password_copy);
+        } else {
                 int bullets = ply_utf8_string_get_length (ply_buffer_get_bytes (state->entry_buffer),
                                                           ply_buffer_get_size (state->entry_buffer));
                 bullets = MAX (0, bullets);
@@ -1664,9 +1662,9 @@ update_display (state_t *state)
         }
 
         ply_entry_trigger_t *entry_trigger = ply_list_node_get_data (node);
-        if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_PASSWORD)
-            handle_ply_entry_trigger_type_password(state, entry_trigger);
-        else if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_QUESTION) {
+        if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_PASSWORD) {
+                handle_ply_entry_trigger_type_password (state, entry_trigger);
+        } else if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_QUESTION) {
                 ply_boot_splash_display_question (state->boot_splash,
                                                   entry_trigger->prompt,
                                                   ply_buffer_get_bytes (state->entry_buffer));
@@ -1743,7 +1741,7 @@ on_tab_pressed (state_t *state)
         }
 
         if (validate_input (state, "", "\t") && has_vt_consoles == true)
-            toggle_between_bullets_and_clear_text(state);
+                toggle_between_bullets_and_clear_text (state);
 }
 
 static void

@@ -654,9 +654,9 @@ ply_keyboard_remove_escape_handler (ply_keyboard_t               *keyboard,
 }
 
 void
-ply_keyboard_add_tab_handler (ply_keyboard_t               *keyboard,
-                              ply_keyboard_tab_handler_t   tab_handler,
-                              void                         *user_data)
+ply_keyboard_add_tab_handler (ply_keyboard_t            *keyboard,
+                              ply_keyboard_tab_handler_t tab_handler,
+                              void                      *user_data)
 {
         ply_keyboard_closure_t *closure;
 
@@ -669,8 +669,8 @@ ply_keyboard_add_tab_handler (ply_keyboard_t               *keyboard,
 
 
 void
-ply_keyboard_remove_tab_handler (ply_keyboard_t               *keyboard,
-                                 ply_keyboard_tab_handler_t   tab_handler)
+ply_keyboard_remove_tab_handler (ply_keyboard_t            *keyboard,
+                                 ply_keyboard_tab_handler_t tab_handler)
 {
         ply_list_node_t *node;
 

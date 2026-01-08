@@ -701,7 +701,7 @@ view_load (view_t *view)
         if (!ply_entry_load (view->entry))
                 return false;
         else
-                ply_entry_set_text_color(view->entry, 1.0, 1.0, 1.0, 1.0);
+                ply_entry_set_text_color (view->entry, 1.0, 1.0, 1.0, 1.0);
 
         ply_keymap_icon_load (view->keymap_icon);
         ply_capslock_icon_load (view->capslock_icon);
@@ -1364,7 +1364,7 @@ create_plugin (ply_key_file_t *key_file)
                 ply_key_file_get_bool (key_file, "two-step", "MessageBelowAnimation");
 
         plugin->allow_password_clear_text_toggle =
-                ply_key_file_get_bool(key_file, "two-step", "AllowPasswordClearTextToggle");
+                ply_key_file_get_bool (key_file, "two-step", "AllowPasswordClearTextToggle");
 
         progress_function = ply_key_file_get_value (key_file, "two-step", "ProgressFunction");
 
@@ -2228,10 +2228,10 @@ display_normal (ply_boot_splash_plugin_t *plugin)
 }
 
 static void
-display_password_internal(ply_boot_splash_plugin_t *plugin,
-                          const char               *prompt,
-                          const char               *entry_text,
-                          int                       bullets)
+display_password_internal (ply_boot_splash_plugin_t *plugin,
+                           const char               *prompt,
+                           const char               *entry_text,
+                           int                       bullets)
 {
         pause_views (plugin);
         if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_NORMAL)
@@ -2253,7 +2253,7 @@ display_password (ply_boot_splash_plugin_t *plugin,
                   const char               *prompt,
                   int                       bullets)
 {
-        display_password_internal(plugin, prompt, NULL, bullets);
+        display_password_internal (plugin, prompt, NULL, bullets);
 }
 
 static void
@@ -2261,14 +2261,13 @@ display_password_clear_text (ply_boot_splash_plugin_t *plugin,
                              const char               *prompt,
                              const char               *entry_text)
 {
-        if (!plugin->allow_password_clear_text_toggle)
-        {
+        if (!plugin->allow_password_clear_text_toggle) {
                 // if function is disabled, fall back to masked bullet mode,
                 // as dynamically setting function to NULL is not possible
-                display_password_internal(plugin, prompt, NULL, 0);
+                display_password_internal (plugin, prompt, NULL, 0);
                 return;
         }
-        display_password_internal(plugin, prompt, entry_text, -1);
+        display_password_internal (plugin, prompt, entry_text, -1);
 }
 
 static void
@@ -2431,4 +2430,3 @@ ply_boot_splash_plugin_get_interface (void)
 
         return &plugin_interface;
 }
-

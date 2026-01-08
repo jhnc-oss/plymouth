@@ -708,7 +708,7 @@ void ply_boot_splash_display_normal (ply_boot_splash_t *splash)
 }
 
 static inline void
-assert_password_capable(ply_boot_splash_t *splash)
+assert_password_capable (ply_boot_splash_t *splash)
 {
         assert (splash != NULL);
         assert (splash->plugin_interface != NULL);
@@ -719,14 +719,14 @@ void ply_boot_splash_display_password (ply_boot_splash_t *splash,
                                        const char        *prompt,
                                        int                bullets)
 {
-        assert_password_capable(splash);
+        assert_password_capable (splash);
         if (splash->plugin_interface->display_password != NULL)
                 splash->plugin_interface->display_password (splash->plugin, prompt, bullets);
 }
 
 bool ply_boot_splash_can_display_password_clear_text (ply_boot_splash_t *splash)
 {
-        assert_password_capable(splash);
+        assert_password_capable (splash);
         return splash->plugin_interface->display_password_clear_text != NULL;
 }
 
@@ -845,4 +845,3 @@ ply_boot_splash_uses_pixel_displays (ply_boot_splash_t *splash)
 {
         return splash->plugin_interface->add_pixel_display != NULL;
 }
-

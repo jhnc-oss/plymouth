@@ -65,10 +65,10 @@ void ply_keyboard_add_escape_handler (ply_keyboard_t               *keyboard,
                                       void                         *user_data);
 void ply_keyboard_remove_escape_handler (ply_keyboard_t               *keyboard,
                                          ply_keyboard_escape_handler_t escape_handler);
-void ply_keyboard_add_tab_handler (ply_keyboard_t               *keyboard,
+void ply_keyboard_add_tab_handler (ply_keyboard_t            *keyboard,
                                    ply_keyboard_tab_handler_t tab_handler,
-                                   void                         *user_data);
-void ply_keyboard_remove_tab_handler (ply_keyboard_t               *keyboard,
+                                   void                      *user_data);
+void ply_keyboard_remove_tab_handler (ply_keyboard_t            *keyboard,
                                       ply_keyboard_tab_handler_t tab_handler);
 void ply_keyboard_add_enter_handler (ply_keyboard_t              *keyboard,
                                      ply_keyboard_enter_handler_t enter_handler,
@@ -85,4 +85,3 @@ bool ply_keyboard_get_capslock_state (ply_keyboard_t *keyboard);
 #endif
 
 #endif /* PLY_KEYBOARD_H */
-
