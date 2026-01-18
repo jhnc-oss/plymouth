@@ -1,0 +1,63 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Plymouth contributors
+# This file is distributed under the same license as the plymouth package.
+# Languages add-on <noreply-addon-languages@weblate.org>, 2026.
+# 김인수 <simmon@nplob.com>, 2026.
+msgid ""
+msgstr ""
+"Project-Id-Version: plymouth 25.218.144\n"
+"Report-Msgid-Bugs-To: https://gitlab.freedesktop.org/plymouth/plymouth/"
+"issues\n"
+"POT-Creation-Date: 2025-07-14 05:46-0300\n"
+"PO-Revision-Date: 2026-01-17 13:58+0000\n"
+"Last-Translator: 김인수 <simmon@nplob.com>\n"
+"Language-Team: Korean <https://translate.fedoraproject.org/projects/plymouth/"
+"master/ko/>\n"
+"Language: ko\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 5.15.2\n"
+
+#: src/plugins/splash/two-step/plugin.c:1993
+#, c-format
+msgid "%d%% complete"
+msgstr "%d%% 완료"
+
+#: themes/bgrt/bgrt.plymouth.desktop:2
+msgid "BGRT"
+msgstr "BGRT"
+
+#: themes/bgrt/bgrt.plymouth.desktop:43
+#: themes/spinner/spinner.plymouth.desktop:39
+msgid "Installing Updates..."
+msgstr "최신화 설치하기..."
+
+#: themes/bgrt/bgrt.plymouth.desktop:44 themes/bgrt/bgrt.plymouth.desktop:51
+#: themes/bgrt/bgrt.plymouth.desktop:58 themes/bgrt/bgrt.plymouth.desktop:65
+#: themes/spinner/spinner.plymouth.desktop:40
+#: themes/spinner/spinner.plymouth.desktop:47
+#: themes/spinner/spinner.plymouth.desktop:54
+#: themes/spinner/spinner.plymouth.desktop:61
+msgid "Do not turn off your computer"
+msgstr "컴퓨터를 전원을 끄지 마세요"
+
+#: themes/bgrt/bgrt.plymouth.desktop:50
+#: themes/spinner/spinner.plymouth.desktop:46
+msgid "Upgrading System..."
+msgstr "시스템 향상하기..."
+
+#: themes/bgrt/bgrt.plymouth.desktop:57
+#: themes/spinner/spinner.plymouth.desktop:53
+msgid "Upgrading Firmware..."
+msgstr "펌웨어 향상하기..."
+
+#: themes/bgrt/bgrt.plymouth.desktop:64
+#: themes/spinner/spinner.plymouth.desktop:60
+msgid "Resetting System..."
+msgstr "시스템 재설정하기..."
+
+#: themes/spinner/spinner.plymouth.desktop:2
+msgid "Spinner"
+msgstr "스피너"
