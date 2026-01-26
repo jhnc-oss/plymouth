@@ -315,7 +315,7 @@ on_key_event (ply_keyboard_t *keyboard,
                                  */
                         }
                         if (csi_seq_size == 0) /* No final byte found */
-                                continue;
+                                break;
                         process_keyboard_input (keyboard, bytes + i, csi_seq_size);
                         i += csi_seq_size;
                         continue;
