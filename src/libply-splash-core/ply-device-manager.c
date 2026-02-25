@@ -832,14 +832,14 @@ parse_vconsole_conf (ply_device_manager_t *manager)
 
         ply_trace ("KEYMAP: %s, XKBLAYOUT: %s, XKBMODEL %s, XKBVARIANT: %s, XKBOPTIONS: %s\n", keymap, xkb_layout, xkb_model, xkb_variant, xkb_options);
 
-        if (xkb_layout != NULL && manager->xkb_context != NULL) {
+        if (manager->xkb_context != NULL) {
                 struct xkb_rule_names xkb_keymap = {
                         .layout  = xkb_layout,
                         .model   = xkb_model,
                         .variant = xkb_variant,
                         .options = xkb_options,
                 };
-                manager->xkb_keymap = xkb_keymap_new_from_names (manager->xkb_context, &xkb_keymap, XKB_MAP_COMPILE_NO_FLAGS);
+                manager->xkb_keymap = xkb_keymap_new_from_names (manager->xkb_context, xkb_layout != NULL ? &xkb_keymap : NULL, XKB_MAP_COMPILE_NO_FLAGS);
 
                 if (manager->xkb_keymap == NULL) {
                         ply_trace ("Failed to set xkb keymap of LAYOUT: %s MODEL: %s VARIANT: %s OPTIONS: %s", xkb_layout, xkb_model, xkb_variant, xkb_options);
