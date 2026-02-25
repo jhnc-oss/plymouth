@@ -60,6 +60,7 @@ struct _ply_input_device
         struct xkb_state         *keyboard_state;
         struct xkb_compose_table *compose_table;
         struct xkb_compose_state *compose_state;
+        xkb_keysym_t              extra_esc_key;
 
         struct libevdev          *dev;
 
@@ -149,6 +150,11 @@ apply_key_to_input_buffer (ply_input_device_t *input_device,
                         if (mods_depressed == (control_mask | alt_mask)) {
                                 kill (1, SIGINT);
                         }
+                }
+
+                if (input_device->extra_esc_key != XKB_KEY_NoSymbol && symbol == input_device->extra_esc_key) {
+                        ply_buffer_append_bytes (input_buffer, "\033", 1);
+                        return;
                 }
 
                 character_size = xkb_state_key_get_utf8 (input_device->keyboard_state, keycode, NULL, 0);
@@ -310,7 +316,8 @@ ply_input_device_set_disconnect_handler (ply_input_device_t                   *i
 ply_input_device_t *
 ply_input_device_open (struct xkb_context *xkb_context,
                        struct xkb_keymap  *xkb_keymap,
-                       const char         *path)
+                       const char         *path,
+                       xkb_keysym_t        extra_esc_key)
 {
         int error;
         const char *locale;
@@ -335,6 +342,7 @@ ply_input_device_open (struct xkb_context *xkb_context,
 
         input_device->leds_changed_trigger = ply_trigger_new (NULL);
         input_device->loop = ply_event_loop_get_default ();
+        input_device->extra_esc_key = extra_esc_key;
 
         input_device->fd = open (path, O_RDWR | O_NONBLOCK);
 
