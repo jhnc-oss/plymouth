@@ -1120,6 +1120,16 @@ create_devices_for_terminal_and_renderer_type (ply_device_manager_t *manager,
                                              terminal, manager->local_console_terminal);
 
                 if (renderer != NULL && !ply_renderer_open (renderer, force)) {
+                        if (errno == ENOENT) {
+                                ply_renderer_free (renderer);
+                                if (manager->device_timeout_elapsed) {
+                                        ply_trace ("No renderer plugins installed, creating non-graphical devices");
+                                        create_non_graphical_devices (manager);
+                                } else {
+                                        ply_trace ("Renderer open failed with ENOENT before timeout, will retry");
+                                }
+                                return false;
+                        }
                         ply_trace ("could not open renderer for %s", device_path);
                         ply_renderer_free (renderer);
                         renderer = NULL;
