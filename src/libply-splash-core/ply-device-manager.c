@@ -212,66 +212,6 @@ free_devices_from_device_path (ply_device_manager_t *manager,
         ply_renderer_free (renderer);
 }
 
-#ifdef HAVE_UDEV
-static bool
-drm_device_in_use (ply_device_manager_t *manager,
-                   const char           *device_path)
-{
-        ply_renderer_t *renderer;
-
-        renderer = ply_hashtable_lookup (manager->renderers, (void *) device_path);
-
-        return renderer != NULL;
-}
-
-static bool
-fb_device_has_drm_device (ply_device_manager_t *manager,
-                          struct udev_device   *fb_device)
-{
-        struct udev_enumerate *card_matches;
-        struct udev_list_entry *card_entry;
-        const char *id_path;
-        bool has_drm_device = false;
-
-        /* We want to see if the framebuffer is associated with a DRM-capable
-         * graphics card, if it is, we'll use the DRM device */
-        card_matches = udev_enumerate_new (manager->udev_context);
-        udev_enumerate_add_match_is_initialized (card_matches);
-        udev_enumerate_add_match_parent (card_matches, udev_device_get_parent (fb_device));
-        udev_enumerate_add_match_subsystem (card_matches, "drm");
-        id_path = udev_device_get_property_value (fb_device, "ID_PATH");
-        udev_enumerate_add_match_property (card_matches, "ID_PATH", id_path);
-
-        ply_trace ("trying to find associated drm node for fb device (path: %s)", id_path);
-
-        udev_enumerate_scan_devices (card_matches);
-
-        /* there should only ever be at most one match so we don't iterate through
-         * the list, but just look at the first entry */
-        card_entry = udev_enumerate_get_list_entry (card_matches);
-
-        if (card_entry != NULL) {
-                struct udev_device *card_device = NULL;
-                const char *card_node;
-                const char *card_path;
-
-                card_path = udev_list_entry_get_name (card_entry);
-                card_device = udev_device_new_from_syspath (manager->udev_context, card_path);
-                card_node = udev_device_get_devnode (card_device);
-                if (card_node != NULL && drm_device_in_use (manager, card_node))
-                        has_drm_device = true;
-                else
-                        ply_trace ("no card node!");
-
-                udev_device_unref (card_device);
-        } else {
-                ply_trace ("no card entry!");
-        }
-
-        udev_enumerate_unref (card_matches);
-        return has_drm_device;
-}
-
 static void
 on_each_renderer_add_input_device (const char         *key,
                                    ply_renderer_t     *renderer,
@@ -337,6 +277,66 @@ remove_input_device_from_renderers (ply_device_manager_t *manager,
         const char *device_path = ply_input_device_get_path (input_device);
         ply_hashtable_remove (manager->input_devices, (void *) device_path);
         ply_hashtable_foreach (manager->renderers, (ply_hashtable_foreach_func_t *) on_each_input_device_remove_from_renderer, input_device);
+}
+
+#ifdef HAVE_UDEV
+static bool
+drm_device_in_use (ply_device_manager_t *manager,
+                   const char           *device_path)
+{
+        ply_renderer_t *renderer;
+
+        renderer = ply_hashtable_lookup (manager->renderers, (void *) device_path);
+
+        return renderer != NULL;
+}
+
+static bool
+fb_device_has_drm_device (ply_device_manager_t *manager,
+                          struct udev_device   *fb_device)
+{
+        struct udev_enumerate *card_matches;
+        struct udev_list_entry *card_entry;
+        const char *id_path;
+        bool has_drm_device = false;
+
+        /* We want to see if the framebuffer is associated with a DRM-capable
+         * graphics card, if it is, we'll use the DRM device */
+        card_matches = udev_enumerate_new (manager->udev_context);
+        udev_enumerate_add_match_is_initialized (card_matches);
+        udev_enumerate_add_match_parent (card_matches, udev_device_get_parent (fb_device));
+        udev_enumerate_add_match_subsystem (card_matches, "drm");
+        id_path = udev_device_get_property_value (fb_device, "ID_PATH");
+        udev_enumerate_add_match_property (card_matches, "ID_PATH", id_path);
+
+        ply_trace ("trying to find associated drm node for fb device (path: %s)", id_path);
+
+        udev_enumerate_scan_devices (card_matches);
+
+        /* there should only ever be at most one match so we don't iterate through
+         * the list, but just look at the first entry */
+        card_entry = udev_enumerate_get_list_entry (card_matches);
+
+        if (card_entry != NULL) {
+                struct udev_device *card_device = NULL;
+                const char *card_node;
+                const char *card_path;
+
+                card_path = udev_list_entry_get_name (card_entry);
+                card_device = udev_device_new_from_syspath (manager->udev_context, card_path);
+                card_node = udev_device_get_devnode (card_device);
+                if (card_node != NULL && drm_device_in_use (manager, card_node))
+                        has_drm_device = true;
+                else
+                        ply_trace ("no card node!");
+
+                udev_device_unref (card_device);
+        } else {
+                ply_trace ("no card entry!");
+        }
+
+        udev_enumerate_unref (card_matches);
+        return has_drm_device;
 }
 
 static bool
