@@ -1,0 +1,275 @@
+.TH theme.plymouth 5 "2025-08-26" @version@
+.SH NAME
+theme.plymouth \- themes for plymouth
+
+.SH DESCRIPTION
+The
+.IR theme \.plymouth
+files contain the theme description and configuration of a certain theme.
+The file format is in the style of .ini files with sections, marked with
+.RI [ section_name ]
+and
+.IR key = value
+pairs belonging to that specific section. The file contains a required
+section [Plymouth Theme] and may contain additional sections depending
+on the theme plugin used. The following sections and key-value pairs are
+available.
+.TP
+.B [Plymouth Theme]
+This section provides general information about the theme.
+.IP
+.B Name
+The name of the theme
+.IP
+.B Description
+A short description of the theme
+.IP
+.BR ModuleName\~ (required)
+The plugin that should be used for the theme. Default options are:
+details, fade-throbber, script, space-flares, text, tribar, two-step.
+Additionally, further plugins may be provided in @plugin_path@
+.TP
+.B [fade-throbber]
+This section should only be used, when ModuleName=fade-throbber. It
+provides the configuration options for the fade-throbber splash screen.
+.IP
+.BR ImageDir\~ (required)
+The directory, where the images are contained. These images are
+star.png, lock.png, entry.png, bullet.png
+.IP
+.B MonospaceFont
+The font and the size that should be used, when using a console view.
+The default is monospace 10
+.IP
+.B ConsoleLogTextColor
+The text color in which the console log should appear.
+The default is 0xffffffff (white)
+.IP
+.B ConsoleLogBackgroundColor
+The background color of the console log.
+The default is 0x00000000 (black)
+.TP
+.B [script]
+This section should only be used, when ModuleName=script. It
+provides the configuration options and the script for a scriptable
+splash screen.
+.IP
+.B ImageDir
+The directory, where the images are contained. Which images are required
+depends on the script
+.IP
+.BR ScriptFile\~ (required)
+The file which contains the script. For information about the scripting
+language, see the default script theme in the themes directory
+.IP
+.B MonospaceFont
+The font and the size that should be used, when using a console view.
+The default is monospace 10
+.IP
+.B ConsoleLogTextColor
+The text color in which the console log should appear.
+The default is 0xffffffff (white)
+.IP
+.B ConsoleLogBackgroundColor
+.IP
+The background color of the console log.
+The default is 0x00000000 (black)
+.TP
+.B [script-env-vars]
+This section should only be used, when ModuleName=script. Every key-value
+pair in this section is an environment variable in the context of the
+script being executed.
+.TP
+.B [space-flares]
+This section should only be used, when ModuleName=space-flares. It provides
+the configuration options for the space-flares splash screen.
+.IP
+.BR ImageDir\~ (required)
+The directory, where the images are contained. These images are
+lock.png, box.png, star.png, progress_bar.png, entry.png, bullet.png
+.IP
+.B MonospaceFont
+The font and the size that should be used, when using a console view.
+The default is monospace 10
+.IP
+.B ConsoleLogTextColor
+The text color in which the console log should appear.
+The default is 0xffffffff (white)
+.IP
+.B ConsoleLogBackgroundColor
+.IP
+The background color of the console log.
+The default is 0x00000000 (black)
+.TP
+.B [two-step]
+This section should only be used, when ModuleName=two-step. It provides
+the configuration options for the two step splash screen.
+.IP
+.BR ImageDir\~ (required)
+The directory, where the images are contained. The required images are
+lock.png, entry.png, bullet.png, keyboard.png or keymap-render.png,
+capslock.png, progress-__.png, throbber-__.png.
+Optional images are box.png, corner-image.png, header-image.png,
+background.png or background-tile.png, watermark.png, emblem-warning.png
+.IP
+.B ScaleBackgroundImage
+Set to true, if the background image should be scaled to fit the screen
+.IP
+.B Font
+The font of the normal text in the graphical splash screen
+.IP
+.B TitleFont
+The font of the title text in the graphical splash screen
+.IP
+.B HorizontalAlignment
+The horizontal alignment of the throbber, progress- and end-animation.
+Default is 0.5
+.IP
+.B VerticalAlignment
+The vertical alignment of the throbber, progress- and end-animation.
+Default is 0.5
+.IP
+.B ProgressBarHorizontalAlignment
+The horizontal alignment of the progress bar.
+Default is HorizontalAlignment
+.IP
+.B ProgressBarVerticalAlignment
+The vertical alignment of the progress bar.
+Default is VerticalAlignment
+.IP
+.B WatermarkHorizontalAlignment
+The horizontal alignment of the watermark. Default is 1.0
+.IP
+.B WatermarkVerticalAlignment
+The vertical alignment of the watermark. Default is 0.5
+.IP
+.B SecureBootHorizontalAlignment
+The horizontal alignment of the secure boot emblem warning.
+Default is 0.05
+.IP
+.B SecureBootVerticalAlignment
+The vertical alignment of the secure boot emblem warning.
+Default is 0.95
+.IP
+.B DialogHorizontalAlignment
+The horizontal alignment of the dialog, like the password prompt.
+Default is 0.5
+.IP
+.B DialogVerticalAlignment
+The vertical alignment of the dialog, like the password prompt.
+Default is 0.5
+.IP
+.B TitleHorizontalAlignment
+The horizontal alignment of the title. Default is 0.5
+.B TitleVerticalAlignment
+The vertical alignment of the title. Default is 0.5
+.IP
+.B Transition
+The transition between the two steps. Possible values are: fade-over,
+cross-fade, merge-fade. Default is none
+.IP
+.B MonospaceFont
+The font and the size that should be used, when using a console view.
+The default is monospace 10
+.IP
+.B ConsoleLogTextColor
+The text color in which the console log should appear.
+The default is 0xffffffff (white)
+.IP
+.B ConsoleLogBackgroundColor
+The background color of the console log.
+The default is 0x00000000 (black)
+.IP
+.B TransitionDuration
+The duration of the transition. Default is 0.0
+.IP
+.B BackgroundStartColor
+The first color of the background gradient
+.IP
+.B BackgroundEndColor
+The second color of the background gradient
+.IP
+.B ProgressBarBackgroundColor
+The background color of the progress bar. Default is 0xffffff (white)
+.IP
+.B ProgressBarForegroundColor
+The foreground color of the progress bar. Default is 0x000000 (black)
+.IP
+.B ProgressBarWidth
+The width of the progress bar. Default is 400
+.IP
+.B ProgressBarHeight
+The height of the progress bar. Default is 5
+.IP
+.B DialogClearsFirmwareBackground
+Set to true, if a dialog should remove the boot logo
+.IP
+.B MessageBelowAnimation
+Set to true, if the messages should appear below the animation
+.IP
+.B ProgressFunction
+The formula of the progress function. Possible values are:
+wwoods, linear
+.IP
+.B ShowAnimationPercent
+Default is 0.9
+.TP
+.B [boot-up]
+.TQ
+.B [shutdown]
+.TQ
+.B [reboot]
+.TQ
+.B [updates]
+.TQ
+.B [system-upgrade]
+.TQ
+.B [firmware-upgrade]
+.TQ
+.B [system-reset]
+These sections are only used, when ModuleName=two-step. Each section
+describes a certain mode and individual features can be enabled and
+disabled with these key-value pairs.
+.IP
+.B SuppressMessages
+Set to true, if no messages should appear on screen
+.IP
+.B ProgressBarShowPercentComplete
+Set to true, if a percentage should be shown
+.IP
+.B UseProgressBar
+Set to true, if a progress bar should be shown
+.IP
+.B UseFirmwareBackground
+Set to true, if the boot logo should be shown
+.IP
+.B UseAnimation
+Deprecated. Animation is shown, when there is no progress bar
+.IP
+.B UseEndAnimation
+Deprecated. Default is true
+.IP
+.B Title
+The title that should be shown
+.IP
+.B SubTitle
+The subtitle that should be shown
+
+.SH FILES
+.TP
+.RI @runtime_theme_path@ theme / theme \.plymouth
+.TQ
+.RI @theme_path@ theme / theme \.plymouth
+where
+.I theme
+is the name of the theme.
+
+.SH EXAMPLES
+For examples, see the default themes at @theme_path@.
+
+.SH SEE ALSO
+.BR plymouth (1),
+.BR plymouth-set-default-theme (1),
+.BR plymouth (8),
+.UR http://www.freedesktop.org/wiki/Software/Plymouth
+.UE

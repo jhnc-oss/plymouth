@@ -1,0 +1,211 @@
+.TH plymouth 1 "2025-08-25" @version@
+.SH NAME
+plymouth \- Send commands to plymouthd
+
+.SH SYNOPSIS
+.SY plymouth
+.RI [ option ]\.\.\.
+.YS
+.SY plymouth
+.I command
+.RI [ option ]\.\.\.
+.YS
+
+.SH DESCRIPTION
+The
+.B plymouth
+command sends commands to a running
+.B plymouthd
+instance. This is used during the boot process to control the display of
+the graphical boot splash.
+
+.SH OPTIONS
+The following options are understood. These options are supported for
+compatibility with the old
+.B rhgb-client
+interface, and have been replaced by the commands that are described in
+the next section.
+.TP
+.B \-\-help
+Show summary of options.
+.TP
+.B \-\-debug
+Enable verbose debug logging.
+.TP
+.B \-\-get\-splash\-plugin\-path
+Get directory where splash plugins are installed.
+.TP
+.BI \-\-newroot= string
+Tell plymouthd that the new root filesystem is mounted.
+.TP
+.B \-\-quit
+Tell plymouthd to quit.
+.TP
+.B \-\-ping
+Check if plymouthd is running.
+.TP
+.B \-\-has\-active\-vt
+Check if plymouthd has an active vt.
+.TP
+.B \-\-sysinit
+Tell plymouthd root filesystem is mounted read-write.
+.TP
+.B \-\-show\-splash
+Show the splash screen.
+.TP
+.B \-\-hide\-splash
+Hide the splash screen.
+.TP
+.B \-\-ask\-for\-password
+Ask the user for a password.
+.TP
+.BI \-\-ignore\-keystroke= string
+Remove sensitivity to a keystroke.
+.TP
+.BI \-\-update= string
+Tell plymouthd an update about boot progress.
+.TP
+.B \-\-details
+Tell plymouthd there were errors during boot.
+.TP
+.B \-\-wait
+Wait for plymouthd to quit.
+
+.SH COMMANDS
+The following commands are understood:
+.TP
+.BI change\-mode\~ option
+Change the operation mode.
+.IP
+.B \-\-boot\-up
+Starting the system up
+.IP
+.B \-\-shutdown
+Shutting the system down
+.IP
+.B \-\-reboot
+Rebooting the system
+.IP
+.B \-\-updates
+Applying updates
+.IP
+.B \-\-system\-upgrade
+Upgrading the OS to a new version
+.IP
+.B \-\-firmware\-upgrade
+Upgrading firmware to a new version
+.IP
+.B \-\-system\-reset
+Resetting the OS and erasing all user data
+.TP
+.BI system\-update\~ option
+Tell plymouthd about updates progress.
+.IP
+.BI \-\-progress= integer
+The percentage progress of the updates
+.TP
+.BI update\~ option
+Tell plymouthd about boot status changes.
+.IP
+.BI \-\-status= string
+Tell plymouthd the current boot status
+.TP
+.BI update\-root\-fs\~ option
+Tell plymouthd about root filesystem changes.
+.IP
+.BI \-\-new\-root\-dir= string
+Root filesystem is about to change
+.IP
+.B \-\-read\-write
+Root filesystem is no longer read-only
+.TP
+.B show\-splash
+Tell plymouthd to show splash screen.
+.TP
+.B hide\-splash
+Tell plymouthd to hide splash screen.
+.TP
+.BI ask\-for\-password\~ option \.\.\.
+Ask user for password.
+.IP
+.BI \-\-command= string
+Command to send password to via standard input
+.IP
+.BI \-\-prompt= string
+Message to display when asking for password
+.IP
+.BI \-\-number\-of\-tries= integer
+Number of times to ask before giving up (requires --command)
+.IP
+.B \-\-dont\-pause\-progress
+Don't pause boot progress bar while asking
+.TP
+.BI ask\-question\~ option \.\.\.
+Ask user a question.
+.IP
+.BI \-\-command= string
+Command to send the answer to via standard input
+.IP
+.BI \-\-prompt= string
+Message to display when asking the question
+.IP
+.B \-\-dont\-pause\-progress
+Don't pause boot progress bar while asking
+.TP
+.BI display\-message\~ option
+Display a message.
+.IP
+.BI \-\-text= string
+The message text
+.TP
+.BI hide\-message\~ option
+Hide a message.
+.IP
+.BI \-\-text= string
+The message text
+.TP
+.BI watch\-keystroke\~ option
+Become sensitive to a keystroke.
+.IP
+.BI \-\-command= string
+Command to send keystroke to via standard input
+.IP
+.BI \-\-keys= string
+Keys to become sensitive to
+.TP
+.BI ignore\-keystroke\~ option
+Remove sensitivity to a keystroke.
+.IP
+.BI \-\-keys= string
+Keys to remove sensitivity to
+.TP
+.B pause\-progress
+Pause boot progress bar.
+.TP
+.B unpause\-progress
+Unpause boot progress bar.
+.TP
+.B report\-error
+Tell plymouthd there were errors during boot.
+.TP
+.B deactivate
+Tell plymouthd to deactivate.
+.TP
+.B reactivate
+Tell plymouthd to reactivate.
+.TP
+.BI quit\~\f[][ option \f[]]
+Tell plymouthd to quit.
+.IP
+.B \-\-retain\-splash
+Don't explicitly hide boot splash on exit
+.TP
+.B reload
+Tell plymouthd to reload the theme.
+
+.SH SEE ALSO
+.BR grub (8),
+.BR plymouth (8),
+.BR plymouthd (8),
+.UR http://www.freedesktop.org/wiki/Software/Plymouth
+.UE

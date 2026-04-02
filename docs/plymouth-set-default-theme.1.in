@@ -1,0 +1,49 @@
+.TH plymouth-set-default-theme 1 "2025-08-25" @version@
+.SH NAME
+plymouth-set-default-theme \- Set the plymouth theme
+
+.SH SYNOPSIS
+.SY plymouth-set-default-theme
+.RI [ option ]\.\.\.
+.RI [ theme ]
+.YS
+
+.SH DESCRIPTION
+When called with a
+.I theme
+argument, the
+.B plymouth-set-default-theme
+command changes the preferred boot theme and also performs the necessary
+regeneration of the initial ramdisk (initrd) since plymouth is loaded from
+the boot loader from the initrd prior to the mounting of the root filesystem.
+.P
+If
+.B plymouth-set-default-theme
+is invoked with no options or parameters, it shows the currently selected
+theme by default. This output is used by the helper scripts
+plymouth-generate-initrd and plymouth-update-initrd to set the proper theme
+in the initial ramdisk.
+
+.SH OPTIONS
+The following options are understood:
+.TP
+.B \-h, \-\-help
+Show summary of options.
+.TP
+.B \-l, \-\-list
+Show available themes.
+.TP
+.B \-r, \-\-reset
+Reset to default theme.
+.TP
+.B \-R, \-\-rebuild\-initrd
+Rebuild initrd (necessary after changing theme).
+
+.SH SEE ALSO
+.BR plymouth (1),
+.BR grub (8),
+.BR plymouth (8),
+.BR plymouthd (8),
+.UR http://www.freedesktop.org/wiki/Software/Plymouth
+.UE
+
