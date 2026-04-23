@@ -53,6 +53,11 @@ option('systemd-integration',
   value: true,
   description: 'Coordinate boot up with systemd',
 )
+option('systemd-units',
+  type: 'boolean',
+  value: false,
+  description: 'Install systemd units without enabling systemd integration in the daemon'
+)
 option('udev',
   type: 'feature',
   value: 'auto',

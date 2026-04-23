@@ -21,7 +21,7 @@ foreach unit_templ : systemd_unit_templates
       'PLYMOUTH_CLIENT_DIR': get_option('prefix') / get_option('bindir'),
       'PLYMOUTH_DAEMON_DIR': get_option('prefix') / get_option('sbindir'),
       'plymouthruntimedir': plymouth_runtime_dir,
-      'SYSTEMD_ASK_PASSWORD_AGENT': systemd_ask_password_agent.full_path(),
+      'SYSTEMD_ASK_PASSWORD_AGENT': systemd_ask_password_agent_path,
     },
     install: true,
     install_dir: systemd_unit_dir,
