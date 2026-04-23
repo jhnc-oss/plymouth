@@ -199,6 +199,7 @@ struct _ply_boot_splash_plugin
         char                               *monospace_font;
         uint32_t                            plugin_console_messages_updating : 1;
         uint32_t                            should_show_console_messages : 1;
+        uint32_t                            has_unread_console_output : 1;
         ply_buffer_t                       *boot_buffer;
         uint32_t                            console_text_color;
         uint32_t                            console_background_color;
@@ -2325,6 +2326,8 @@ static void
 unhide_console_messages (ply_boot_splash_plugin_t *plugin)
 {
         plugin->should_show_console_messages = true;
+        plugin->has_unread_console_output = false;
+        show_message (plugin, "");
         display_console_messages (plugin);
 }
 
@@ -2364,6 +2367,11 @@ on_boot_output (ply_boot_splash_plugin_t *plugin,
 
         if (!ply_console_viewer_preferred ())
                 return;
+
+        if (!plugin->has_unread_console_output && !plugin->should_show_console_messages) {
+                plugin->has_unread_console_output = true;
+                show_message (plugin, "Press Escape to view boot messages");
+        }
 
         node = ply_list_get_first_node (plugin->views);
         while (node != NULL) {
