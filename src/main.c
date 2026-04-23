@@ -102,6 +102,7 @@ typedef struct
         double                  splash_delay;
         double                  device_timeout;
         int                     device_scale;
+        xkb_keysym_t            extra_esc_key;
         int                     use_simpledrm;
 
         uint32_t                no_boot_log : 1;
@@ -342,6 +343,9 @@ load_settings (state_t    *state,
 
         if (state->use_simpledrm == -1)
                 state->use_simpledrm = ply_key_file_get_ulong (key_file, "Daemon", "UseSimpledrm", -1);
+
+        if (state->extra_esc_key == XKB_KEY_NoSymbol)
+                state->extra_esc_key = ply_key_file_get_ulong (key_file, "Daemon", "XkbExtraEscButton", XKB_KEY_NoSymbol);
 
         /*
          * Check the special UseSimpledrmNoLuks config file keyword this enables
@@ -1204,7 +1208,7 @@ static void
 load_devices (state_t                   *state,
               ply_device_manager_flags_t flags)
 {
-        state->device_manager = ply_device_manager_new (state->default_tty, flags);
+        state->device_manager = ply_device_manager_new (state->default_tty, flags, state->extra_esc_key);
         state->local_console_terminal = ply_device_manager_get_default_terminal (state->device_manager);
 
         ply_device_manager_watch_devices (state->device_manager,
@@ -2559,6 +2563,7 @@ main (int    argc,
         state.device_timeout = NAN;
         state.device_scale = -1;
         state.use_simpledrm = -1;
+        state.extra_esc_key = XKB_KEY_NoSymbol;
 
         ply_progress_load_cache (state.progress,
                                  get_cache_file_for_mode (state.mode));
