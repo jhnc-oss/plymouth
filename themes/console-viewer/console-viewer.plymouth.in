@@ -1,0 +1,7 @@
+[Plymouth Theme]
+Name=Console Viewer
+Description=Simple theme that simply displays the boot messages
+ModuleName=console-viewer
+
+[console-viewer]
+ConsoleLogBackgroundColor=0x00000000
