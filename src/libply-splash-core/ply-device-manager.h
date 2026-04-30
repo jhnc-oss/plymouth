@@ -54,7 +54,8 @@ typedef void (* ply_text_display_removed_handler_t) (void *,
 
 #ifndef PLY_HIDE_FUNCTION_DECLARATIONS
 ply_device_manager_t *ply_device_manager_new (const char                *default_tty,
-                                              ply_device_manager_flags_t flags);
+                                              ply_device_manager_flags_t flags,
+                                              xkb_keysym_t               extra_esc_key);
 void ply_device_manager_watch_devices (ply_device_manager_t               *manager,
                                        double                              device_timeout,
                                        ply_keyboard_added_handler_t        keyboard_added_handler,
