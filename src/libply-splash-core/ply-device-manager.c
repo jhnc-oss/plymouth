@@ -77,6 +77,7 @@ struct _ply_device_manager
 
         struct xkb_context                 *xkb_context;
         struct xkb_keymap                  *xkb_keymap;
+        xkb_keysym_t                        extra_esc_key;
 
         ply_keyboard_added_handler_t        keyboard_added_handler;
         ply_keyboard_removed_handler_t      keyboard_removed_handler;
@@ -407,7 +408,7 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
 
                                 assert (manager->xkb_keymap != NULL);
 
-                                ply_input_device_t *input_device = ply_input_device_open (manager->xkb_context, manager->xkb_keymap, device_path);
+                                ply_input_device_t *input_device = ply_input_device_open (manager->xkb_context, manager->xkb_keymap, device_path, manager->extra_esc_key);
                                 if (input_device != NULL) {
                                         ply_input_device_set_disconnect_handler (input_device, (ply_input_device_disconnect_handler_t) remove_input_device_from_renderers, manager);
                                         if (ply_input_device_is_keyboard (input_device)) {
@@ -855,13 +856,15 @@ parse_vconsole_conf (ply_device_manager_t *manager)
 
 ply_device_manager_t *
 ply_device_manager_new (const char                *default_tty,
-                        ply_device_manager_flags_t flags)
+                        ply_device_manager_flags_t flags,
+                        xkb_keysym_t               extra_esc_key)
 {
         ply_device_manager_t *manager;
 
         manager = calloc (1, sizeof(ply_device_manager_t));
         manager->loop = NULL;
         manager->xkb_context = xkb_context_new (XKB_CONTEXT_NO_FLAGS);
+        manager->extra_esc_key = extra_esc_key;
 
         if (manager->xkb_context == NULL)
                 ply_trace ("Could not allocate xkb context: %m");
