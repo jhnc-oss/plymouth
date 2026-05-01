@@ -975,9 +975,40 @@ plymouth_should_show_default_splash (state_t *state)
         return false;
 }
 
+static bool
+reset_timer (state_t *state)
+{
+        if (!isnan (state->splash_delay)) {
+                double now, running_time;
+
+                now = ply_get_timestamp ();
+                running_time = now - state->start_time;
+                if (state->splash_delay > running_time) {
+                        double time_left = state->splash_delay - running_time;
+
+                        ply_trace ("delaying show splash for %lf seconds",
+                                   time_left);
+                        ply_event_loop_stop_watching_for_timeout (state->loop,
+                                                                  (ply_event_loop_timeout_handler_t)
+                                                                  show_splash,
+                                                                  state);
+                        ply_event_loop_watch_for_timeout (state->loop,
+                                                          time_left,
+                                                          (ply_event_loop_timeout_handler_t)
+                                                          show_splash,
+                                                          state);
+                        return true;
+                }
+        }
+
+        return false;
+}
+
 static void
 on_reload (state_t *state)
 {
+        bool has_displays;
+
         ply_trace ("reloading");
         if (state->boot_splash != NULL) {
                 ply_boot_splash_hide (state->boot_splash);
@@ -1006,13 +1037,27 @@ on_reload (state_t *state)
                 return;
         }
 
+        has_displays = ply_device_manager_has_displays (state->device_manager);
+        if (!has_displays) {
+                ply_trace ("reload while no display is available");
+                return;
+        }
+
+        if (!state->is_attached) {
+                ply_trace ("reload while not attached");
+                return;
+        }
+
+        if (reset_timer (state)) {
+                return;
+        }
+
         if (state->showing_details) {
                 show_detailed_splash (state);
         } else {
                 show_default_splash (state);
         }
 }
-
 
 static void
 on_show_splash (state_t *state)
@@ -1064,29 +1109,10 @@ show_splash (state_t *state)
         if (state->boot_splash != NULL)
                 return;
 
-        if (!isnan (state->splash_delay)) {
-                double now, running_time;
-
-                now = ply_get_timestamp ();
-                running_time = now - state->start_time;
-                if (state->splash_delay > running_time) {
-                        double time_left = state->splash_delay - running_time;
-
-                        ply_trace ("delaying show splash for %lf seconds",
-                                   time_left);
-                        ply_event_loop_stop_watching_for_timeout (state->loop,
-                                                                  (ply_event_loop_timeout_handler_t)
-                                                                  show_splash,
-                                                                  state);
-                        ply_event_loop_watch_for_timeout (state->loop,
-                                                          time_left,
-                                                          (ply_event_loop_timeout_handler_t)
-                                                          show_splash,
-                                                          state);
-                        /* Listen for ESC to show details */
-                        ply_device_manager_activate_keyboards (state->device_manager);
-                        return;
-                }
+        if (reset_timer (state)) {
+                /* Listen for ESC to show details */
+                ply_device_manager_activate_keyboards (state->device_manager);
+                return;
         }
 
         if (plymouth_should_show_default_splash (state)) {
