@@ -63,8 +63,9 @@ static int crash_fd = -1;
 
 typedef struct
 {
-        const char    *keys;
-        ply_trigger_t *trigger;
+        const char            *keys;
+        ply_trigger_t         *trigger;
+        ply_boot_connection_t *connection;
 } ply_keystroke_watch_t;
 
 typedef struct
@@ -72,8 +73,9 @@ typedef struct
         enum { PLY_ENTRY_TRIGGER_TYPE_PASSWORD,
                PLY_ENTRY_TRIGGER_TYPE_QUESTION }
         type;
-        const char    *prompt;
-        ply_trigger_t *trigger;
+        const char            *prompt;
+        ply_trigger_t         *trigger;
+        ply_boot_connection_t *connection;
 } ply_entry_trigger_t;
 
 typedef struct
@@ -540,9 +542,10 @@ cancel_pending_delayed_show (state_t *state)
 }
 
 static void
-on_ask_for_password (state_t       *state,
-                     const char    *prompt,
-                     ply_trigger_t *answer)
+on_ask_for_password (state_t               *state,
+                     const char            *prompt,
+                     ply_trigger_t         *answer,
+                     ply_boot_connection_t *connection)
 {
         ply_entry_trigger_t *entry_trigger;
 
@@ -575,15 +578,17 @@ on_ask_for_password (state_t       *state,
         entry_trigger->type = PLY_ENTRY_TRIGGER_TYPE_PASSWORD;
         entry_trigger->prompt = prompt;
         entry_trigger->trigger = answer;
+        entry_trigger->connection = connection;
         ply_trace ("queuing password request with boot splash");
         ply_list_append_data (state->entry_triggers, entry_trigger);
         update_display (state);
 }
 
 static void
-on_ask_question (state_t       *state,
-                 const char    *prompt,
-                 ply_trigger_t *answer)
+on_ask_question (state_t               *state,
+                 const char            *prompt,
+                 ply_trigger_t         *answer,
+                 ply_boot_connection_t *connection)
 {
         ply_entry_trigger_t *entry_trigger;
 
@@ -591,6 +596,7 @@ on_ask_question (state_t       *state,
         entry_trigger->type = PLY_ENTRY_TRIGGER_TYPE_QUESTION;
         entry_trigger->prompt = prompt;
         entry_trigger->trigger = answer;
+        entry_trigger->connection = connection;
         ply_trace ("queuing question with boot splash");
         ply_list_append_data (state->entry_triggers, entry_trigger);
         update_display (state);
@@ -637,9 +643,10 @@ on_hide_message (state_t    *state,
 }
 
 static void
-on_watch_for_keystroke (state_t       *state,
-                        const char    *keys,
-                        ply_trigger_t *trigger)
+on_watch_for_keystroke (state_t               *state,
+                        const char            *keys,
+                        ply_trigger_t         *trigger,
+                        ply_boot_connection_t *connection)
 {
         ply_keystroke_watch_t *keystroke_trigger =
                 calloc (1, sizeof(ply_keystroke_watch_t));
@@ -647,7 +654,48 @@ on_watch_for_keystroke (state_t       *state,
         ply_trace ("watching for keystroke");
         keystroke_trigger->keys = keys;
         keystroke_trigger->trigger = trigger;
+        keystroke_trigger->connection = connection;
         ply_list_append_data (state->keystroke_triggers, keystroke_trigger);
+}
+
+static void
+on_connection_hangup (state_t               *state,
+                      ply_boot_connection_t *connection)
+{
+        ply_list_node_t *node;
+
+        node = ply_list_get_first_node (state->entry_triggers);
+        while (node) {
+                ply_list_node_t *next = ply_list_get_next_node (state->entry_triggers, node);
+                ply_entry_trigger_t *entry_trigger = ply_list_node_get_data (node);
+                if (entry_trigger->connection == connection) {
+                        bool is_active = (node == ply_list_get_first_node (state->entry_triggers));
+
+                        ply_trace ("cancelling pending prompt for disconnected client");
+                        ply_trigger_pull (entry_trigger->trigger, NULL);
+                        /* Only clear the typed-text buffer when cancelling the active
+                         * (head) prompt; queued prompts haven't received any input yet. */
+                        if (is_active)
+                                ply_buffer_clear (state->entry_buffer);
+                        ply_list_remove_node (state->entry_triggers, node);
+                        free (entry_trigger);
+                        update_display (state);
+                }
+                node = next;
+        }
+
+        node = ply_list_get_first_node (state->keystroke_triggers);
+        while (node) {
+                ply_list_node_t *next = ply_list_get_next_node (state->keystroke_triggers, node);
+                ply_keystroke_watch_t *keystroke_trigger = ply_list_node_get_data (node);
+                if (keystroke_trigger->connection == connection) {
+                        ply_trace ("cancelling pending keystroke watch for disconnected client");
+                        ply_trigger_pull (keystroke_trigger->trigger, NULL);
+                        ply_list_remove_node (state->keystroke_triggers, node);
+                        free (keystroke_trigger);
+                }
+                node = next;
+        }
 }
 
 static void
@@ -1554,6 +1602,7 @@ start_boot_server (state_t *state)
                                       (ply_boot_server_quit_handler_t) on_quit,
                                       (ply_boot_server_has_active_vt_handler_t) on_has_active_vt,
                                       (ply_boot_server_reload_handler_t) on_reload,
+                                      (ply_boot_server_connection_hangup_handler_t) on_connection_hangup,
                                       state);
 
         if (!ply_boot_server_listen (server)) {
