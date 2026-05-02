@@ -40,7 +40,7 @@
 #include "ply-trigger.h"
 #include "ply-utils.h"
 
-typedef struct
+struct _ply_boot_connection
 {
         int                fd;
         ply_fd_watch_t    *watch;
@@ -52,7 +52,7 @@ typedef struct
 
         uint32_t           credentials_read : 1;
         uint32_t           disconnected : 1;
-} ply_boot_connection_t;
+};
 
 struct _ply_boot_server
 {
@@ -82,6 +82,7 @@ struct _ply_boot_server
         ply_boot_server_quit_handler_t                quit_handler;
         ply_boot_server_has_active_vt_handler_t       has_active_vt_handler;
         ply_boot_server_reload_handler_t              reload_handler;
+        ply_boot_server_connection_hangup_handler_t   connection_hangup_handler;
         void                                         *user_data;
 
         uint32_t                                      is_listening : 1;
@@ -109,6 +110,7 @@ ply_boot_server_new (ply_boot_server_update_handler_t              update_handle
                      ply_boot_server_quit_handler_t                quit_handler,
                      ply_boot_server_has_active_vt_handler_t       has_active_vt_handler,
                      ply_boot_server_reload_handler_t              reload_handler,
+                     ply_boot_server_connection_hangup_handler_t   connection_hangup_handler,
                      void                                         *user_data)
 {
         ply_boot_server_t *server;
@@ -139,6 +141,7 @@ ply_boot_server_new (ply_boot_server_update_handler_t              update_handle
         server->quit_handler = quit_handler;
         server->has_active_vt_handler = has_active_vt_handler;
         server->reload_handler = reload_handler;
+        server->connection_hangup_handler = connection_hangup_handler;
         server->user_data = user_data;
 
         return server;
@@ -208,13 +211,27 @@ ply_boot_connection_drop_reference (ply_boot_connection_t *connection)
                 ply_boot_connection_free (connection);
 }
 
+static const char *
+ply_boot_server_get_socket_path (void)
+{
+        /* PLY_BOOT_SOCKET_PATH is a test-only override that lets the test
+         * suite bind to a private abstract socket instead of the production
+         * path.  It is not sanitised and must never be set in production. */
+        const char *path = getenv ("PLY_BOOT_SOCKET_PATH");
+
+        if (path != NULL && path[0] != '\0')
+                return path;
+
+        return PLY_BOOT_PROTOCOL_TRIMMED_ABSTRACT_SOCKET_PATH;
+}
+
 bool
 ply_boot_server_listen (ply_boot_server_t *server)
 {
         assert (server != NULL);
 
         server->socket_fd =
-                ply_listen_to_unix_socket (PLY_BOOT_PROTOCOL_TRIMMED_ABSTRACT_SOCKET_PATH,
+                ply_listen_to_unix_socket (ply_boot_server_get_socket_path (),
                                            PLY_UNIX_SOCKET_TYPE_TRIMMED_ABSTRACT);
 
         if (server->socket_fd < 0)
@@ -626,6 +643,7 @@ ply_boot_connection_on_request (ply_boot_connection_t *connection)
                         server->ask_for_password_handler (server->user_data,
                                                           argument,
                                                           answer,
+                                                          connection,
                                                           server);
                 } else {
                         ply_trigger_free (answer);
@@ -711,6 +729,7 @@ ply_boot_connection_on_request (ply_boot_connection_t *connection)
                         server->ask_question_handler (server->user_data,
                                                       argument,
                                                       answer,
+                                                      connection,
                                                       server);
                 } else {
                         ply_trigger_free (answer);
@@ -744,6 +763,7 @@ ply_boot_connection_on_request (ply_boot_connection_t *connection)
                         server->watch_for_keystroke_handler (server->user_data,
                                                              argument,
                                                              answer,
+                                                             connection,
                                                              server);
                 } else {
                         ply_trigger_free (answer);
@@ -827,6 +847,12 @@ ply_boot_connection_on_hangup (ply_boot_connection_t *connection)
         node = ply_list_find_node (server->connections, connection);
 
         assert (node != NULL);
+
+        /* Notify main before dropping the reference so it can cancel
+         * any pending entry_triggers owned by this connection while
+         * the connection pointer is still valid. */
+        if (server->connection_hangup_handler != NULL)
+                server->connection_hangup_handler (server->user_data, connection, server);
 
         ply_boot_connection_drop_reference (connection);
         ply_list_remove_node (server->connections, node);
