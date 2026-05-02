@@ -102,3 +102,4 @@ endif
 if get_option('docs')
   subdir('docs')
 endif
+subdir('tests')
