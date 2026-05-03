@@ -1,5 +1,4 @@
-# Distribution defaults. Changes to this file will get overwritten during
-# upgrades.
+# Some distros overwrite these during upgrades
 [Daemon]
 Theme=spinner
 ShowDelay=0
