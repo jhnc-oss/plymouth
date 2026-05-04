@@ -1110,10 +1110,14 @@ view_hide_prompt (view_t *view)
 
         plugin = view->plugin;
 
-        /* Obscure the password length in the scroll back */
         if (view->console_viewer != NULL) {
+                /* Obscure the password length in the scroll back */
                 if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
                         ply_console_viewer_clear_line (view->console_viewer);
+
+                /* Remove the last character that acts as the fake cursor when prompting */
+                if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_QUESTION_ENTRY)
+                        ply_console_viewer_print (view->console_viewer, "\b");
 
                 ply_console_viewer_print (view->console_viewer, "\n");
         }

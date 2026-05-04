@@ -570,6 +570,9 @@ display_normal (ply_boot_splash_plugin_t *plugin)
                 if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY)
                         script_lib_sprite_console_viewer_clear_line (plugin->script_sprite_lib);
 
+                if (plugin->state == PLY_BOOT_SPLASH_DISPLAY_QUESTION_ENTRY)
+                        script_lib_sprite_console_viewer_print (plugin->script_sprite_lib, "\b ");
+
                 script_lib_sprite_console_viewer_print (plugin->script_sprite_lib, "\n");
         }
 
