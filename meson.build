@@ -39,12 +39,20 @@ libevdev_dep = dependency('libevdev')
 xkbcommon_dep = dependency('xkbcommon')
 xkeyboard_config_dep = dependency('xkeyboard-config')
 
-if get_option('systemd-integration')
-  systemd_dep = dependency('systemd')
+if get_option('systemd-integration') or get_option('systemd-units')
+  systemd_dep = dependency('systemd', required: get_option('systemd-integration'))
   systemd_unit_dir = systemd_dep.get_variable('systemdsystemunitdir',
     pkgconfig_define: [ 'rootprefix', get_option('prefix') ],
+    default_value: '/usr/lib/systemd/system',
   )
-  systemd_ask_password_agent = find_program('systemd-tty-ask-password-agent')
+  systemd_ask_password_agent = find_program('systemd-tty-ask-password-agent',
+    required: get_option('systemd-integration')
+  )
+  if systemd_ask_password_agent.found()
+    systemd_ask_password_agent_path = systemd_ask_password_agent.full_path()
+  else
+    systemd_ask_password_agent_path = '/usr/bin/systemd-tty-ask-password-agent'
+  endif
 endif
 
 if get_option('upstart-monitoring')
@@ -96,7 +104,7 @@ subdir('po')
 subdir('src')
 subdir('themes')
 subdir('scripts')
-if get_option('systemd-integration')
+if get_option('systemd-integration') or get_option('systemd-units')
   subdir('systemd-units')
 endif
 if get_option('docs')
