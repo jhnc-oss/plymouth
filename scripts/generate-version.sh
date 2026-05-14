@@ -5,6 +5,11 @@ cd "$SRCDIR"
 CWD=$(realpath "$PWD")
 exec 2>&3
 
+version_lt() {
+    [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$1" ] &&
+        [ "$1" != "$2" ]
+}
+
 # If it's not from a git checkout, assume it's from a tarball
 if ! git rev-parse --is-inside-git-dir > /dev/null 2>&1; then
     VERSION_FROM_DIR_NAME=$(basename "$CWD" | sed -n 's/^plymouth-\([^-]*\)$/\1/p')
@@ -18,7 +23,29 @@ if ! git rev-parse --is-inside-git-dir > /dev/null 2>&1; then
     exit 1
 fi
 
+RELEASE_TAG=$(git describe --exact-match --tags --match '[0-9]*' 2> /dev/null || true)
+if [ -n "$RELEASE_TAG" ]; then
+    echo "$RELEASE_TAG"
+    exit 0
+fi
+
 # If it is from a git checkout, derive the version from the date of the last commit, and the number
 # of commits since the last release.
-COMMITS_SINCE_LAST_RELEASE=$(git rev-list $(git describe --abbrev=0)..HEAD --count)
-date -d "@$(git log -1 --pretty=format:%ct)" +%y.%j.${COMMITS_SINCE_LAST_RELEASE}
+LAST_RELEASE_TAG=$(git describe --abbrev=0 --tags --match '[0-9]*' 2> /dev/null || true)
+LAST_COMMIT_TIME=$(git log -1 --pretty=format:%ct)
+
+if [ -n "$LAST_RELEASE_TAG" ]; then
+    COMMITS_SINCE_LAST_RELEASE=$(git rev-list "${LAST_RELEASE_TAG}..HEAD" --count)
+else
+    COMMITS_SINCE_LAST_RELEASE=$(git rev-list HEAD --count)
+fi
+
+GENERATED_VERSION=$(date -d "@${LAST_COMMIT_TIME}" +%y.%j."${COMMITS_SINCE_LAST_RELEASE}")
+
+if [ -n "$LAST_RELEASE_TAG" ] && version_lt "$GENERATED_VERSION" "$LAST_RELEASE_TAG"; then
+    RELEASE_TAG_BASE=${LAST_RELEASE_TAG%.*}
+    RELEASE_TAG_MICRO=${LAST_RELEASE_TAG##*.}
+    echo "${RELEASE_TAG_BASE}.$((RELEASE_TAG_MICRO + COMMITS_SINCE_LAST_RELEASE))"
+else
+    echo "$GENERATED_VERSION"
+fi
