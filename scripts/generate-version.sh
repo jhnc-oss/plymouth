@@ -5,6 +5,11 @@ cd "$SRCDIR"
 CWD=$(realpath "$PWD")
 exec 2>&3
 
+version_lt() {
+    [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$1" ] &&
+        [ "$1" != "$2" ]
+}
+
 # If it's not from a git checkout, assume it's from a tarball
 if ! git rev-parse --is-inside-git-dir > /dev/null 2>&1; then
     VERSION_FROM_DIR_NAME=$(basename "$CWD" | sed -n 's/^plymouth-\([^-]*\)$/\1/p')
