@@ -26,6 +26,12 @@ fi
 
 # If it is from a git checkout, derive the version from the date of the last commit, and the number
 # of commits since the last release.
-LAST_RELEASE_TAG=$(git describe --abbrev=0 --tags --match '[0-9]*')
-COMMITS_SINCE_LAST_RELEASE=$(git rev-list "${LAST_RELEASE_TAG}..HEAD" --count)
+LAST_RELEASE_TAG=$(git describe --abbrev=0 --tags --match '[0-9]*' 2> /dev/null || true)
+
+if [ -n "$LAST_RELEASE_TAG" ]; then
+    COMMITS_SINCE_LAST_RELEASE=$(git rev-list "${LAST_RELEASE_TAG}..HEAD" --count)
+else
+    COMMITS_SINCE_LAST_RELEASE=$(git rev-list HEAD --count)
+fi
+
 date -d "@$(git log -1 --pretty=format:%ct)" +%y.%j.${COMMITS_SINCE_LAST_RELEASE}
