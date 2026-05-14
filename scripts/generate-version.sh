@@ -18,6 +18,12 @@ if ! git rev-parse --is-inside-git-dir > /dev/null 2>&1; then
     exit 1
 fi
 
+RELEASE_TAG=$(git describe --exact-match --tags --match '[0-9]*' 2> /dev/null || true)
+if [ -n "$RELEASE_TAG" ]; then
+    echo "$RELEASE_TAG"
+    exit 0
+fi
+
 # If it is from a git checkout, derive the version from the date of the last commit, and the number
 # of commits since the last release.
 COMMITS_SINCE_LAST_RELEASE=$(git rev-list $(git describe --abbrev=0)..HEAD --count)
