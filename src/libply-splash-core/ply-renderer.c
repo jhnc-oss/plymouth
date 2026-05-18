@@ -244,15 +244,23 @@ ply_renderer_open_plugin (ply_renderer_t *renderer,
                           const char     *plugin_path,
                           bool            force)
 {
+        char *saved_device_name;
+
         ply_trace ("trying to open renderer plugin %s", plugin_path);
 
-        if (!ply_renderer_load_plugin (renderer, plugin_path))
+        saved_device_name = renderer->device_name != NULL ? strdup (renderer->device_name) : NULL;
+
+        if (!ply_renderer_load_plugin (renderer, plugin_path)) {
+                free (saved_device_name);
                 return false;
+        }
 
         if (!ply_renderer_open_device (renderer)) {
                 ply_trace ("could not open rendering device for plugin %s",
                            plugin_path);
                 ply_renderer_unload_plugin (renderer);
+                free (renderer->device_name);
+                renderer->device_name = saved_device_name;
                 return false;
         }
 
@@ -261,9 +269,12 @@ ply_renderer_open_plugin (ply_renderer_t *renderer,
                            plugin_path);
                 ply_renderer_close_device (renderer);
                 ply_renderer_unload_plugin (renderer);
+                free (renderer->device_name);
+                renderer->device_name = saved_device_name;
                 return false;
         }
 
+        free (saved_device_name);
         ply_trace ("opened renderer plugin %s", plugin_path);
         return true;
 }
