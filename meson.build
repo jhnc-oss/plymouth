@@ -8,7 +8,7 @@ i18n = import('i18n')
 pkgconfig = import('pkgconfig')
 
 # General variables
-plymouth_soversion = '5.0.0'
+plymouth_soversion = '6.0.0'
 
 plymouth_theme_path = get_option('prefix') / get_option('datadir') / 'plymouth' / 'themes/'
 plymouth_plugin_path = get_option('prefix') / get_option('libdir') / 'plymouth/'
