@@ -905,10 +905,12 @@ script_lib_sprite_refresh (script_lib_sprite_data_t *data)
                      node;
                      node = ply_list_get_next_node (data->displays, node)) {
                         script_lib_display_t *display = ply_list_node_get_data (node);
-                        if (data->should_show_console_messages == true) {
-                                ply_console_viewer_show (display->console_viewer, display->pixel_display);
-                        } else {
-                                ply_console_viewer_hide (display->console_viewer);
+                        if (display->console_viewer != NULL) {
+                                if (data->should_show_console_messages == true) {
+                                        ply_console_viewer_show (display->console_viewer, display->pixel_display);
+                                } else {
+                                        ply_console_viewer_hide (display->console_viewer);
+                                }
                         }
                 }
                 data->console_viewer_needs_redraw = false;
