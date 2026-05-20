@@ -569,14 +569,20 @@ if [ ! -z "$PLYMOUTH_TITLE_FONT" ]; then
 fi
 
 PLYMOUTH_MONOSPACE_FONT_PATH=""
+PLYMOUTH_BOLD_MONOSPACE_FONT_PATH=""
 PLYMOUTH_MONOSPACE_FONT=$(grep "\bMonospaceFont *= *" ${PLYMOUTH_SYSROOT}${PLYMOUTH_THEME_DIR}/${PLYMOUTH_THEME_NAME}.plymouth | sed 's/MonospaceFont *= *//' | head -1)
 if [ ! -z "$PLYMOUTH_MONOSPACE_FONT" ]; then
+
      PLYMOUTH_MONOSPACE_FONT_PATH=$(fc-match -f %{file} "$PLYMOUTH_MONOSPACE_FONT" 2> /dev/null)
      if [ ! -z "$PLYMOUTH_MONOSPACE_FONT_PATH" ]; then
           inst "$PLYMOUTH_MONOSPACE_FONT_PATH" $INITRDDIR
      fi
-fi
 
+     PLYMOUTH_BOLD_MONOSPACE_FONT_PATH=$(fc-match -f %{file} "$PLYMOUTH_MONOSPACE_FONT":weight=bold 2> /dev/null)
+     if [ ! -z "$PLYMOUTH_BOLD_MONOSPACE_FONT_PATH" ]; then
+          inst "$PLYMOUTH_BOLD_MONOSPACE_FONT_PATH" $INITRDDIR
+     fi
+fi
 
 if [ ! -f ${PLYMOUTH_SYSROOT}${PLYMOUTH_PLUGIN_PATH}/${PLYMOUTH_MODULE_NAME}.so ]; then
     echo "The default plymouth plugin (${PLYMOUTH_MODULE_NAME}) doesn't exist" >&2
