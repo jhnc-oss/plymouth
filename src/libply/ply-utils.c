@@ -1391,6 +1391,9 @@ check_secure_boot_settings (const char *filename)
         uint8_t buf[5];
 
         fd = open (filename, O_RDONLY);
+        if (fd < 0)
+                return false;
+
         len = read (fd, buf, 5);
         close (fd);
 
