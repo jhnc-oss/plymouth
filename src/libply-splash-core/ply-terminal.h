@@ -65,6 +65,7 @@ int ply_terminal_get_fd (ply_terminal_t *terminal);
 bool ply_terminal_is_vt (ply_terminal_t *terminal);
 bool ply_terminal_is_open (ply_terminal_t *terminal);
 bool ply_terminal_is_active (ply_terminal_t *terminal);
+bool ply_terminal_is_active_vt (ply_terminal_t *terminal);
 void ply_terminal_close (ply_terminal_t *terminal);
 void ply_terminal_reset_colors (ply_terminal_t *terminal);
 
