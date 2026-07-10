@@ -79,6 +79,11 @@ struct bmp_dib_header
 
 const uint8_t png_header[8] = { 0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a };
 
+/* Sane upper bound on a BMP image dimension. Boot logos are small; this
+ * generous cap keeps the pixel buffer size computation well clear of
+ * integer overflow. */
+#define PLY_IMAGE_BMP_MAX_DIMENSION 65535
+
 ply_image_t *
 ply_image_new (const char *filename)
 {
@@ -220,6 +225,7 @@ ply_image_load_bmp (ply_image_t *image,
         struct bmp_file_header file_header;
         struct bmp_dib_header dib_header;
         uint8_t r, g, b, *buf, *src;
+        uint64_t bmp_size;
         bool ret = false;
 
         assert (image != NULL);
@@ -236,17 +242,43 @@ ply_image_load_bmp (ply_image_t *image,
             dib_header.compression != 0)
                 return false;
 
+        /* abs(INT32_MIN) is undefined behavior; reject before taking
+         * absolute value. */
+        if (dib_header.height == INT32_MIN)
+                return false;
+
         width = dib_header.width;
         height = abs (dib_header.height);
+
+        /* Guard against malformed or hostile headers (e.g. the
+         * firmware-provided BGRT logo).  Rejecting empty and
+         * implausibly large dimensions ensures the buffer size
+         * computation below cannot overflow into an undersized
+         * allocation, which the row-by-row read loop would then
+         * overflow. */
+        if (width == 0 || height == 0 ||
+            width > PLY_IMAGE_BMP_MAX_DIMENSION ||
+            height > PLY_IMAGE_BMP_MAX_DIMENSION)
+                return false;
+
         bmp_pitch = (3 * width + 3) & ~3;
 
-        buf = malloc (bmp_pitch * height);
-        assert (buf);
+        /* Compute the total size in 64-bit and reject anything that
+         * would not fit in size_t before allocating. */
+        bmp_size = (uint64_t) bmp_pitch * (uint64_t) height;
+#if SIZE_MAX < UINT64_MAX
+        if (bmp_size > SIZE_MAX)
+                return false;
+#endif
+
+        buf = malloc ((size_t) bmp_size);
+        if (buf == NULL)
+                return false;
 
         if (fseek (fp, file_header.bitmap_offset, SEEK_SET) != 0)
                 goto out;
 
-        if (fread (buf, 1, bmp_pitch * height, fp) != bmp_pitch * height)
+        if (fread (buf, 1, (size_t) bmp_size, fp) != (size_t) bmp_size)
                 goto out;
 
         image->buffer = ply_pixel_buffer_new (width, height);
