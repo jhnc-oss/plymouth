@@ -186,8 +186,10 @@ ply_rich_text_remove_character (ply_rich_text_t *rich_text,
                                 size_t           character_index)
 {
         ply_rich_text_character_t **characters;
+        size_t number_of_characters;
 
         characters = ply_rich_text_get_characters (rich_text);
+        number_of_characters = ply_array_get_size (rich_text->characters);
 
         if (character_index < rich_text->span.offset)
                 return;
@@ -195,6 +197,8 @@ ply_rich_text_remove_character (ply_rich_text_t *rich_text,
         if (character_index >= rich_text->span.offset + rich_text->span.range)
                 return;
 
+        if (character_index >= number_of_characters)
+                return;
 
         if (characters[character_index] == NULL)
                 return;
@@ -209,6 +213,7 @@ ply_rich_text_move_character (ply_rich_text_t *rich_text,
                               size_t           new_index)
 {
         ply_rich_text_character_t **characters = ply_rich_text_get_characters (rich_text);
+        size_t number_of_characters = ply_array_get_size (rich_text->characters);
 
         if (old_index < rich_text->span.offset)
                 return;
@@ -220,6 +225,12 @@ ply_rich_text_move_character (ply_rich_text_t *rich_text,
                 return;
 
         if (new_index >= rich_text->span.offset + rich_text->span.range)
+                return;
+
+        if (old_index >= number_of_characters)
+                return;
+
+        if (new_index >= number_of_characters)
                 return;
 
 
