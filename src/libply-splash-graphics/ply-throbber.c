@@ -274,7 +274,7 @@ out:
         if (!load_finished) {
                 ply_throbber_remove_frames (throbber);
 
-                while (entries[i] != NULL) {
+                while (i < number_of_entries) {
                         free (entries[i]);
                         i++;
                 }
