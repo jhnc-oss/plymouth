@@ -502,7 +502,7 @@ on_control_sequence_move_cursor_left (ply_terminal_emulator_t *terminal_emulator
                 parameter = 1;
         }
 
-        if (parameter > string_length) {
+        if (parameter > terminal_emulator->cursor_column) {
                 terminal_emulator->cursor_column = 0;
         } else {
                 terminal_emulator->cursor_column -= parameter;
