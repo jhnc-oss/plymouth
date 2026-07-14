@@ -253,7 +253,23 @@ ply_boot_connection_read_request (ply_boot_connection_t *connection,
                         return false;
                 }
 
-                *argument = calloc (argument_size, sizeof(char));
+                /* The wire length includes the trailing NUL, so a well
+                 * formed argument is always at least one byte. Reject a
+                 * zero length before reading so a malformed sender cannot
+                 * hand us an empty, unterminated buffer.
+                 */
+                if (argument_size == 0) {
+                        free (*command);
+                        return false;
+                }
+
+                /* Allocate one extra byte so the buffer is always NUL
+                 * terminated (calloc zero-fills, so reading argument_size
+                 * bytes leaves the trailing byte NUL) and downstream
+                 * handlers can safely treat it as a C string.
+                 * argument_size is a uint8_t so +1 cannot overflow.
+                 */
+                *argument = calloc (argument_size + 1, sizeof(char));
 
                 if (!ply_read (connection->fd, *argument, argument_size)) {
                         free (*argument);
@@ -465,10 +481,15 @@ ply_boot_connection_on_request (ply_boot_connection_t *connection)
                 long int value;
                 char *endptr = NULL;
 
-                value = strtol (argument, &endptr, 10);
-                if (endptr == NULL || *endptr != '\0' || value < 0 || value > 100) {
-                        ply_error ("failed to parse percentage %s", argument);
+                if (argument == NULL) {
+                        ply_error ("system-update notification missing percentage argument");
                         value = 0;
+                } else {
+                        value = strtol (argument, &endptr, 10);
+                        if (endptr == NULL || *endptr != '\0' || value < 0 || value > 100) {
+                                ply_error ("failed to parse percentage %s", argument);
+                                value = 0;
+                        }
                 }
 
                 ply_trace ("got system-update notification %li%%", value);
@@ -527,7 +548,7 @@ ply_boot_connection_on_request (ply_boot_connection_t *connection)
                 bool retain_splash;
                 ply_trigger_t *quit_trigger;
 
-                retain_splash = (bool) argument[0];
+                retain_splash = argument != NULL ? (bool) argument[0] : false;
 
                 ply_trace ("got quit %srequest", retain_splash ? "--retain-splash " : "");
 

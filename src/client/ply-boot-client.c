@@ -378,7 +378,10 @@ ply_boot_client_get_request_string (ply_boot_client_t         *client,
                 return request_string;
         }
 
-        assert (strlen (request->argument) <= UCHAR_MAX);
+        /* The length byte is strlen + 1 (to include the trailing NUL), so
+         * the argument must be strictly shorter than UCHAR_MAX or the size
+         * byte would wrap to zero. */
+        assert (strlen (request->argument) < UCHAR_MAX);
 
         request_string = NULL;
         asprintf (&request_string, "%s\002%c%s", request->command,
@@ -461,7 +464,7 @@ ply_boot_client_queue_request (ply_boot_client_t                 *client,
         assert (client != NULL);
         assert (client->loop != NULL);
         assert (request_command != NULL);
-        assert (request_argument == NULL || strlen (request_argument) <= UCHAR_MAX);
+        assert (request_argument == NULL || strlen (request_argument) < UCHAR_MAX);
 
         if (client->daemon_can_take_request_watch == NULL &&
             client->socket_fd >= 0) {
