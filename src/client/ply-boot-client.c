@@ -35,6 +35,12 @@
 #include "ply-logger.h"
 #include "ply-utils.h"
 
+/* Upper bound on the length of a reply payload accepted from the daemon.
+ * The daemon is trusted, but the length prefix is validated to avoid an
+ * integer overflow in the (size + 1) allocation and to reject absurdly
+ * large reads. 1 MiB is far larger than any legitimate reply. */
+#define PLY_BOOT_CLIENT_MAX_ANSWER_SIZE (1024 * 1024)
+
 struct _ply_boot_client
 {
         ply_event_loop_t                    *loop;
@@ -279,6 +285,9 @@ ply_boot_client_process_incoming_replies (ply_boot_client_t *client)
                 if (!ply_read_uint32 (client->socket_fd, &size))
                         goto out;
 
+                if (size > PLY_BOOT_CLIENT_MAX_ANSWER_SIZE)
+                        goto out;
+
                 answer = malloc ((size + 1) * sizeof(char));
                 if (size > 0) {
                         if (!ply_read (client->socket_fd, answer, size)) {
@@ -297,7 +306,7 @@ ply_boot_client_process_incoming_replies (ply_boot_client_t *client)
                 char *answer;
                 char *p;
                 char *q;
-                uint8_t i;
+                uint32_t i;
 
                 array = NULL;
                 answers = NULL;
@@ -305,11 +314,20 @@ ply_boot_client_process_incoming_replies (ply_boot_client_t *client)
                 if (!ply_read_uint32 (client->socket_fd, &size))
                         goto out;
 
-                assert (size > 0);
+                if (size == 0 || size > PLY_BOOT_CLIENT_MAX_ANSWER_SIZE)
+                        goto out;
 
                 answer = malloc (size);
 
                 if (!ply_read (client->socket_fd, answer, size)) {
+                        free (answer);
+                        goto out;
+                }
+
+                /* The payload must be a sequence of NUL-terminated strings, so
+                 * require a trailing NUL; this keeps every strdup below in
+                 * bounds and rejects a malformed final segment. */
+                if (answer[size - 1] != '\0') {
                         free (answer);
                         goto out;
                 }
