@@ -419,6 +419,31 @@ print_connection_process_identity (ply_boot_connection_t *connection)
 }
 
 static void
+ply_boot_connection_disconnect (ply_boot_connection_t *connection)
+{
+        ply_boot_server_t *server;
+        ply_list_node_t *node;
+
+        assert (connection != NULL);
+
+        server = connection->server;
+        assert (server != NULL);
+
+        connection->disconnected = true;
+
+        if (connection->watch != NULL) {
+                ply_event_loop_stop_watching_fd (server->loop, connection->watch);
+                connection->watch = NULL;
+        }
+
+        node = ply_list_find_node (server->connections, connection);
+        if (node != NULL)
+                ply_list_remove_node (server->connections, node);
+
+        ply_boot_connection_drop_reference (connection);
+}
+
+static void
 ply_boot_connection_on_request (ply_boot_connection_t *connection)
 {
         ply_boot_server_t *server;
@@ -432,7 +457,8 @@ ply_boot_connection_on_request (ply_boot_connection_t *connection)
 
         if (!ply_boot_connection_read_request (connection,
                                                &command, &argument)) {
-                ply_trace ("could not read connection request");
+                ply_trace ("could not read connection request; dropping connection");
+                ply_boot_connection_disconnect (connection);
                 return;
         }
 
@@ -802,7 +828,7 @@ ply_boot_server_on_new_connection (ply_boot_server_t *server)
 
         assert (server != NULL);
 
-        fd = accept4 (server->socket_fd, NULL, NULL, SOCK_CLOEXEC);
+        fd = accept4 (server->socket_fd, NULL, NULL, SOCK_CLOEXEC | SOCK_NONBLOCK);
 
         if (fd < 0)
                 return;
