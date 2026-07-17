@@ -469,6 +469,9 @@ ply_boot_connection_disconnect (ply_boot_connection_t *connection)
         if (node != NULL)
                 ply_list_remove_node (server->connections, node);
 
+        if (server->connection_hangup_handler != NULL)
+                server->connection_hangup_handler (server->user_data, connection, server);
+
         ply_boot_connection_drop_reference (connection);
 }
 
