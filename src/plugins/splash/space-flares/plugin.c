@@ -2033,6 +2033,9 @@ display_console_messages (ply_boot_splash_plugin_t *plugin)
         ply_list_node_t *node;
         view_t *view;
 
+        if (!ply_console_viewer_preferred ())
+                return;
+
         pause_views (plugin);
 
         if (plugin->should_show_console_messages)

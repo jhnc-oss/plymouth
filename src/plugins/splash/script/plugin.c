@@ -695,6 +695,9 @@ toggle_console_messages (ply_boot_splash_plugin_t *plugin)
 static void
 display_console_messages (ply_boot_splash_plugin_t *plugin)
 {
+        if (!ply_console_viewer_preferred ())
+                return;
+
         pause_displays (plugin);
         script_lib_sprite_console_viewer_show (plugin->script_sprite_lib);
         unpause_displays (plugin);
