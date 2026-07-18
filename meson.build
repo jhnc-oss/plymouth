@@ -36,6 +36,7 @@ libfreetype_dep = dependency('freetype2', required: get_option('freetype'))
 gtk3_dep = dependency('gtk+-3.0', version: '>= 3.14.0', required: get_option('gtk'))
 libdrm_dep = dependency('libdrm', required: get_option('drm'))
 libevdev_dep = dependency('libevdev')
+wayland_dep = dependency('wayland-client', required: get_option('wayland'))
 xkbcommon_dep = dependency('xkbcommon')
 xkeyboard_config_dep = dependency('xkeyboard-config')
 
