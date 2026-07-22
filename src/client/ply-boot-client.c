@@ -168,6 +168,9 @@ ply_boot_client_free (ply_boot_client_t *client)
         ply_list_free (client->requests_to_send);
         ply_list_free (client->requests_waiting_for_replies);
 
+        if (client->socket_fd >= 0)
+                close (client->socket_fd);
+
         free (client);
 }
 
