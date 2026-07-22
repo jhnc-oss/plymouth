@@ -17,6 +17,7 @@ unset DESTDIR
 sysroot=$test_directory/sysroot
 command_directory=$test_directory/bin
 initrd_directory=$test_directory/initrd
+override_initrd_directory=$test_directory/initrd-override
 
 mkdir -p "$command_directory"
 mkdir -p "$sysroot/usr/bin" "$sysroot/usr/sbin"
@@ -25,6 +26,7 @@ mkdir -p "$sysroot/usr/lib/plymouth/renderers"
 mkdir -p "$sysroot/usr/share/plymouth/themes/alpha"
 mkdir -p "$sysroot/usr/share/plymouth/themes/text"
 mkdir -p "$sysroot/usr/share/plymouth/themes/details"
+mkdir -p "$sysroot/custom-theme"
 mkdir -p "$sysroot/etc/plymouth"
 
 printf '%s\n' binary > "$sysroot/usr/sbin/plymouthd"
@@ -57,6 +59,9 @@ printf '%s\n' \
         "$sysroot/usr/share/plymouth/themes/alpha/alpha.plymouth"
 printf '%s\n' image > \
         "$sysroot/usr/share/plymouth/themes/alpha/background.png"
+printf '%s\n' '[Plymouth Theme]' 'ModuleName=script' > \
+        "$sysroot/custom-theme/alpha.plymouth"
+printf '%s\n' custom-image > "$sysroot/custom-theme/custom.png"
 
 printf '%s\n' '#!/bin/sh' \
         'echo "libfixture.so => /usr/lib/libfixture.so (0x1)"' > \
@@ -90,7 +95,7 @@ run_populate_initrd()
 }
 
 echo 'TAP version 13'
-echo '1..1'
+echo '1..2'
 
 run_populate_initrd "$initrd_directory"
 
@@ -113,3 +118,17 @@ for required_path in "${required_paths[@]}"; do
 done
 
 echo 'ok 1 - populate dependencies'
+
+PLYMOUTH_THEME_NAME=alpha \
+PLYMOUTH_CONFIGURED_DIR_PATH=/custom-theme \
+        run_populate_initrd "$override_initrd_directory"
+
+override_config=$override_initrd_directory/etc/plymouth/plymouthd.conf
+if grep --quiet --line-regexp 'Theme=alpha' "$override_config" &&
+        grep --quiet --line-regexp 'ThemeDir=/custom-theme' "$override_config" &&
+        [[ -f $override_initrd_directory/custom-theme/custom.png ]]; then
+        echo 'ok 2 - rewrite overridden theme configuration'
+else
+        echo 'not ok 2 - rewrite overridden theme configuration'
+        exit 1
+fi
