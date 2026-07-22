@@ -20,6 +20,7 @@
  * Written by: Ray Strode <rstrode@redhat.com>
  */
 #include "ply-boot-client.h"
+#include "ply-boot-client-private.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -172,6 +173,28 @@ ply_boot_client_free (ply_boot_client_t *client)
                 close (client->socket_fd);
 
         free (client);
+}
+
+bool
+ply_boot_client_connect_to_fd (ply_boot_client_t                   *client,
+                               int                                  fd,
+                               ply_boot_client_disconnect_handler_t disconnect_handler,
+                               void                                *user_data)
+{
+        assert (client != NULL);
+        assert (!client->is_connected);
+        assert (client->disconnect_handler == NULL);
+        assert (client->disconnect_handler_user_data == NULL);
+
+        if (fd < 0)
+                return false;
+
+        client->socket_fd = fd;
+        client->disconnect_handler = disconnect_handler;
+        client->disconnect_handler_user_data = user_data;
+        client->is_connected = true;
+
+        return true;
 }
 
 bool
