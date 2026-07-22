@@ -56,7 +56,7 @@ libply = library('ply',
   libply_sources,
   dependencies: libply_deps,
   include_directories: config_h_inc,
-  link_whole: [ply_clock, ply_progress],
+  link_whole: [ply_clock, ply_secure_boot, ply_progress],
   version: plymouth_soversion,
   install: true,
 )
