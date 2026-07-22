@@ -40,7 +40,7 @@ ply_animation_time_dep = declare_dependency(
 
 libply_splash_graphics = library('ply-splash-graphics',
   libply_splash_graphics_sources,
-  dependencies: libply_splash_graphics_deps,
+  dependencies: libply_splash_graphics_deps + [ply_animation_time_dep],
   c_args: libply_splash_graphics_cflags,
   include_directories: config_h_inc,
   version: plymouth_soversion,
