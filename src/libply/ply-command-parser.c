@@ -633,7 +633,7 @@ ply_command_parser_get_command_option (ply_command_parser_t *parser,
                 return;
 
         ply_command_parser_get_option_for_command (parser,
-                                                   parser->main_command,
+                                                   command,
                                                    option_name,
                                                    option_result,
                                                    option_is_set);
@@ -946,4 +946,3 @@ ply_command_parser_parse_arguments (ply_command_parser_t *parser,
 
         return parsed_arguments;
 }
-
