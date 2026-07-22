@@ -8,13 +8,27 @@ plymouthd_run_dir = plymouth_runtime_dir
 plymouthd_spool_dir = '/var/spool/plymouth'
 plymouthd_time_dir = plymouth_time_dir
 
+ply_boot_server_sources = files('ply-boot-server.c')
+
+ply_boot_server = static_library(
+  'ply-boot-server-private',
+  ply_boot_server_sources,
+  dependencies: libply_dep,
+  include_directories: config_h_inc,
+)
+
+ply_boot_server_dep = declare_dependency(
+  dependencies: libply_dep,
+  include_directories: include_directories('.'),
+  link_with: ply_boot_server,
+)
+
 plymouthd_sources = files(
   'main.c',
   'plugins/splash/details/plugin.c',
   'ply-boot-protocol.h',
-  'ply-boot-server.c',
   'ply-boot-server.h',
-)
+) + ply_boot_server_sources
 
 plymouthd_deps = [
   libply_dep,
