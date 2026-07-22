@@ -158,6 +158,32 @@ test_duplicate_key_keeps_first_value (void)
 }
 
 static bool
+test_leading_empty_lines_are_skipped (void)
+{
+        static const char contents[] =
+                "\n"
+                "\n"
+                "[Daemon]\n"
+                "Theme=spinner\n";
+        char path[64];
+        ply_key_file_t *key_file;
+        char *value;
+
+        PLY_TEST_ASSERT (write_fixture (contents, path));
+        key_file = ply_key_file_new (path);
+        PLY_TEST_ASSERT (ply_key_file_load (key_file));
+
+        value = ply_key_file_get_value (key_file, "Daemon", "Theme");
+        PLY_TEST_ASSERT (value != NULL);
+        PLY_TEST_ASSERT (strcmp (value, "spinner") == 0);
+
+        free (value);
+        ply_key_file_free (key_file);
+        unlink (path);
+        return true;
+}
+
+static bool
 test_typed_accessors_handle_defaults (void)
 {
         static const char contents[] =
@@ -262,6 +288,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_missing_file_fails_to_load),
         PLY_TEST_CASE (test_grouped_file_loads_values),
         PLY_TEST_CASE (test_duplicate_key_keeps_first_value),
+        PLY_TEST_CASE (test_leading_empty_lines_are_skipped),
         PLY_TEST_CASE (test_typed_accessors_handle_defaults),
         PLY_TEST_CASE (test_groupless_file_uses_null_group),
         PLY_TEST_CASE (test_foreach_visits_grouped_entries),
