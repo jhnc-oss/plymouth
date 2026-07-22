@@ -238,6 +238,43 @@ test_native_function_receives_named_arguments (void)
         return true;
 }
 
+static int native_free_count;
+
+static void
+on_native_free (script_obj_t *object)
+{
+        if (object->data.native.object_data == NULL)
+                native_free_count = -100;
+        else
+                native_free_count++;
+}
+
+static bool
+test_native_objects_match_class_and_release_once (void)
+{
+        script_obj_native_class_t *class;
+        script_obj_t *object;
+        int native_data = 42;
+
+        native_free_count = 0;
+        class = script_obj_native_class_new (on_native_free,
+                                             "test-native",
+                                             NULL);
+        object = script_obj_new_native (&native_data, class);
+
+        PLY_TEST_ASSERT (script_obj_is_native (object));
+        PLY_TEST_ASSERT (script_obj_is_native_of_class (object, class));
+        PLY_TEST_ASSERT (script_obj_is_native_of_class_name (object,
+                                                             "test-native"));
+        PLY_TEST_ASSERT (script_obj_as_native_of_class (object, class) ==
+                         &native_data);
+
+        script_obj_unref (object);
+        PLY_TEST_ASSERT (native_free_count == 1);
+        script_obj_native_class_destroy (class);
+        return true;
+}
+
 static bool
 test_parser_rejects_incomplete_constructs (void)
 {
@@ -263,6 +300,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_functions_use_local_parameters_and_global_state),
         PLY_TEST_CASE (test_sets_and_dynamic_hash_keys_store_values),
         PLY_TEST_CASE (test_native_function_receives_named_arguments),
+        PLY_TEST_CASE (test_native_objects_match_class_and_release_once),
         PLY_TEST_CASE (test_parser_rejects_incomplete_constructs),
 };
 
