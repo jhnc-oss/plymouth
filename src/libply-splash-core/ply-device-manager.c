@@ -21,7 +21,6 @@
 #include "ply-renderer.h"
 
 #include <assert.h>
-#include <fcntl.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -36,6 +35,7 @@
 
 #include <xkbcommon/xkbcommon.h>
 
+#include "ply-active-console-private.h"
 #include "ply-logger.h"
 #include "ply-event-loop.h"
 #include "ply-hashtable.h"
@@ -922,73 +922,31 @@ static bool
 add_consoles_from_file (ply_device_manager_t *manager,
                         const char           *path)
 {
-        int fd;
-        char contents[512] = "";
-        ssize_t contents_length;
+        ply_active_console_list_t consoles;
         bool has_serial_consoles;
-        const char *remaining_file_contents;
+        size_t i;
 
         ply_trace ("opening %s", path);
-        fd = open (path, O_RDONLY);
-
-        if (fd < 0) {
-                ply_trace ("couldn't open it: %m");
+        if (!ply_active_console_list_load (path, &consoles)) {
+                ply_trace ("couldn't read active consoles: %m");
                 return false;
         }
 
-        ply_trace ("reading file");
-        contents_length = read (fd, contents, sizeof(contents) - 1);
-
-        if (contents_length <= 0) {
-                if (contents_length < 0)
-                        ply_trace ("couldn't read it: %m");
-
-                close (fd);
-                return false;
-        }
-        close (fd);
-
-        remaining_file_contents = contents;
         has_serial_consoles = false;
-
-        while (remaining_file_contents < contents + contents_length) {
-                char *console;
-                size_t console_length;
+        for (i = 0; i < consoles.count; i++) {
                 const char *console_device;
                 ply_terminal_t *terminal;
 
-                /* Advance past any leading whitespace */
-                remaining_file_contents += strspn (remaining_file_contents, " \n\t\v");
-
-                if (*remaining_file_contents == '\0')
-                        /* There's nothing left after the whitespace, we're done */
-                        break;
-
-                /* Find trailing whitespace and NUL terminate.  If strcspn
-                 * doesn't find whitespace, it gives us the length of the string
-                 * until the next NUL byte, which we'll just overwrite with
-                 * another NUL byte anyway. */
-                console_length = strcspn (remaining_file_contents, " \n\t\v");
-                console = strndup (remaining_file_contents, console_length);
-
-                terminal = get_terminal (manager, console);
+                terminal = get_terminal (manager, consoles.names[i]);
                 console_device = ply_terminal_get_name (terminal);
-
-                free (console);
 
                 ply_trace ("console %s found!", console_device);
 
                 if (terminal != manager->local_console_terminal)
                         has_serial_consoles = true;
-
-                /* Move past the parsed console string, and the whitespace we
-                 * may have found above.  If we found a NUL above and not whitespace,
-                 * then we're going to jump past the end of the buffer and the loop
-                 * will terminate
-                 */
-                remaining_file_contents += console_length + 1;
         }
 
+        ply_active_console_list_clear (&consoles);
         return has_serial_consoles;
 }
 
