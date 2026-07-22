@@ -69,12 +69,9 @@ boot_server_test_c_args = test_c_args + [
 
 boot_server_test_executable = executable(
   'test-boot-server',
-  [
-    'test-boot-server.c',
-    meson.project_source_root() / 'src/ply-boot-server.c',
-  ],
+  'test-boot-server.c',
   c_args: boot_server_test_c_args,
-  dependencies: libply_dep,
+  dependencies: ply_boot_server_dep,
   include_directories: [
     include_directories('.'),
     include_directories('../src'),
