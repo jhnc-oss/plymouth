@@ -174,6 +174,32 @@ test_graphic_attributes_can_be_disabled_individually (void)
 }
 
 static bool
+test_split_control_sequence_is_reassembled (void)
+{
+        static const char first_part[] = "\033[3";
+        static const char second_part[] = "1mR";
+        ply_terminal_emulator_t *terminal_emulator;
+        ply_rich_text_character_t **characters;
+
+        terminal_emulator = ply_terminal_emulator_new (2, 10);
+        ply_terminal_emulator_parse_lines (terminal_emulator,
+                                           first_part,
+                                           sizeof (first_part) - 1);
+        ply_terminal_emulator_parse_lines (terminal_emulator,
+                                           second_part,
+                                           sizeof (second_part) - 1);
+
+        characters = ply_rich_text_get_characters (
+                ply_terminal_emulator_get_nth_line (terminal_emulator, 0));
+        PLY_TEST_ASSERT (characters[0] != NULL);
+        PLY_TEST_ASSERT (characters[0]->style.foreground_color ==
+                         PLY_TERMINAL_COLOR_RED);
+
+        ply_terminal_emulator_free (terminal_emulator);
+        return true;
+}
+
+static bool
 test_cursor_and_erase_sequences_update_line (void)
 {
         static const char input[] = "abcde\033[2DZ\033[0K";
@@ -323,6 +349,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_control_characters_move_cursor_and_line),
         PLY_TEST_CASE (test_graphic_attributes_apply_per_character),
         PLY_TEST_CASE (test_graphic_attributes_can_be_disabled_individually),
+        PLY_TEST_CASE (test_split_control_sequence_is_reassembled),
         PLY_TEST_CASE (test_cursor_and_erase_sequences_update_line),
         PLY_TEST_CASE (test_split_utf8_input_is_reassembled),
         PLY_TEST_CASE (test_recent_lines_survive_ring_rotation),
