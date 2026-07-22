@@ -136,7 +136,10 @@ transform_to_argb32 (png_struct   *png,
                         blue = (uint8_t) CLAMP (((blue / 255.0) * (alpha / 255.0)) * 255.0, 0, 255.0);
                 }
 
-                pixel_value = (alpha << 24) | (red << 16) | (green << 8) | (blue << 0);
+                pixel_value = ((uint32_t) alpha << 24) |
+                              ((uint32_t) red << 16) |
+                              ((uint32_t) green << 8) |
+                              (uint32_t) blue;
                 memcpy (data + i, &pixel_value, sizeof(uint32_t));
         }
 }
@@ -297,7 +300,10 @@ ply_image_load_bmp (ply_image_t *image,
                         b = *src++;
                         g = *src++;
                         r = *src++;
-                        *dst++ = (0xff << 24) | (r << 16) | (g << 8) | (b << 0);
+                        *dst++ = (UINT32_C (0xff) << 24) |
+                                 ((uint32_t) r << 16) |
+                                 ((uint32_t) g << 8) |
+                                 (uint32_t) b;
                 }
         }
 
@@ -438,4 +444,3 @@ ply_image_convert_to_pixel_buffer (ply_image_t *image)
 
         return buffer;
 }
-
