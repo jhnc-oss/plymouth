@@ -50,7 +50,6 @@ progress_test_executable = executable(
   c_args: test_c_args,
   dependencies: ply_progress_dep,
   include_directories: include_directories('.'),
-  link_args: '-Wl,--wrap=ply_get_timestamp',
 )
 
 test(
