@@ -8,6 +8,7 @@ libply_test_sources = {
   'rectangle': 'test-rectangle.c',
   'region': 'test-region.c',
   'trigger': 'test-trigger.c',
+  'utils': 'test-utils.c',
 }
 
 test_c_args = [
