@@ -198,6 +198,7 @@ ply_terminal_emulator_free (ply_terminal_emulator_t *terminal_emulator)
                 ply_terminal_emulator_command_free (command);
         }
         ply_list_free (terminal_emulator->pending_commands);
+        ply_terminal_emulator_command_free (terminal_emulator->staged_command);
 
         lines = (ply_rich_text_t **) ply_array_get_pointer_elements (terminal_emulator->lines);
         for (size_t i = 0; lines[i] != NULL; i++) {
@@ -207,6 +208,7 @@ ply_terminal_emulator_free (ply_terminal_emulator_t *terminal_emulator)
         ply_array_free (terminal_emulator->lines);
 
         ply_trigger_free (terminal_emulator->output_trigger);
+        ply_buffer_free (terminal_emulator->pending_character);
 
         free (terminal_emulator);
 }
@@ -221,6 +223,10 @@ ply_terminal_emulator_command_new (void)
 static void
 ply_terminal_emulator_command_free (ply_terminal_emulator_command_t *command)
 {
+        if (command == NULL)
+                return;
+
+        ply_array_free (command->parameters);
         free (command);
 }
 
@@ -1045,6 +1051,7 @@ ply_terminal_emulator_dispatch_control_sequence_command (ply_terminal_emulator_t
                                                                                                         ply_array_get_size (command->parameters),
                                                                                                         command->parameters_valid);
                                 ply_array_free (command->parameters);
+                                command->parameters = NULL;
                                 break;
                         case PLY_TERMINAL_EMULATOR_COMMAND_TYPE_CONTROL_CHARACTER:
                                 break_string = control_code_dispatch_table[i].control_character_handler (terminal_emulator, command->code);
@@ -1243,6 +1250,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                 terminal_emulator->staged_command->code = *input_bytes;
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_CONTROL_CHARACTER;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
+                                terminal_emulator->staged_command = NULL;
                         } else {
                                 ply_buffer_append_bytes (terminal_emulator->pending_character, input_bytes, 1);
                                 break_string = ply_terminal_emulator_flush_pending_character_to_line (terminal_emulator);
@@ -1262,6 +1270,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                 terminal_emulator->staged_command->code = *input_bytes;
                                 terminal_emulator->staged_command->type = PLY_TERMINAL_EMULATOR_COMMAND_TYPE_ESCAPE;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
+                                terminal_emulator->staged_command = NULL;
                                 terminal_emulator->state = PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED;
                         }
                         break;
@@ -1276,6 +1285,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                 ply_array_add_uint32_element (terminal_emulator->staged_command->parameters, terminal_emulator->pending_parameter_value);
                                 terminal_emulator->pending_parameter_value = 0;
                                 ply_list_append_data (terminal_emulator->pending_commands, terminal_emulator->staged_command);
+                                terminal_emulator->staged_command = NULL;
 
                                 break;
                         } else if (iscntrl (*input_bytes) && *input_bytes != '\e') {
@@ -1319,7 +1329,7 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                 if (break_string_value != PLY_TERMINAL_EMULATOR_BREAK_STRING_NONE)
                                         break_string = break_string_value;
 
-                                free (command);
+                                ply_terminal_emulator_command_free (command);
                         }
                         ply_list_remove_all_nodes (terminal_emulator->pending_commands);
                 }
