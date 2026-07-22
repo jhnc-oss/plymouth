@@ -1,4 +1,10 @@
-libply_test_sources = {}
+libply_test_sources = {
+  'array': 'test-array.c',
+  'bitarray': 'test-bitarray.c',
+  'buffer': 'test-buffer.c',
+  'hashtable': 'test-hashtable.c',
+  'list': 'test-list.c',
+}
 
 test_c_args = [
   '-Wall',
