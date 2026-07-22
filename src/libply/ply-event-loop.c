@@ -184,26 +184,24 @@ ply_signal_dispatcher_free (ply_signal_dispatcher_t *dispatcher)
         if (dispatcher == NULL)
                 return;
 
-        close (ply_signal_dispatcher_receiver_fd);
-        ply_signal_dispatcher_receiver_fd = -1;
-        close (ply_signal_dispatcher_sender_fd);
-        ply_signal_dispatcher_sender_fd = -1;
-
-        node = ply_list_get_first_node (dispatcher->sources);
-        while (node != NULL) {
-                ply_list_node_t *next_node;
+        while ((node = ply_list_get_last_node (dispatcher->sources)) != NULL) {
                 ply_signal_source_t *source;
 
                 source = (ply_signal_source_t *) ply_list_node_get_data (node);
 
-                next_node = ply_list_get_next_node (dispatcher->sources, node);
-
+                signal (source->signal_number,
+                        source->old_posix_signal_handler != NULL ?
+                        source->old_posix_signal_handler : SIG_DFL);
+                ply_list_remove_node (dispatcher->sources, node);
                 ply_signal_source_free (source);
-
-                node = next_node;
         }
 
         ply_list_free (dispatcher->sources);
+
+        close (ply_signal_dispatcher_receiver_fd);
+        ply_signal_dispatcher_receiver_fd = -1;
+        close (ply_signal_dispatcher_sender_fd);
+        ply_signal_dispatcher_sender_fd = -1;
 
         free (dispatcher);
 }
