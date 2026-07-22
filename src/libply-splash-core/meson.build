@@ -67,7 +67,11 @@ ply_active_console_dep = declare_dependency(
 
 libply_splash_core = library('ply-splash-core',
   libply_splash_core_sources,
-  dependencies: libply_splash_core_public_deps + libply_splash_core_private_deps + [ply_vconsole_dep],
+  dependencies: libply_splash_core_public_deps +
+                libply_splash_core_private_deps + [
+                  ply_vconsole_dep,
+                  ply_active_console_dep,
+                ],
   c_args: libply_splash_core_cflags,
   include_directories: config_h_inc,
   version: plymouth_soversion,
