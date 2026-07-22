@@ -44,6 +44,27 @@ foreach test_name, test_source : libply_test_sources
   )
 endforeach
 
+progress_test_executable = executable(
+  'test-progress',
+  [
+    'test-progress.c',
+    meson.project_source_root() / 'src/libply/ply-progress.c',
+  ],
+  c_args: test_c_args,
+  dependencies: libply_dep,
+  include_directories: include_directories('.'),
+  link_args: '-Wl,--wrap=ply_get_timestamp',
+)
+
+test(
+  'libply-progress',
+  progress_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'libply'],
+  timeout: test_timeout,
+)
+
 boot_client_test_executable = executable(
   'test-boot-client',
   'test-boot-client.c',
