@@ -198,6 +198,23 @@ test(
   timeout: test_timeout,
 )
 
+animation_time_test_executable = executable(
+  'test-animation-time',
+  'test-animation-time.c',
+  c_args: test_c_args,
+  dependencies: [libply_dep, ply_animation_time_dep],
+  include_directories: include_directories('.'),
+)
+
+test(
+  'splash-graphics-animation-time',
+  animation_time_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-graphics'],
+  timeout: test_timeout,
+)
+
 bash = find_program('bash')
 
 test(
