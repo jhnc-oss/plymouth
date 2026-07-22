@@ -28,11 +28,12 @@ plymouthd_sources = files(
   'plugins/splash/details/plugin.c',
   'ply-boot-protocol.h',
   'ply-boot-server.h',
-) + ply_boot_server_sources
+)
 
 plymouthd_deps = [
   libply_dep,
   libply_splash_core_dep,
+  ply_boot_server_dep,
 ]
 
 plymouthd_cflags = [
