@@ -756,16 +756,17 @@ ply_command_option_read_arguments (ply_command_option_t *option,
                 if (argument[0] == '\0')
                         return false;
 
+                errno = 0;
                 argument_as_long = strtol (argument, &end, 0);
 
                 if (*end != '\0')
                         return false;
 
-                if (argument_as_long == LONG_MIN &&
-                    errno == ERANGE)
+                if (errno == ERANGE)
                         return false;
 
-                if (argument_as_long > INT_MAX)
+                if (argument_as_long < INT_MIN ||
+                    argument_as_long > INT_MAX)
                         return false;
 
                 option->result.as_integer = (int) argument_as_long;
