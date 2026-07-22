@@ -1072,6 +1072,7 @@ script_op_t *script_parse_file (const char *filename)
                         script_parse_error (&curtoken->location,
                                             "Unparsed characters at end of file");
                 script_parse_op_list_free (list);
+                script_scan_free (scan);
                 return NULL;
         }
         script_op_t *op = script_parse_new_op_block (list, &location);
@@ -1100,6 +1101,7 @@ script_op_t *script_parse_string (const char *string,
                         script_parse_error (&curtoken->location,
                                             "Unparsed characters at end of file");
                 script_parse_op_list_free (list);
+                script_scan_free (scan);
                 return NULL;
         }
         script_op_t *op = script_parse_new_op_block (list, &location);
