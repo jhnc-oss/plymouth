@@ -40,9 +40,9 @@
 #include "ply-event-loop.h"
 #include "ply-hashtable.h"
 #include "ply-list.h"
-#include "ply-key-file.h"
 #include "ply-utils.h"
 #include "ply-input-device.h"
+#include "ply-vconsole-private.h"
 
 #define SUBSYSTEM_DRM "drm"
 #define SUBSYSTEM_FRAME_BUFFER "graphics"
@@ -787,70 +787,52 @@ free_renderers (ply_device_manager_t *manager)
                                manager);
 }
 
-static char *
-strip_quotes (char *str)
-{
-        char *old_str;
-        if (str && str[0] == '"' && str[strlen (str) - 1] == '"') {
-                old_str = str;
-                str = strndup (str + 1, strlen (str) - 2);
-                free (old_str);
-        }
-        return str;
-}
-
 static void
 parse_vconsole_conf (ply_device_manager_t *manager)
 {
-        ply_key_file_t *vconsole_conf;
-        char *keymap = NULL, *xkb_layout = NULL, *xkb_model = NULL, *xkb_variant = NULL, *xkb_options = NULL;
+        ply_vconsole_settings_t settings;
+        char *keymap = NULL;
 
         keymap = ply_kernel_command_line_get_key_value ("rd.vconsole.keymap=");
 
         if (!keymap)
                 keymap = ply_kernel_command_line_get_key_value ("vconsole.keymap=");
 
-        vconsole_conf = ply_key_file_new ("/etc/vconsole.conf");
-        if (ply_key_file_load_groupless_file (vconsole_conf)) {
-                /* The values in vconsole.conf might be quoted, strip these */
-                if (!keymap) {
-                        keymap = ply_key_file_get_value (vconsole_conf, NULL, "KEYMAP");
-                        keymap = strip_quotes (keymap);
-                }
-                xkb_layout = ply_key_file_get_value (vconsole_conf, NULL, "XKBLAYOUT");
-                xkb_layout = strip_quotes (xkb_layout);
+        ply_vconsole_settings_load ("/etc/vconsole.conf", &settings);
 
-                xkb_model = ply_key_file_get_value (vconsole_conf, NULL, "XKBMODEL");
-                xkb_model = strip_quotes (xkb_model);
-
-                xkb_variant = ply_key_file_get_value (vconsole_conf, NULL, "XKBVARIANT");
-                xkb_variant = strip_quotes (xkb_variant);
-
-                xkb_options = ply_key_file_get_value (vconsole_conf, NULL, "XKBOPTIONS");
-                xkb_options = strip_quotes (xkb_options);
+        if (!keymap) {
+                keymap = settings.keymap;
+                settings.keymap = NULL;
         }
-        ply_key_file_free (vconsole_conf);
 
-        ply_trace ("KEYMAP: %s, XKBLAYOUT: %s, XKBMODEL %s, XKBVARIANT: %s, XKBOPTIONS: %s\n", keymap, xkb_layout, xkb_model, xkb_variant, xkb_options);
+        ply_trace ("KEYMAP: %s, XKBLAYOUT: %s, XKBMODEL %s, XKBVARIANT: %s, XKBOPTIONS: %s\n",
+                   keymap,
+                   settings.xkb_layout,
+                   settings.xkb_model,
+                   settings.xkb_variant,
+                   settings.xkb_options);
 
-        if (manager->xkb_context != NULL && (xkb_layout != NULL || keymap == NULL)) {
+        if (manager->xkb_context != NULL && (settings.xkb_layout != NULL || keymap == NULL)) {
                 struct xkb_rule_names xkb_keymap = {
-                        .layout  = xkb_layout,
-                        .model   = xkb_model,
-                        .variant = xkb_variant,
-                        .options = xkb_options,
+                        .layout  = settings.xkb_layout,
+                        .model   = settings.xkb_model,
+                        .variant = settings.xkb_variant,
+                        .options = settings.xkb_options,
                 };
-                manager->xkb_keymap = xkb_keymap_new_from_names (manager->xkb_context, xkb_layout != NULL ? &xkb_keymap : NULL, XKB_MAP_COMPILE_NO_FLAGS);
+                manager->xkb_keymap = xkb_keymap_new_from_names (manager->xkb_context,
+                                                                 settings.xkb_layout != NULL ? &xkb_keymap : NULL,
+                                                                 XKB_MAP_COMPILE_NO_FLAGS);
 
                 if (manager->xkb_keymap == NULL) {
-                        ply_trace ("Failed to set xkb keymap of LAYOUT: %s MODEL: %s VARIANT: %s OPTIONS: %s", xkb_layout, xkb_model, xkb_variant, xkb_options);
+                        ply_trace ("Failed to set xkb keymap of LAYOUT: %s MODEL: %s VARIANT: %s OPTIONS: %s",
+                                   settings.xkb_layout,
+                                   settings.xkb_model,
+                                   settings.xkb_variant,
+                                   settings.xkb_options);
                 }
         }
 
-        free (xkb_layout);
-        free (xkb_model);
-        free (xkb_variant);
-        free (xkb_options);
+        ply_vconsole_settings_clear (&settings);
         manager->keymap = keymap;
 }
 
