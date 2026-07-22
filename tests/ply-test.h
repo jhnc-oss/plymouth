@@ -21,7 +21,19 @@
 #define PLY_TEST_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+typedef bool (*ply_test_function_t) (void);
+
+typedef struct
+{
+        const char         *name;
+        ply_test_function_t function;
+} ply_test_case_t;
+
+#define PLY_TEST_CASE(function) { #function, function }
 
 #define PLY_TEST_ASSERT(expression)                                           \
         do {                                                                  \
@@ -32,5 +44,39 @@
                         return false;                                         \
                 }                                                             \
         } while (0)
+
+static inline int
+ply_test_run (const ply_test_case_t *test_cases,
+              size_t                 number_of_test_cases)
+{
+        size_t number_of_failures = 0;
+
+        printf ("TAP version 13\n");
+        printf ("1..%zu\n", number_of_test_cases);
+
+        for (size_t i = 0; i < number_of_test_cases; i++) {
+                bool passed;
+
+                passed = test_cases[i].function ();
+                printf ("%s %zu - %s\n",
+                        passed ? "ok" : "not ok",
+                        i + 1,
+                        test_cases[i].name);
+
+                if (!passed)
+                        number_of_failures++;
+        }
+
+        return number_of_failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+#define PLY_TEST_MAIN(test_cases)                                             \
+        int                                                                   \
+        main (void)                                                           \
+        {                                                                     \
+                return ply_test_run (test_cases,                              \
+                                     sizeof(test_cases) /                     \
+                                     sizeof((test_cases)[0]));                \
+        }
 
 #endif /* PLY_TEST_H */
