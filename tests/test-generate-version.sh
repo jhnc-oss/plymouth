@@ -12,6 +12,7 @@ set -eu
 generator=$1
 test_directory=$(mktemp -d /tmp/plymouth-generate-version-XXXXXX)
 trap 'rm -rf "$test_directory"' EXIT
+export TZ=UTC
 
 create_repository()
 {
@@ -30,7 +31,7 @@ create_repository()
 }
 
 echo 'TAP version 13'
-echo '1..1'
+echo '1..2'
 
 create_repository release-tag 2024-01-02T00:00:00Z
 git -C "$repository" tag 24.10
@@ -40,5 +41,15 @@ if [[ $version == 24.10 ]]; then
         echo 'ok 1 - exact release tag'
 else
         echo "not ok 1 - exact release tag: got '$version'"
+        exit 1
+fi
+
+create_repository development-version 2024-01-02T12:00:00Z
+version=$("$repository/scripts/generate-version.sh")
+
+if [[ $version == 24.002.1 ]]; then
+        echo 'ok 2 - development date and commit count'
+else
+        echo "not ok 2 - development date and commit count: got '$version'"
         exit 1
 fi
