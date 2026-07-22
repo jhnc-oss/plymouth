@@ -40,7 +40,7 @@ run_theme_chooser()
 }
 
 echo 'TAP version 13'
-echo '1..2'
+echo '1..3'
 
 themes=$(run_theme_chooser --list)
 if [[ $themes == $'alpha\nzeta' ]]; then
@@ -60,5 +60,17 @@ if grep --quiet --line-regexp 'Theme=alpha' \
         echo 'ok 2 - select installed theme'
 else
         echo 'not ok 2 - select installed theme'
+        exit 1
+fi
+
+printf '%s\n' 'Keep=1' >> "$config_directory/plymouthd.conf"
+run_theme_chooser --reset
+
+if ! grep --quiet '^Theme=' "$config_directory/plymouthd.conf" &&
+        grep --quiet --line-regexp 'Keep=1' \
+                "$config_directory/plymouthd.conf"; then
+        echo 'ok 3 - reset configured theme'
+else
+        echo 'not ok 3 - reset configured theme'
         exit 1
 fi
