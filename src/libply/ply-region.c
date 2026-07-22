@@ -69,6 +69,14 @@ ply_region_clear (ply_region_t *region)
         }
 }
 
+bool
+ply_region_is_empty (ply_region_t *region)
+{
+        assert (region != NULL);
+
+        return ply_list_get_first_node (region->rectangle_list) == NULL;
+}
+
 void
 ply_region_free (ply_region_t *region)
 {
@@ -459,4 +467,3 @@ ply_region_get_sorted_rectangle_list (ply_region_t *region)
         ply_list_sort (region->rectangle_list, &rectangle_compare_y);
         return region->rectangle_list;
 }
-
