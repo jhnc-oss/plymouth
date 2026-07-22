@@ -33,6 +33,13 @@ typedef struct
         script_op_t *op;
 } executed_script_t;
 
+typedef struct
+{
+        int calls;
+        double offset;
+        double argument_count;
+} native_context_t;
+
 static bool
 execute_script (const char        *source,
                 executed_script_t *script)
@@ -175,6 +182,62 @@ test_sets_and_dynamic_hash_keys_store_values (void)
         return true;
 }
 
+static script_return_t
+native_add_with_offset (script_state_t *state,
+                        void           *user_data)
+{
+        native_context_t *context = user_data;
+        script_obj_t *arguments;
+        double left;
+        double right;
+
+        context->calls++;
+        arguments = script_obj_hash_get_element (state->local, "_args");
+        context->argument_count = script_obj_hash_get_number (arguments,
+                                                              "count");
+        script_obj_unref (arguments);
+        left = script_obj_hash_get_number (state->local, "left");
+        right = script_obj_hash_get_number (state->local, "right");
+
+        return script_return_obj (
+                script_obj_new_number (left + right + context->offset));
+}
+
+static bool
+test_native_function_receives_named_arguments (void)
+{
+        native_context_t context = {
+                .offset = 0.5,
+        };
+        script_return_t result;
+        script_state_t *state;
+        script_op_t *op;
+
+        state = script_state_new (NULL);
+        script_add_native_function (state->global,
+                                    "NativeAdd",
+                                    native_add_with_offset,
+                                    &context,
+                                    "left",
+                                    "right",
+                                    NULL);
+        op = script_parse_string ("result = NativeAdd(4, 5);",
+                                  "native.script");
+        PLY_TEST_ASSERT (op != NULL);
+
+        result = script_execute (state, op);
+        PLY_TEST_ASSERT (result.type == SCRIPT_RETURN_TYPE_NORMAL);
+        PLY_TEST_ASSERT (context.calls == 1);
+        PLY_TEST_ASSERT (context.argument_count == 2);
+        PLY_TEST_ASSERT (script_obj_hash_get_number (state->global,
+                                                      "result") == 9.5);
+
+        script_obj_unref (result.object);
+        script_state_destroy (state);
+        script_parse_op_free (op);
+        return true;
+}
+
 static bool
 test_parser_rejects_incomplete_constructs (void)
 {
@@ -199,6 +262,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_loops_break_and_continue_update_state),
         PLY_TEST_CASE (test_functions_use_local_parameters_and_global_state),
         PLY_TEST_CASE (test_sets_and_dynamic_hash_keys_store_values),
+        PLY_TEST_CASE (test_native_function_receives_named_arguments),
         PLY_TEST_CASE (test_parser_rejects_incomplete_constructs),
 };
 
