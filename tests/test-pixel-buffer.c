@@ -114,6 +114,28 @@ test_opacity_blends_premultiplied_color (void)
 }
 
 static bool
+test_gradient_interpolates_rows_deterministically (void)
+{
+        ply_pixel_buffer_t *buffer;
+        uint32_t *pixels;
+
+        buffer = ply_pixel_buffer_new (1, 4);
+        ply_pixel_buffer_fill_with_gradient (buffer,
+                                             NULL,
+                                             0x000000,
+                                             0xffffff);
+        pixels = ply_pixel_buffer_get_argb32_data (buffer);
+
+        PLY_TEST_ASSERT (pixels[0] == UINT32_C (0xff000101));
+        PLY_TEST_ASSERT (pixels[1] == UINT32_C (0xff3f4040));
+        PLY_TEST_ASSERT (pixels[2] == UINT32_C (0xff807f7f));
+        PLY_TEST_ASSERT (pixels[3] == UINT32_C (0xffc0c0bf));
+
+        ply_pixel_buffer_free (buffer);
+        return true;
+}
+
+static bool
 test_argb_data_honors_source_clip (void)
 {
         uint32_t source_pixels[] = {
@@ -311,6 +333,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_new_buffer_reports_empty_geometry),
         PLY_TEST_CASE (test_fill_respects_nested_clip_area),
         PLY_TEST_CASE (test_opacity_blends_premultiplied_color),
+        PLY_TEST_CASE (test_gradient_interpolates_rows_deterministically),
         PLY_TEST_CASE (test_argb_data_honors_source_clip),
         PLY_TEST_CASE (test_buffer_composition_applies_offset),
         PLY_TEST_CASE (test_device_scale_maps_logical_fill_to_pixels),
