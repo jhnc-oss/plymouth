@@ -10,6 +10,8 @@ stages:
   script:
     - CFLAGS="-Wl,--no-undefined" meson _build
     - cd _build
+    - ninja
+    - meson test --print-errorlogs
     - ninja dist
     - shellcheck -S error scripts/plymouth-*
 
