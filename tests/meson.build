@@ -46,12 +46,9 @@ endforeach
 
 progress_test_executable = executable(
   'test-progress',
-  [
-    'test-progress.c',
-    meson.project_source_root() / 'src/libply/ply-progress.c',
-  ],
+  'test-progress.c',
   c_args: test_c_args,
-  dependencies: libply_dep,
+  dependencies: ply_progress_dep,
   include_directories: include_directories('.'),
   link_args: '-Wl,--wrap=ply_get_timestamp',
 )
