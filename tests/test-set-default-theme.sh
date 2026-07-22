@@ -40,7 +40,7 @@ run_theme_chooser()
 }
 
 echo 'TAP version 13'
-echo '1..3'
+echo '1..4'
 
 themes=$(run_theme_chooser --list)
 if [[ $themes == $'alpha\nzeta' ]]; then
@@ -72,5 +72,19 @@ if ! grep --quiet '^Theme=' "$config_directory/plymouthd.conf" &&
         echo 'ok 3 - reset configured theme'
 else
         echo 'not ok 3 - reset configured theme'
+        exit 1
+fi
+
+mkdir -p "$libexec_directory/plymouth"
+printf '%s\n' '#!/bin/sh' ': > "$PLYMOUTH_TEST_REBUILD_MARKER"' > \
+        "$libexec_directory/plymouth/plymouth-update-initrd"
+chmod +x "$libexec_directory/plymouth/plymouth-update-initrd"
+export PLYMOUTH_TEST_REBUILD_MARKER=$test_directory/rebuilt
+run_theme_chooser alpha --rebuild-initrd
+
+if [[ -f $PLYMOUTH_TEST_REBUILD_MARKER ]]; then
+        echo 'ok 4 - rebuild initrd after selection'
+else
+        echo 'not ok 4 - rebuild initrd after selection'
         exit 1
 fi
