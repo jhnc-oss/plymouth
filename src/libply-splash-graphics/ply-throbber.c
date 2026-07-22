@@ -24,7 +24,6 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <math.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -40,6 +39,7 @@
 #include <wchar.h>
 
 #include "ply-throbber.h"
+#include "ply-animation-time-private.h"
 #include "ply-event-loop.h"
 #include "ply-pixel-buffer.h"
 #include "ply-pixel-display.h"
@@ -143,7 +143,6 @@ animate_at_time (ply_throbber_t *throbber,
         int number_of_frames;
         ply_pixel_buffer_t *const *frames;
         bool should_continue;
-        double percent_in_sequence;
         int last_frame_number;
 
         number_of_frames = ply_array_get_size (throbber->frames);
@@ -152,9 +151,10 @@ animate_at_time (ply_throbber_t *throbber,
                 return true;
 
         should_continue = true;
-        percent_in_sequence = fmod (time, THROBBER_DURATION) / THROBBER_DURATION;
         last_frame_number = throbber->frame_number;
-        throbber->frame_number = (int) (number_of_frames * percent_in_sequence);
+        throbber->frame_number = ply_animation_time_get_frame_number (time,
+                                                                      THROBBER_DURATION,
+                                                                      number_of_frames);
 
         if (throbber->stop_trigger != NULL) {
                 /* If we are trying to stop, make sure we don't skip the last
@@ -185,14 +185,13 @@ on_timeout (ply_throbber_t *throbber)
         double sleep_time;
         bool should_continue;
 
-        throbber->now = ply_get_timestamp ();
+        throbber->now = ply_clock_get_time ();
 
         should_continue = animate_at_time (throbber,
                                            throbber->now - throbber->start_time);
 
-        sleep_time = 1.0 / FRAMES_PER_SECOND;
-        sleep_time = MAX (sleep_time - (ply_get_timestamp () - throbber->now),
-                          0.005);
+        sleep_time = ply_animation_time_get_delay (1.0 / FRAMES_PER_SECOND,
+                                                   throbber->now);
 
         if (!should_continue) {
                 throbber->is_stopped = true;
@@ -315,7 +314,7 @@ ply_throbber_start (ply_throbber_t      *throbber,
         throbber->x = x;
         throbber->y = y;
 
-        throbber->start_time = ply_get_timestamp ();
+        throbber->start_time = ply_clock_get_time ();
 
         ply_event_loop_watch_for_timeout (throbber->loop,
                                           1.0 / FRAMES_PER_SECOND,
@@ -406,4 +405,3 @@ ply_throbber_get_height (ply_throbber_t *throbber)
 {
         return throbber->height;
 }
-
