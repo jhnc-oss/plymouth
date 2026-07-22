@@ -367,6 +367,7 @@ out:
                         request->failed_handler (request->user_data, client);
 
         ply_list_remove_node (client->requests_waiting_for_replies, request_node);
+        ply_boot_client_request_free (request);
 
         if (ply_list_get_length (client->requests_waiting_for_replies) == 0) {
                 if (client->daemon_has_reply_watch != NULL) {
