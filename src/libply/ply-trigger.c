@@ -38,6 +38,7 @@ typedef enum
 typedef struct
 {
         ply_trigger_handler_type_t handler_type;
+        bool                       is_disabled;
         union
         {
                 ply_trigger_handler_t          handler;
@@ -54,7 +55,30 @@ struct _ply_trigger
 
         ply_trigger_t **free_address;
         int             ignore_count;
+        unsigned int    pull_count;
 };
+
+static void
+remove_disabled_closures (ply_trigger_t *trigger)
+{
+        ply_list_node_t *node;
+
+        node = ply_list_get_first_node (trigger->closures);
+        while (node != NULL) {
+                ply_list_node_t *next_node;
+                ply_trigger_closure_t *closure;
+
+                closure = (ply_trigger_closure_t *) ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (trigger->closures, node);
+
+                if (closure->is_disabled) {
+                        free (closure);
+                        ply_list_remove_node (trigger->closures, node);
+                }
+
+                node = next_node;
+        }
+}
 
 ply_trigger_t *
 ply_trigger_new (ply_trigger_t **free_address)
@@ -149,8 +173,12 @@ ply_trigger_remove_instance_handler (ply_trigger_t                 *trigger,
                 if (closure->handler_type == PLY_TRIGGER_HANDLER_TYPE_INSTANCE_HANDLER &&
                     closure->instance_handler == handler &&
                     closure->user_data == user_data) {
-                        free (closure);
-                        ply_list_remove_node (trigger->closures, node);
+                        if (trigger->pull_count > 0) {
+                                closure->is_disabled = true;
+                        } else {
+                                free (closure);
+                                ply_list_remove_node (trigger->closures, node);
+                        }
                         break;
                 }
 
@@ -192,8 +220,12 @@ ply_trigger_remove_handler (ply_trigger_t        *trigger,
                 if (closure->handler_type == PLY_TRIGGER_HANDLER_TYPE_HANDLER &&
                     closure->handler == handler &&
                     closure->user_data == user_data) {
-                        free (closure);
-                        ply_list_remove_node (trigger->closures, node);
+                        if (trigger->pull_count > 0) {
+                                closure->is_disabled = true;
+                        } else {
+                                free (closure);
+                                ply_list_remove_node (trigger->closures, node);
+                        }
                         break;
                 }
 
@@ -221,6 +253,8 @@ ply_trigger_pull (ply_trigger_t *trigger,
                 return;
         }
 
+        trigger->pull_count++;
+
         node = ply_list_get_first_node (trigger->closures);
         while (node != NULL) {
                 ply_list_node_t *next_node;
@@ -230,6 +264,11 @@ ply_trigger_pull (ply_trigger_t *trigger,
                 closure = (ply_trigger_closure_t *) ply_list_node_get_data (node);
 
                 next_node = ply_list_get_next_node (trigger->closures, node);
+                if (closure->is_disabled) {
+                        node = next_node;
+                        continue;
+                }
+
                 switch (closure->handler_type) {
                 case PLY_TRIGGER_HANDLER_TYPE_HANDLER:
                         closure->handler (closure->user_data, data, trigger);
@@ -247,6 +286,12 @@ ply_trigger_pull (ply_trigger_t *trigger,
                 node = next_node;
         }
 
-        if (trigger->free_address != NULL)
-                ply_trigger_free (trigger);
+        trigger->pull_count--;
+
+        if (trigger->pull_count == 0) {
+                remove_disabled_closures (trigger);
+
+                if (trigger->free_address != NULL)
+                        ply_trigger_free (trigger);
+        }
 }
