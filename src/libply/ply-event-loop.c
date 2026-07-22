@@ -127,6 +127,8 @@ static void ply_event_loop_free_watches_for_source (ply_event_loop_t   *loop,
                                                     ply_event_source_t *source);
 static void ply_event_loop_free_destinations_for_source (ply_event_loop_t   *loop,
                                                          ply_event_source_t *source);
+static void ply_event_loop_free_sources (ply_event_loop_t *loop);
+static void ply_event_loop_free_timeout_watches (ply_event_loop_t *loop);
 
 static ply_list_node_t *
 ply_signal_dispatcher_find_source_node (ply_signal_dispatcher_t *dispatcher,
@@ -577,6 +579,8 @@ ply_event_loop_free (ply_event_loop_t *loop)
 
         assert (!loop->is_running);
 
+        ply_event_loop_free_sources (loop);
+        ply_event_loop_free_timeout_watches (loop);
         ply_signal_dispatcher_free (loop->signal_dispatcher);
         ply_event_loop_free_exit_closures (loop);
 
