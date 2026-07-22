@@ -27,6 +27,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "ply-buffer.h"
 #include "ply-list.h"
@@ -733,18 +734,28 @@ ply_command_option_read_arguments (ply_command_option_t *option,
         switch (option->type) {
         case PLY_COMMAND_OPTION_TYPE_FLAG:
         case PLY_COMMAND_OPTION_TYPE_BOOLEAN:
+        {
+                int match;
+
+                if (strcasecmp (argument, "true") == 0)
+                        match = 1;
+                else if (strcasecmp (argument, "false") == 0)
+                        match = 0;
+                else
+                        match = rpmatch (argument);
 
                 /* next argument isn't ours, so treat it like an unqualified
                  * flag
                  */
-                if (rpmatch (argument) < 0) {
+                if (match < 0) {
                         option->result.as_boolean = true;
                         return true;
                 }
 
-                option->result.as_boolean = (bool) rpmatch (argument);
+                option->result.as_boolean = (bool) match;
                 ply_list_remove_node (arguments, node);
                 return true;
+        }
 
         case PLY_COMMAND_OPTION_TYPE_STRING:
                 free (option->result.as_string);
