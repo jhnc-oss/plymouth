@@ -220,6 +220,19 @@ test_truncated_bmp_is_rejected (void)
 }
 
 static bool
+test_bmp_offset_inside_headers_is_rejected (void)
+{
+        uint8_t malformed_bmp[sizeof(bottom_up_bmp)];
+
+        memcpy (malformed_bmp, bottom_up_bmp, sizeof(malformed_bmp));
+        set_uint32_le (&malformed_bmp[10], 53);
+
+        return with_fixture (malformed_bmp,
+                             sizeof(malformed_bmp),
+                             fixture_is_rejected);
+}
+
+static bool
 test_invalid_bmp_headers_are_rejected (void)
 {
         uint8_t malformed_bmp[sizeof(bottom_up_bmp)];
@@ -312,6 +325,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_bmp_decodes_bottom_up_rows),
         PLY_TEST_CASE (test_bmp_decodes_top_down_rows),
         PLY_TEST_CASE (test_truncated_bmp_is_rejected),
+        PLY_TEST_CASE (test_bmp_offset_inside_headers_is_rejected),
         PLY_TEST_CASE (test_invalid_bmp_headers_are_rejected),
         PLY_TEST_CASE (test_image_wrappers_transform_and_transfer),
 };
