@@ -208,6 +208,30 @@ test_recent_lines_survive_ring_rotation (void)
 }
 
 static bool
+test_upward_cursor_movement_stops_at_first_line (void)
+{
+        static const char input[] = "one\ntwo\nthree\r\033[3AZ";
+        ply_terminal_emulator_t *terminal_emulator;
+        char *first_line;
+        char *last_line;
+
+        terminal_emulator = ply_terminal_emulator_new (3, 10);
+        ply_terminal_emulator_parse_lines (terminal_emulator,
+                                           input,
+                                           sizeof (input) - 1);
+
+        first_line = get_line_string (terminal_emulator, 0);
+        last_line = get_line_string (terminal_emulator, 2);
+        PLY_TEST_ASSERT (strcmp (first_line, "Zne") == 0);
+        PLY_TEST_ASSERT (strcmp (last_line, "three") == 0);
+
+        free (first_line);
+        free (last_line);
+        ply_terminal_emulator_free (terminal_emulator);
+        return true;
+}
+
+static bool
 test_boot_buffer_notifies_output_watcher (void)
 {
         output_context_t context = { 0 };
@@ -258,6 +282,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_cursor_and_erase_sequences_update_line),
         PLY_TEST_CASE (test_split_utf8_input_is_reassembled),
         PLY_TEST_CASE (test_recent_lines_survive_ring_rotation),
+        PLY_TEST_CASE (test_upward_cursor_movement_stops_at_first_line),
         PLY_TEST_CASE (test_boot_buffer_notifies_output_watcher),
         PLY_TEST_CASE (test_incomplete_escape_can_be_destroyed),
 };
