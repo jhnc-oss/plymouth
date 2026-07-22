@@ -41,6 +41,7 @@
 #include <wchar.h>
 
 #include "ply-progress-animation.h"
+#include "ply-animation-time-private.h"
 #include "ply-array.h"
 #include "ply-logger.h"
 #include "ply-image.h"
@@ -221,7 +222,7 @@ ply_progress_animation_draw (ply_progress_animation_t *progress_animation)
             progress_animation->transition != PLY_PROGRESS_ANIMATION_TRANSITION_NONE &&
             progress_animation->transition_duration > 0.0) {
                 progress_animation->is_transitioning = true;
-                progress_animation->transition_start_time = ply_get_timestamp ();
+                progress_animation->transition_start_time = ply_clock_get_time ();
         }
 
         frames = (ply_image_t *const *) ply_array_get_pointer_elements (progress_animation->frames);
@@ -231,18 +232,15 @@ ply_progress_animation_draw (ply_progress_animation_t *progress_animation)
         current_frame_buffer = ply_image_get_buffer (frames[frame_number]);
 
         if (progress_animation->is_transitioning) {
-                double now;
                 double fade_percentage;
                 double fade_out_opacity;
                 int width, height;
                 uint32_t *faded_data;
-                now = ply_get_timestamp ();
-
-                fade_percentage = (now - progress_animation->transition_start_time) / progress_animation->transition_duration;
+                fade_percentage = ply_animation_time_get_transition_fraction (progress_animation->transition_start_time,
+                                                                              progress_animation->transition_duration);
 
                 if (fade_percentage >= 1.0)
                         progress_animation->is_transitioning = false;
-                fade_percentage = CLAMP (fade_percentage, 0.0, 1.0);
 
                 if (progress_animation->transition == PLY_PROGRESS_ANIMATION_TRANSITION_MERGE_FADE) {
                         width = MAX (ply_image_get_width (frames[frame_number]), ply_image_get_width (frames[frame_number - 1]));
@@ -467,4 +465,3 @@ ply_progress_animation_get_fraction_done (ply_progress_animation_t *progress_ani
 {
         return progress_animation->fraction_done;
 }
-
