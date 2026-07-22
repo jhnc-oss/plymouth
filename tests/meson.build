@@ -95,7 +95,6 @@ boot_server_test_executable = executable(
     include_directories('.'),
     include_directories('../src'),
   ],
-  link_args: '-Wl,--wrap=ply_get_credentials_from_fd',
 )
 
 test(

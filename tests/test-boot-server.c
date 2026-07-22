@@ -28,6 +28,7 @@
 #include "ply-boot-protocol.h"
 #include "ply-boot-server-private.h"
 #include "ply-event-loop.h"
+#include "ply-peer-credentials-private.h"
 #include "ply-trigger.h"
 
 typedef struct
@@ -54,28 +55,6 @@ typedef struct
         int active_vt_count;
         bool has_active_vt;
 } server_context_t;
-
-static uid_t test_credential_uid;
-static bool test_credentials_available;
-
-bool
-__wrap_ply_get_credentials_from_fd (int    fd,
-                                    pid_t *pid,
-                                    uid_t *uid,
-                                    gid_t *gid)
-{
-        if (!test_credentials_available)
-                return false;
-
-        if (pid != NULL)
-                *pid = getpid ();
-        if (uid != NULL)
-                *uid = test_credential_uid;
-        if (gid != NULL)
-                *gid = getgid ();
-
-        return true;
-}
 
 static void
 on_update (void              *user_data,
@@ -243,8 +222,11 @@ initialize_server (server_context_t *context,
                         socket_fds) < 0)
                 return false;
 
-        test_credential_uid = credential_uid;
-        test_credentials_available = credentials_available;
+        if (credentials_available)
+                ply_peer_credentials_set (getpid (), credential_uid, getgid ());
+        else
+                ply_peer_credentials_set_unavailable ();
+
         context->loop = ply_event_loop_new ();
         context->server = new_server (context);
         context->peer_fd = socket_fds[1];
@@ -270,6 +252,7 @@ free_server_context (server_context_t *context)
         ply_event_loop_free (context->loop);
         if (context->peer_fd >= 0)
                 close (context->peer_fd);
+        ply_peer_credentials_use_system ();
 }
 
 static bool
