@@ -24,6 +24,20 @@ libply_splash_graphics_cflags = [
   '-DPLYMOUTH_PLUGIN_PATH="@0@"'.format(plymouth_plugin_path),
 ]
 
+ply_animation_time = static_library(
+  'ply-animation-time-private',
+  'ply-animation-time.c',
+  dependencies: [lm_dep, ply_clock_dep],
+  include_directories: config_h_inc,
+  pic: true,
+)
+
+ply_animation_time_dep = declare_dependency(
+  dependencies: [lm_dep, ply_clock_dep],
+  include_directories: include_directories('.'),
+  link_with: ply_animation_time,
+)
+
 libply_splash_graphics = library('ply-splash-graphics',
   libply_splash_graphics_sources,
   dependencies: libply_splash_graphics_deps,
