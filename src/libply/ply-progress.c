@@ -38,6 +38,7 @@
 
 #include "ply-list.h"
 #include "ply-logger.h"
+#include "ply-clock-private.h"
 #include "ply-progress.h"
 #include "ply-utils.h"
 
@@ -76,7 +77,7 @@ ply_progress_new (void)
 {
         ply_progress_t *progress = calloc (1, sizeof(ply_progress_t));
 
-        progress->start_time = ply_get_timestamp ();
+        progress->start_time = ply_clock_get_time ();
         progress->pause_time = 0;
         progress->scalar = 1.0 / DEFAULT_BOOT_DURATION;
         progress->pause_time = 0.0;
@@ -276,13 +277,13 @@ ply_progress_get_time (ply_progress_t *progress)
 {
         if (progress->paused)
                 return progress->pause_time - progress->start_time;
-        return ply_get_timestamp () - progress->start_time;
+        return ply_clock_get_time () - progress->start_time;
 }
 
 void
 ply_progress_pause (ply_progress_t *progress)
 {
-        progress->pause_time = ply_get_timestamp ();
+        progress->pause_time = ply_clock_get_time ();
         progress->paused = true;
         return;
 }
@@ -291,7 +292,7 @@ ply_progress_pause (ply_progress_t *progress)
 void
 ply_progress_unpause (ply_progress_t *progress)
 {
-        progress->start_time += ply_get_timestamp () - progress->pause_time;
+        progress->start_time += ply_clock_get_time () - progress->pause_time;
         progress->paused = false;
         return;
 }
@@ -325,4 +326,3 @@ ply_progress_status_update (ply_progress_t *progress,
                 ply_list_append_data (progress->current_message_list, message);
         }
 }
-
