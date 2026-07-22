@@ -54,6 +54,12 @@ struct _ply_image
         ply_pixel_buffer_t *buffer;
 };
 
+struct png_load_state
+{
+        png_byte           **rows;
+        ply_pixel_buffer_t  *buffer;
+};
+
 struct bmp_file_header
 {
         uint16_t id;
@@ -150,9 +156,9 @@ ply_image_load_png (ply_image_t *image,
 {
         png_struct *png;
         png_info *info;
+        struct png_load_state *state;
         png_uint_32 width, height, row;
         int bits_per_pixel, color_type, interlace_method;
-        png_byte **rows;
         uint32_t *bytes;
 
         assert (image != NULL);
@@ -164,10 +170,16 @@ ply_image_load_png (ply_image_t *image,
         info = png_create_info_struct (png);
         assert (info != NULL);
 
-        png_init_io (png, fp);
+        state = calloc (1, sizeof(struct png_load_state));
+        if (state == NULL) {
+                png_destroy_read_struct (&png, &info, NULL);
+                return false;
+        }
 
         if (setjmp (png_jmpbuf (png)) != 0)
-                return false;
+                goto error;
+
+        png_init_io (png, fp);
 
         png_read_info (png, info);
         png_get_IHDR (png, info,
@@ -202,22 +214,35 @@ ply_image_load_png (ply_image_t *image,
 
         png_read_update_info (png, info);
 
-        rows = malloc (height * sizeof(png_byte *));
-        image->buffer = ply_pixel_buffer_new (width, height);
+        state->rows = malloc (height * sizeof(png_byte *));
+        if (state->rows == NULL)
+                goto error;
 
-        bytes = ply_pixel_buffer_get_argb32_data (image->buffer);
+        state->buffer = ply_pixel_buffer_new (width, height);
+
+        bytes = ply_pixel_buffer_get_argb32_data (state->buffer);
 
         for (row = 0; row < height; row++) {
-                rows[row] = (png_byte *) &bytes[row * width];
+                state->rows[row] = (png_byte *) &bytes[row * width];
         }
 
-        png_read_image (png, rows);
+        png_read_image (png, state->rows);
 
-        free (rows);
+        free (state->rows);
+        state->rows = NULL;
         png_read_end (png, info);
         png_destroy_read_struct (&png, &info, NULL);
 
+        image->buffer = state->buffer;
+        free (state);
         return true;
+
+error:
+        free (state->rows);
+        ply_pixel_buffer_free (state->buffer);
+        free (state);
+        png_destroy_read_struct (&png, &info, NULL);
+        return false;
 }
 
 static bool
