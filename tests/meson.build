@@ -113,6 +113,37 @@ test(
   timeout: test_timeout,
 )
 
+script_execute_test_executable = executable(
+  'test-script-execute',
+  [
+    'test-script-execute.c',
+    script_source_dir / 'script-debug.c',
+    script_source_dir / 'script-execute.c',
+    script_source_dir / 'script-object.c',
+    script_source_dir / 'script-parse.c',
+    script_source_dir / 'script-scan.c',
+    script_source_dir / 'script.c',
+  ],
+  c_args: test_c_args,
+  dependencies: [
+    libply_dep,
+    lm_dep,
+  ],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/plugins/splash/script'),
+  ],
+)
+
+test(
+  'script-execute',
+  script_execute_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'script'],
+  timeout: test_timeout,
+)
+
 splash_core_test_sources = {
   'pixel-buffer': 'test-pixel-buffer.c',
   'rich-text': 'test-rich-text.c',
