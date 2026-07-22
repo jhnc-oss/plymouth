@@ -31,7 +31,7 @@ ply_boot_server = static_library(
 )
 
 ply_boot_server_dep = declare_dependency(
-  dependencies: libply_dep,
+  dependencies: [libply_dep, ply_peer_credentials_dep],
   include_directories: include_directories('.'),
   link_with: ply_boot_server,
 )
