@@ -55,13 +55,14 @@ script_plugin_src = files(
   'script-lib-plymouth.c',
   'script-lib-sprite.c',
   'script-lib-string.c',
-) + script_engine_sources
+)
 
 script_plugin = shared_module('script',
   [ script_headers, script_plugin_src ],
   dependencies: [
     libply_splash_core_dep,
     libply_splash_graphics_dep,
+    script_engine_dep,
   ],
   c_args: [
     '-DPLYMOUTH_LOGO_FILE="@0@"'.format(plymouth_logo_file),
