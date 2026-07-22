@@ -1096,13 +1096,22 @@ void
 ply_pixel_buffer_set_device_rotation (ply_pixel_buffer_t         *buffer,
                                       ply_pixel_buffer_rotation_t device_rotation)
 {
+        bool old_rotation_is_sideways;
+        bool new_rotation_is_sideways;
+
         if (buffer->device_rotation == device_rotation)
                 return;
 
+        old_rotation_is_sideways =
+                buffer->device_rotation == PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE ||
+                buffer->device_rotation == PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE;
+        new_rotation_is_sideways =
+                device_rotation == PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE ||
+                device_rotation == PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE;
+
         buffer->device_rotation = device_rotation;
 
-        if (device_rotation == PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE ||
-            device_rotation == PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE) {
+        if (old_rotation_is_sideways != new_rotation_is_sideways) {
                 unsigned long tmp = buffer->area.width;
                 buffer->area.width = buffer->area.height;
                 buffer->area.height = tmp;
@@ -1140,4 +1149,3 @@ ply_pixel_buffer_rotate_upright (ply_pixel_buffer_t *old_buffer)
 
         return buffer;
 }
-
