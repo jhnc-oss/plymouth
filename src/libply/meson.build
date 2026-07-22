@@ -32,6 +32,18 @@ ply_clock_dep = declare_dependency(
   link_with: ply_clock,
 )
 
+ply_secure_boot = static_library(
+  'ply-secure-boot-private',
+  'ply-secure-boot.c',
+  include_directories: config_h_inc,
+  pic: true,
+)
+
+ply_secure_boot_dep = declare_dependency(
+  include_directories: include_directories('.'),
+  link_with: ply_secure_boot,
+)
+
 ply_progress = static_library(
   'ply-progress-private',
   'ply-progress.c',
