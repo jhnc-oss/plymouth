@@ -11,11 +11,7 @@
 #ifndef PLY_CLOCK_PRIVATE_H
 #define PLY_CLOCK_PRIVATE_H
 
-#if defined(__GNUC__)
-#define PLY_PRIVATE __attribute__((visibility("hidden")))
-#else
-#define PLY_PRIVATE
-#endif
+#include "ply-private.h"
 
 PLY_PRIVATE double ply_clock_get_time (void);
 PLY_PRIVATE void ply_clock_set_time (double time);
