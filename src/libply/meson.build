@@ -21,10 +21,23 @@ libply_deps = [
   lm_dep,
 ]
 
+ply_clock = static_library(
+  'ply-clock-private',
+  'ply-clock.c',
+  include_directories: config_h_inc,
+  pic: true,
+)
+
+ply_clock_dep = declare_dependency(
+  include_directories: include_directories('.'),
+  link_with: ply_clock,
+)
+
 libply = library('ply',
   libply_sources,
   dependencies: libply_deps,
   include_directories: config_h_inc,
+  link_whole: ply_clock,
   version: plymouth_soversion,
   install: true,
 )
