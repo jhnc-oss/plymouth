@@ -3,6 +3,7 @@ libply_test_sources = {
   'bitarray': 'test-bitarray.c',
   'buffer': 'test-buffer.c',
   'hashtable': 'test-hashtable.c',
+  'key-file': 'test-key-file.c',
   'list': 'test-list.c',
   'rectangle': 'test-rectangle.c',
   'region': 'test-region.c',
