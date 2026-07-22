@@ -197,6 +197,23 @@ test(
   timeout: test_timeout,
 )
 
+vconsole_test_executable = executable(
+  'test-vconsole',
+  'test-vconsole.c',
+  c_args: test_c_args,
+  dependencies: ply_vconsole_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'splash-core-vconsole',
+  vconsole_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-core'],
+  timeout: test_timeout,
+)
+
 animation_time_test_executable = executable(
   'test-animation-time',
   'test-animation-time.c',
