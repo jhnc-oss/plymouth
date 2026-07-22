@@ -97,6 +97,9 @@ ply_command_option_free (ply_command_option_t *option)
         if (option == NULL)
                 return;
 
+        if (option->type == PLY_COMMAND_OPTION_TYPE_STRING)
+                free (option->result.as_string);
+
         free (option->name);
         free (option->description);
         free (option);
@@ -744,6 +747,7 @@ ply_command_option_read_arguments (ply_command_option_t *option,
                 return true;
 
         case PLY_COMMAND_OPTION_TYPE_STRING:
+                free (option->result.as_string);
                 option->result.as_string = strdup (argument);
                 ply_list_remove_node (arguments, node);
                 return true;
