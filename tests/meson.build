@@ -214,6 +214,23 @@ test(
   timeout: test_timeout,
 )
 
+active_console_test_executable = executable(
+  'test-active-console',
+  'test-active-console.c',
+  c_args: test_c_args,
+  dependencies: ply_active_console_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'splash-core-active-console',
+  active_console_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-core'],
+  timeout: test_timeout,
+)
+
 animation_time_test_executable = executable(
   'test-animation-time',
   'test-animation-time.c',
