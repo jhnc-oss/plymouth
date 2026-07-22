@@ -135,20 +135,9 @@ script_execute_test_c_args = test_c_args + [
 
 script_execute_test_executable = executable(
   'test-script-execute',
-  [
-    'test-script-execute.c',
-    script_source_dir / 'script-debug.c',
-    script_source_dir / 'script-execute.c',
-    script_source_dir / 'script-object.c',
-    script_source_dir / 'script-parse.c',
-    script_source_dir / 'script-scan.c',
-    script_source_dir / 'script.c',
-  ],
+  'test-script-execute.c',
   c_args: script_execute_test_c_args,
-  dependencies: [
-    libply_dep,
-    lm_dep,
-  ],
+  dependencies: script_engine_dep,
   include_directories: [
     include_directories('.'),
     include_directories('../src/plugins/splash/script'),
