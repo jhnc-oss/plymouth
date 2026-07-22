@@ -270,6 +270,10 @@ ply_image_load_bmp (ply_image_t *image,
             dib_header.compression != 0)
                 return false;
 
+        if (file_header.bitmap_offset <
+            sizeof(struct bmp_file_header) + dib_header.dib_header_size)
+                return false;
+
         /* abs(INT32_MIN) is undefined behavior; reject before taking
          * absolute value. */
         if (dib_header.height == INT32_MIN)
