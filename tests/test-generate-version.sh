@@ -31,7 +31,7 @@ create_repository()
 }
 
 echo 'TAP version 13'
-echo '1..3'
+echo '1..4'
 
 create_repository release-tag 2024-01-02T00:00:00Z
 git -C "$repository" tag 24.10
@@ -67,5 +67,17 @@ if [[ $version == 99.9.6 ]]; then
         echo 'ok 3 - release version floor'
 else
         echo "not ok 3 - release version floor: got '$version'"
+        exit 1
+fi
+
+archive_directory=$test_directory/plymouth-24.7
+mkdir -p "$archive_directory/scripts"
+cp "$generator" "$archive_directory/scripts/generate-version.sh"
+version=$("$archive_directory/scripts/generate-version.sh")
+
+if [[ $version == 24.7 ]]; then
+        echo 'ok 4 - release archive directory'
+else
+        echo "not ok 4 - release archive directory: got '$version'"
         exit 1
 fi
