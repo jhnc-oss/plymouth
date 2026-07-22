@@ -252,3 +252,16 @@ test(
   suite: ['functional', 'scripts'],
   timeout: test_timeout,
 )
+
+test(
+  'script-generate-initrd',
+  bash,
+  args: [
+    files('test-generate-initrd.sh'),
+    meson.project_build_root() / 'scripts/plymouth-generate-initrd',
+  ],
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['functional', 'scripts'],
+  timeout: test_timeout,
+)
