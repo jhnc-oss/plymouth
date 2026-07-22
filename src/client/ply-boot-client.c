@@ -83,6 +83,7 @@ ply_boot_client_new (void)
         client->is_connected = false;
         client->disconnect_handler = NULL;
         client->disconnect_handler_user_data = NULL;
+        client->socket_fd = -1;
 
         return client;
 }
@@ -863,4 +864,3 @@ ply_boot_client_attach_to_event_loop (ply_boot_client_t *client,
                                        ply_boot_client_detach_from_event_loop,
                                        client);
 }
-
