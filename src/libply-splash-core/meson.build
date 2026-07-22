@@ -37,6 +37,15 @@ libply_splash_core_cflags = [
   '-DPLYMOUTH_PLUGIN_PATH="@0@"'.format(plymouth_plugin_path),
 ]
 
+ply_renderer = static_library(
+  'ply-renderer-private',
+  'ply-renderer.c',
+  dependencies: libply_splash_core_public_deps + libply_splash_core_private_deps,
+  c_args: libply_splash_core_cflags,
+  include_directories: config_h_inc,
+  pic: true,
+)
+
 ply_vconsole = static_library(
   'ply-vconsole-private',
   'ply-vconsole.c',
@@ -82,6 +91,12 @@ libply_splash_core_dep = declare_dependency(
   link_with: libply_splash_core,
   dependencies: libply_dep,
   include_directories: include_directories('.'),
+)
+
+ply_renderer_dep = declare_dependency(
+  dependencies: libply_splash_core_dep,
+  include_directories: include_directories('.'),
+  link_with: ply_renderer,
 )
 
 libply_splash_core_headers = files(
