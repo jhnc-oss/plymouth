@@ -822,24 +822,19 @@ ply_boot_connection_on_hangup (ply_boot_connection_t *connection)
         ply_list_remove_node (server->connections, node);
 }
 
-bool
-ply_boot_server_attach_connection_to_event_loop (ply_boot_server_t *server,
-                                                 ply_event_loop_t  *loop,
-                                                 int                fd)
+static void
+ply_boot_server_add_connection (ply_boot_server_t *server,
+                                int                fd)
 {
         ply_boot_connection_t *connection;
 
         assert (server != NULL);
-        assert (loop != NULL);
-        assert (server->loop == NULL);
+        assert (server->loop != NULL);
+        assert (fd >= 0);
 
-        if (fd < 0)
-                return false;
-
-        server->loop = loop;
         connection = ply_boot_connection_new (server, fd);
         connection->watch =
-                ply_event_loop_watch_fd (loop,
+                ply_event_loop_watch_fd (server->loop,
                                          fd,
                                          PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
                                          (ply_event_handler_t)
@@ -848,6 +843,22 @@ ply_boot_server_attach_connection_to_event_loop (ply_boot_server_t *server,
                                          ply_boot_connection_on_hangup,
                                          connection);
         ply_list_append_data (server->connections, connection);
+}
+
+bool
+ply_boot_server_attach_connection_to_event_loop (ply_boot_server_t *server,
+                                                 ply_event_loop_t  *loop,
+                                                 int                fd)
+{
+        assert (server != NULL);
+        assert (loop != NULL);
+        assert (server->loop == NULL);
+
+        if (fd < 0)
+                return false;
+
+        server->loop = loop;
+        ply_boot_server_add_connection (server, fd);
         ply_event_loop_watch_for_exit (loop,
                                        (ply_event_loop_exit_handler_t)
                                        ply_boot_server_detach_from_event_loop,
