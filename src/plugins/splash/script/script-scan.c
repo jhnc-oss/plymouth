@@ -237,11 +237,13 @@ void script_scan_read_next_token (script_scan_t       *scan,
 
                 while (curchar != '\"') {
                         if (curchar == '\0') {
+                                free (token->data.string);
                                 token->data.string = strdup ("End of file before end of string");
                                 token->type = SCRIPT_SCAN_TOKEN_TYPE_ERROR;
                                 return;
                         }
                         if (curchar == '\n') {
+                                free (token->data.string);
                                 token->data.string = strdup ("Line terminator before end of string");
                                 token->type = SCRIPT_SCAN_TOKEN_TYPE_ERROR;
                                 return;
