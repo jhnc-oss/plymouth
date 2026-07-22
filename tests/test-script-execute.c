@@ -322,6 +322,14 @@ test_shipped_math_library_parses (void)
                 "/src/plugins/splash/script/script-lib-math.script");
 }
 
+static bool
+test_shipped_plymouth_library_parses (void)
+{
+        return parse_shipped_script (
+                PLYMOUTH_SOURCE_ROOT
+                "/src/plugins/splash/script/script-lib-plymouth.script");
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_arithmetic_assignment_comparison_and_strings),
@@ -333,6 +341,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_parser_rejects_incomplete_constructs),
         PLY_TEST_CASE (test_shipped_image_library_parses),
         PLY_TEST_CASE (test_shipped_math_library_parses),
+        PLY_TEST_CASE (test_shipped_plymouth_library_parses),
 };
 
 PLY_TEST_MAIN (test_cases)
