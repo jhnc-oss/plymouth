@@ -33,6 +33,14 @@ ply_clock_dep = declare_dependency(
   link_with: ply_clock,
 )
 
+ply_progress = static_library(
+  'ply-progress-private',
+  'ply-progress.c',
+  dependencies: lm_dep,
+  include_directories: config_h_inc,
+  pic: true,
+)
+
 libply = library('ply',
   libply_sources,
   dependencies: libply_deps,
@@ -46,6 +54,12 @@ libply_dep = declare_dependency(
   link_with: libply,
   dependencies: libply_deps,
   include_directories: include_directories('.'),
+)
+
+ply_progress_dep = declare_dependency(
+  dependencies: [libply_dep, ply_clock_dep],
+  include_directories: include_directories('.'),
+  link_with: ply_progress,
 )
 
 libply_headers = files(
