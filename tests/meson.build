@@ -4,6 +4,8 @@ libply_test_sources = {
   'buffer': 'test-buffer.c',
   'hashtable': 'test-hashtable.c',
   'list': 'test-list.c',
+  'rectangle': 'test-rectangle.c',
+  'region': 'test-region.c',
 }
 
 test_c_args = [
