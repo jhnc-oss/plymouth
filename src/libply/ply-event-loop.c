@@ -857,6 +857,7 @@ ply_signal_dispatcher_remove_source_node (ply_signal_dispatcher_t *dispatcher,
                 source->old_posix_signal_handler : SIG_DFL);
 
         ply_list_remove_node (dispatcher->sources, node);
+        ply_signal_source_free (source);
 }
 
 void
