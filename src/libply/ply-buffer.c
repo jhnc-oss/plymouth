@@ -57,10 +57,11 @@ ply_buffer_increase_capacity (ply_buffer_t *buffer)
 {
         assert (buffer != NULL);
 
-        if ((buffer->capacity * 2) > PLY_BUFFER_MAX_BUFFER_CAPACITY)
+        if (buffer->capacity >= PLY_BUFFER_MAX_BUFFER_CAPACITY)
                 return false;
 
-        buffer->capacity *= 2;
+        buffer->capacity = MIN (buffer->capacity * 2,
+                                PLY_BUFFER_MAX_BUFFER_CAPACITY);
 
         buffer->data = realloc (buffer->data, buffer->capacity);
         return true;
