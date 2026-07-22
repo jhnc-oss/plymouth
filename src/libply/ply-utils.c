@@ -394,10 +394,10 @@ ply_read_uint32 (int       fd,
         if (!ply_read (fd, buffer, 4 * sizeof(uint8_t)))
                 return false;
 
-        *value = (buffer[0] << 0) |
-                 (buffer[1] << 8) |
-                 (buffer[2] << 16) |
-                 (buffer[3] << 24);
+        *value = ((uint32_t) buffer[0] << 0) |
+                 ((uint32_t) buffer[1] << 8) |
+                 ((uint32_t) buffer[2] << 16) |
+                 ((uint32_t) buffer[3] << 24);
         return true;
 }
 
