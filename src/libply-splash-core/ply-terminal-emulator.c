@@ -1367,7 +1367,6 @@ ply_terminal_emulator_parse_lines (ply_terminal_emulator_t *terminal_emulator,
 {
         ply_rich_text_t *terminal_emulator_line = NULL;
         size_t cursor_row;
-        size_t first_row;
         size_t last_row;
         size_t unparsed_text_length;
         const char *unparsed_text;
@@ -1377,15 +1376,14 @@ ply_terminal_emulator_parse_lines (ply_terminal_emulator_t *terminal_emulator,
         while (unparsed_text_length > 0) {
                 assert (terminal_emulator->line_count != 0);
 
-                first_row = 0;
                 last_row = terminal_emulator->line_count - 1;
 
                 /* Moving up, make sure to stop it at the top */
                 if (terminal_emulator->cursor_row_offset < 0) {
                         size_t lines_to_move_up = -1 * terminal_emulator->cursor_row_offset;
 
-                        if (lines_to_move_up > terminal_emulator->line_count)
-                                terminal_emulator->cursor_row_offset = first_row;
+                        if (lines_to_move_up > last_row)
+                                terminal_emulator->cursor_row_offset = -1 * (ssize_t) last_row;
                 }
 
                 cursor_row = last_row + terminal_emulator->cursor_row_offset;
