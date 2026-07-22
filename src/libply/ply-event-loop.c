@@ -123,6 +123,10 @@ static void ply_event_loop_remove_source (ply_event_loop_t   *loop,
                                           ply_event_source_t *source);
 static ply_list_node_t *ply_event_loop_find_source_node (ply_event_loop_t *loop,
                                                          int               fd);
+static void ply_event_loop_free_watches_for_source (ply_event_loop_t   *loop,
+                                                    ply_event_source_t *source);
+static void ply_event_loop_free_destinations_for_source (ply_event_loop_t   *loop,
+                                                         ply_event_source_t *source);
 
 static ply_list_node_t *
 ply_signal_dispatcher_find_source_node (ply_signal_dispatcher_t *dispatcher,
@@ -677,8 +681,12 @@ ply_event_loop_free_sources (ply_event_loop_t *loop)
         node = ply_list_get_first_node (loop->sources);
         while (node != NULL) {
                 ply_list_node_t *next_node;
+                ply_event_source_t *source;
 
+                source = (ply_event_source_t *) ply_list_node_get_data (node);
                 next_node = ply_list_get_next_node (loop->sources, node);
+                ply_event_loop_free_watches_for_source (loop, source);
+                ply_event_loop_free_destinations_for_source (loop, source);
                 ply_event_loop_remove_source_node (loop, node);
                 node = next_node;
         }
@@ -1320,4 +1328,3 @@ ply_event_loop_run (ply_event_loop_t *loop)
 
         return loop->exit_code;
 }
-
