@@ -17,6 +17,7 @@ two_step_plugin = shared_module('two-step',
   dependencies: [
     libply_splash_core_dep,
     libply_splash_graphics_dep,
+    ply_bgrt_dep,
   ],
   c_args: [
     '-DPLYMOUTH_BACKGROUND_START_COLOR=@0@'.format(get_option('background-start-color-stop')),
