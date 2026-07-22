@@ -63,6 +63,34 @@ test(
   timeout: test_timeout,
 )
 
+boot_server_test_c_args = test_c_args + [
+  '-Wno-cast-function-type',
+]
+
+boot_server_test_executable = executable(
+  'test-boot-server',
+  [
+    'test-boot-server.c',
+    meson.project_source_root() / 'src/ply-boot-server.c',
+  ],
+  c_args: boot_server_test_c_args,
+  dependencies: libply_dep,
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src'),
+  ],
+  link_args: '-Wl,--wrap=ply_get_credentials_from_fd',
+)
+
+test(
+  'boot-server-protocol',
+  boot_server_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'boot-server'],
+  timeout: test_timeout,
+)
+
 splash_core_test_sources = {
   'pixel-buffer': 'test-pixel-buffer.c',
   'rich-text': 'test-rich-text.c',
