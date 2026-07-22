@@ -1267,19 +1267,20 @@ const char *
 ply_kernel_command_line_get_string_after_prefix (const char *prefix)
 {
         const char *command_line = ply_get_kernel_command_line ();
-        char *argument;
+        const char *remaining_command_line;
+        const char *argument;
 
         if (!command_line)
                 return NULL;
 
-        argument = strstr (command_line, prefix);
+        remaining_command_line = command_line;
+        while ((argument = strstr (remaining_command_line, prefix)) != NULL) {
+                if (argument == command_line ||
+                    isspace ((unsigned char) argument[-1]))
+                        return argument + strlen (prefix);
 
-        if (argument == NULL)
-                return NULL;
-
-        if (argument == command_line ||
-            argument[-1] == ' ')
-                return argument + strlen (prefix);
+                remaining_command_line = argument + 1;
+        }
 
         return NULL;
 }
