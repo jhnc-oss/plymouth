@@ -278,6 +278,12 @@ ply_boot_connection_read_request (ply_boot_connection_t *connection,
                         free (*command);
                         return false;
                 }
+
+                if ((*argument)[argument_size - 1] != '\0') {
+                        free (*argument);
+                        free (*command);
+                        return false;
+                }
         }
 
         if (!ply_get_credentials_from_fd (connection->fd, &connection->pid, &connection->uid, NULL)) {
