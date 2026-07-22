@@ -293,6 +293,27 @@ test_parser_rejects_incomplete_constructs (void)
         return true;
 }
 
+static bool
+parse_shipped_script (const char *path)
+{
+        script_op_t *op;
+
+        op = script_parse_file (path);
+        if (op == NULL)
+                return false;
+
+        script_parse_op_free (op);
+        return true;
+}
+
+static bool
+test_shipped_image_library_parses (void)
+{
+        return parse_shipped_script (
+                PLYMOUTH_SOURCE_ROOT
+                "/src/plugins/splash/script/script-lib-image.script");
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_arithmetic_assignment_comparison_and_strings),
@@ -302,6 +323,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_native_function_receives_named_arguments),
         PLY_TEST_CASE (test_native_objects_match_class_and_release_once),
         PLY_TEST_CASE (test_parser_rejects_incomplete_constructs),
+        PLY_TEST_CASE (test_shipped_image_library_parses),
 };
 
 PLY_TEST_MAIN (test_cases)
