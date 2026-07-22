@@ -60,6 +60,7 @@ plymouthd_deps = [
   libply_dep,
   libply_splash_core_dep,
   ply_boot_server_dep,
+  plymouthd_policy_dep,
 ]
 
 plymouthd_cflags = [
