@@ -185,15 +185,20 @@ static script_op_t *script_parse_new_op_cond (script_op_type_t         type,
         return op;
 }
 
-static void script_parse_error (script_debug_location_t *location,
-                                const char              *message)
+static void script_parse_error_at (script_scan_t           *scan,
+                                   script_debug_location_t *location,
+                                   const char              *message)
 {
+        scan->has_error = true;
         ply_error ("Parser error \"%s\" L:%d C:%d : %s\n",
                    location->name,
                    location->line_index,
                    location->column_index,
                    message);
 }
+
+#define script_parse_error(location, message) \
+        script_parse_error_at (scan, location, message)
 
 static const script_parse_operator_table_entry_t *   /* Only allows 1 or 2 character symbols */
 script_parse_operator_table_entry_lookup (script_scan_t                             *scan,
@@ -1061,8 +1066,11 @@ script_op_t *script_parse_file (const char *filename)
         ply_list_t *list = script_parse_op_list (scan);
 
         curtoken = script_scan_get_current_token (scan);
-        if (curtoken->type != SCRIPT_SCAN_TOKEN_TYPE_EOF) {
-                script_parse_error (&curtoken->location, "Unparsed characters at end of file");
+        if (scan->has_error ||
+            curtoken->type != SCRIPT_SCAN_TOKEN_TYPE_EOF) {
+                if (!scan->has_error)
+                        script_parse_error (&curtoken->location,
+                                            "Unparsed characters at end of file");
                 script_parse_op_list_free (list);
                 return NULL;
         }
@@ -1086,8 +1094,11 @@ script_op_t *script_parse_string (const char *string,
         ply_list_t *list = script_parse_op_list (scan);
 
         curtoken = script_scan_get_current_token (scan);
-        if (curtoken->type != SCRIPT_SCAN_TOKEN_TYPE_EOF) {
-                script_parse_error (&curtoken->location, "Unparsed characters at end of file");
+        if (scan->has_error ||
+            curtoken->type != SCRIPT_SCAN_TOKEN_TYPE_EOF) {
+                if (!scan->has_error)
+                        script_parse_error (&curtoken->location,
+                                            "Unparsed characters at end of file");
                 script_parse_op_list_free (list);
                 return NULL;
         }
