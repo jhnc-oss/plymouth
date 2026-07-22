@@ -239,3 +239,16 @@ test(
   suite: ['functional', 'scripts'],
   timeout: test_timeout,
 )
+
+test(
+  'script-populate-initrd',
+  bash,
+  args: [
+    files('test-populate-initrd.sh'),
+    meson.project_build_root() / 'scripts/plymouth-populate-initrd',
+  ],
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['functional', 'scripts'],
+  timeout: test_timeout,
+)
