@@ -870,7 +870,6 @@ ply_boot_server_attach_connection_to_event_loop (ply_boot_server_t *server,
 static void
 ply_boot_server_on_new_connection (ply_boot_server_t *server)
 {
-        ply_boot_connection_t *connection;
         int fd;
 
         assert (server != NULL);
@@ -880,18 +879,7 @@ ply_boot_server_on_new_connection (ply_boot_server_t *server)
         if (fd < 0)
                 return;
 
-        connection = ply_boot_connection_new (server, fd);
-
-        connection->watch =
-                ply_event_loop_watch_fd (server->loop, fd,
-                                         PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
-                                         (ply_event_handler_t)
-                                         ply_boot_connection_on_request,
-                                         (ply_event_handler_t)
-                                         ply_boot_connection_on_hangup,
-                                         connection);
-
-        ply_list_append_data (server->connections, connection);
+        ply_boot_server_add_connection (server, fd);
 }
 
 static void
