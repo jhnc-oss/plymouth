@@ -274,7 +274,9 @@ ply_rich_text_set_character (ply_rich_text_t                *rich_text,
         }
 
         characters[character_index] = character;
-        character->bytes = strdup (character_string);
+        character->bytes = calloc (length + 1, 1);
+        if (length > 0)
+                memcpy (character->bytes, character_string, length);
         character->length = length;
         character->style = style;
 }
