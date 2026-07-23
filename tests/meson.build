@@ -132,6 +132,10 @@ test(
   timeout: test_timeout,
 )
 
+script_execute_test_c_args = test_c_args + [
+  '-DPLYMOUTH_SOURCE_ROOT="@0@"'.format(meson.project_source_root()),
+]
+
 script_execute_test_executable = executable(
   'test-script-execute',
   [
@@ -143,7 +147,7 @@ script_execute_test_executable = executable(
     script_source_dir / 'script-scan.c',
     script_source_dir / 'script.c',
   ],
-  c_args: test_c_args,
+  c_args: script_execute_test_c_args,
   dependencies: [
     libply_dep,
     lm_dep,
