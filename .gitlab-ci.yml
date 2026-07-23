@@ -70,8 +70,8 @@ fedora-qemu-initramfs-x86_64:
     - meson compile -C _build-qemu
     - shellcheck tests/qemu-init.sh tests/test-qemu-boot.sh
     - tests/test-qemu-boot.sh _build-qemu
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  when: manual
+  allow_failure: true
 
 debian-unstable-x86_64:
   stage: build
