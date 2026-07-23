@@ -23,6 +23,7 @@
  *             Ray Strode <rstrode@redhat.com>
  */
 #include "ply-renderer.h"
+#include "ply-renderer-private.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -49,6 +50,7 @@ struct _ply_renderer
         ply_renderer_backend_t                *backend;
 
         ply_renderer_type_t                    type;
+        char                                  *plugin_directory;
         char                                  *device_name;
         ply_terminal_t                        *terminal;
         ply_terminal_t                        *local_console_terminal;
@@ -69,11 +71,26 @@ ply_renderer_new (ply_renderer_type_t renderer_type,
                   ply_terminal_t     *terminal,
                   ply_terminal_t     *local_console_terminal)
 {
+        return ply_renderer_new_with_plugin_directory (renderer_type,
+                                                       PLYMOUTH_PLUGIN_PATH,
+                                                       device_name,
+                                                       terminal,
+                                                       local_console_terminal);
+}
+
+ply_renderer_t *
+ply_renderer_new_with_plugin_directory (ply_renderer_type_t renderer_type,
+                                        const char         *plugin_directory,
+                                        const char         *device_name,
+                                        ply_terminal_t     *terminal,
+                                        ply_terminal_t     *local_console_terminal)
+{
         ply_renderer_t *renderer;
 
         renderer = calloc (1, sizeof(struct _ply_renderer));
 
         renderer->type = renderer_type;
+        renderer->plugin_directory = strdup (plugin_directory);
 
         if (device_name != NULL)
                 renderer->device_name = strdup (device_name);
@@ -95,6 +112,7 @@ ply_renderer_free (ply_renderer_t *renderer)
                 ply_renderer_unload_plugin (renderer);
         }
 
+        free (renderer->plugin_directory);
         free (renderer->device_name);
         free (renderer);
 }
@@ -178,6 +196,11 @@ ply_renderer_unload_plugin (ply_renderer_t *renderer)
         assert (renderer != NULL);
         assert (renderer->plugin_interface != NULL);
         assert (renderer->module_handle != NULL);
+
+        if (renderer->backend != NULL) {
+                renderer->plugin_interface->destroy_backend (renderer->backend);
+                renderer->backend = NULL;
+        }
 
         ply_close_module (renderer->module_handle);
         renderer->plugin_interface = NULL;
@@ -277,24 +300,41 @@ ply_renderer_open (ply_renderer_t *renderer,
         struct
         {
                 ply_renderer_type_t type;
-                const char         *path;
+                const char         *relative_path;
         } known_plugins[] =
         {
-                { PLY_RENDERER_TYPE_X11,          PLYMOUTH_PLUGIN_PATH "renderers/x11.so"          },
-                { PLY_RENDERER_TYPE_DRM,          PLYMOUTH_PLUGIN_PATH "renderers/drm.so"          },
-                { PLY_RENDERER_TYPE_SIMPLEDRM,    PLYMOUTH_PLUGIN_PATH "renderers/drm.so"          },
-                { PLY_RENDERER_TYPE_FRAME_BUFFER, PLYMOUTH_PLUGIN_PATH "renderers/frame-buffer.so" },
-                { PLY_RENDERER_TYPE_NONE,         NULL                                             }
+                { PLY_RENDERER_TYPE_X11,          "renderers/x11.so"          },
+                { PLY_RENDERER_TYPE_DRM,          "renderers/drm.so"          },
+                { PLY_RENDERER_TYPE_SIMPLEDRM,    "renderers/drm.so"          },
+                { PLY_RENDERER_TYPE_FRAME_BUFFER, "renderers/frame-buffer.so" },
+                { PLY_RENDERER_TYPE_NONE,         NULL                        }
         };
 
         renderer->is_active = false;
         for (i = 0; known_plugins[i].type != PLY_RENDERER_TYPE_NONE; i++) {
                 if (renderer->type == known_plugins[i].type ||
                     renderer->type == PLY_RENDERER_TYPE_AUTO) {
-                        if (ply_renderer_open_plugin (renderer, known_plugins[i].path, force)) {
+                        const char *separator;
+                        char *plugin_path = NULL;
+
+                        if (renderer->plugin_directory[0] == '\0' ||
+                            renderer->plugin_directory[strlen (renderer->plugin_directory) - 1] == '/')
+                                separator = "";
+                        else
+                                separator = "/";
+                        asprintf (&plugin_path,
+                                  "%s%s%s",
+                                  renderer->plugin_directory,
+                                  separator,
+                                  known_plugins[i].relative_path);
+
+                        if (ply_renderer_open_plugin (renderer, plugin_path, force)) {
+                                free (plugin_path);
                                 renderer->is_active = true;
                                 goto out;
                         }
+
+                        free (plugin_path);
                 }
         }
 

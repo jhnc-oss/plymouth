@@ -26,6 +26,8 @@ test_environment = environment()
 test_environment.set('LC_ALL', 'C')
 test_timeout = 30
 
+subdir('plugins')
+
 foreach test_name, test_source : libply_test_sources
   test_executable = executable(
     'test-' + test_name,
@@ -279,6 +281,36 @@ test(
   env: test_environment,
   protocol: 'tap',
   suite: ['unit', 'splash-plugin'],
+  timeout: test_timeout,
+)
+
+renderer_test_c_args = test_c_args + [
+  '-DTEST_RENDERER_PLUGIN_DIR="@0@"'.format(
+    meson.project_build_root() / 'tests/plugins'
+  ),
+  '-DTEST_RENDERER_PLUGIN_PATH="@0@"'.format(
+    fake_renderer_plugin.full_path()
+  ),
+]
+
+renderer_test_executable = executable(
+  'test-renderer',
+  'test-renderer.c',
+  c_args: renderer_test_c_args,
+  dependencies: [libply_dep, ply_renderer_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'splash-core-renderer-plugin',
+  renderer_test_executable,
+  depends: fake_renderer_plugin,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-core'],
   timeout: test_timeout,
 )
 

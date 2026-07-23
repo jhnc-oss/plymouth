@@ -6,7 +6,6 @@ libply_splash_core_sources = files(
   'ply-keyboard.c',
   'ply-pixel-buffer.c',
   'ply-pixel-display.c',
-  'ply-renderer.c',
   'ply-rich-text.c',
   'ply-terminal.c',
   'ply-terminal-emulator.c',
@@ -36,6 +35,15 @@ libply_splash_core_cflags = [
   '-DPLYMOUTH_BACKGROUND_END_COLOR=@0@'.format(get_option('background-end-color-stop')),
   '-DPLYMOUTH_PLUGIN_PATH="@0@"'.format(plymouth_plugin_path),
 ]
+
+ply_renderer = static_library(
+  'ply-renderer-private',
+  'ply-renderer.c',
+  dependencies: libply_splash_core_public_deps + libply_splash_core_private_deps,
+  c_args: libply_splash_core_cflags,
+  include_directories: config_h_inc,
+  pic: true,
+)
 
 ply_vconsole = static_library(
   'ply-vconsole-private',
@@ -74,6 +82,7 @@ libply_splash_core = library('ply-splash-core',
                 ],
   c_args: libply_splash_core_cflags,
   include_directories: config_h_inc,
+  link_whole: ply_renderer,
   version: plymouth_soversion,
   install: true,
 )
@@ -82,6 +91,12 @@ libply_splash_core_dep = declare_dependency(
   link_with: libply_splash_core,
   dependencies: libply_dep,
   include_directories: include_directories('.'),
+)
+
+ply_renderer_dep = declare_dependency(
+  dependencies: libply_splash_core_dep,
+  include_directories: include_directories('.'),
+  link_with: ply_renderer,
 )
 
 libply_splash_core_headers = files(
