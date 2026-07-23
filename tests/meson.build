@@ -7,6 +7,7 @@ libply_test_sources = {
   'hashtable': 'test-hashtable.c',
   'key-file': 'test-key-file.c',
   'list': 'test-list.c',
+  'logger': 'test-logger.c',
   'rectangle': 'test-rectangle.c',
   'region': 'test-region.c',
   'trigger': 'test-trigger.c',
