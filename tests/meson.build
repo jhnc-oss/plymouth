@@ -43,6 +43,7 @@ foreach test_name, test_source : libply_test_sources
 endforeach
 
 splash_core_test_sources = {
+  'pixel-buffer': 'test-pixel-buffer.c',
   'rich-text': 'test-rich-text.c',
   'terminal-emulator': 'test-terminal-emulator.c',
 }
