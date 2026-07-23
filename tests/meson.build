@@ -432,6 +432,7 @@ test(
   args: [
     files('test-plymouth.sh'),
     plymouth_client,
+    plymouth_plugin_path,
   ],
   depends: plymouth_client,
   env: test_environment,

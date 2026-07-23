@@ -10,6 +10,7 @@
 set -eu
 
 client=$1
+expected_plugin_path=$2
 test_directory=$(mktemp -d /tmp/plymouth-executable-test-XXXXXX)
 trap 'rm -rf "$test_directory"' EXIT
 
@@ -17,7 +18,7 @@ help_output=$test_directory/help.out
 help_error=$test_directory/help.err
 
 echo 'TAP version 13'
-echo '1..1'
+echo '1..2'
 
 if ! "$client" --help > "$help_output" 2> "$help_error"; then
         echo 'not ok 1 - client help exits successfully'
@@ -78,3 +79,14 @@ if [[ -s $help_error ]]; then
 fi
 
 echo 'ok 1 - client help describes options and commands'
+
+plugin_path_error=$test_directory/plugin-path.err
+plugin_path=$("$client" --get-splash-plugin-path 2> "$plugin_path_error")
+
+if [[ $plugin_path != "$expected_plugin_path" ]] ||
+        [[ -s $plugin_path_error ]]; then
+        echo "not ok 2 - client reports splash plugin path: got '$plugin_path'"
+        exit 1
+fi
+
+echo 'ok 2 - client reports configured splash plugin path'
