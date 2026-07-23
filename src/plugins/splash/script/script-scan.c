@@ -199,11 +199,26 @@ void script_scan_read_next_token (script_scan_t       *scan,
         }
         if ((curchar >= '0') && (curchar <= '9')) {
                 long long int int_value = curchar - '0';
+                bool integer_is_in_range = true;
                 curchar = nextchar;
                 while (curchar >= '0' && curchar <= '9') {
-                        int_value *= 10;
-                        int_value += curchar - '0';
+                        int digit = curchar - '0';
+
+                        if (integer_is_in_range &&
+                            int_value <= (LLONG_MAX - digit) / 10) {
+                                int_value *= 10;
+                                int_value += digit;
+                        } else {
+                                integer_is_in_range = false;
+                        }
+
                         curchar = script_scan_get_next_char (scan);
+                }
+
+                if (!integer_is_in_range) {
+                        token->type = SCRIPT_SCAN_TOKEN_TYPE_ERROR;
+                        token->data.string = strdup ("Integer literal is out of range");
+                        return;
                 }
 
                 if (curchar == '.') {
@@ -237,11 +252,13 @@ void script_scan_read_next_token (script_scan_t       *scan,
 
                 while (curchar != '\"') {
                         if (curchar == '\0') {
+                                free (token->data.string);
                                 token->data.string = strdup ("End of file before end of string");
                                 token->type = SCRIPT_SCAN_TOKEN_TYPE_ERROR;
                                 return;
                         }
                         if (curchar == '\n') {
+                                free (token->data.string);
                                 token->data.string = strdup ("Line terminator before end of string");
                                 token->type = SCRIPT_SCAN_TOKEN_TYPE_ERROR;
                                 return;
