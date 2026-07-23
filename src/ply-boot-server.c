@@ -20,6 +20,7 @@
  * Written by: Ray Strode <rstrode@redhat.com>
  */
 #include "ply-boot-server.h"
+#include "ply-boot-server-private.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -143,6 +144,7 @@ ply_boot_server_new (ply_boot_server_update_handler_t              update_handle
 }
 
 static void ply_boot_connection_on_hangup (ply_boot_connection_t *connection);
+static void ply_boot_server_detach_from_event_loop (ply_boot_server_t *server);
 
 void
 ply_boot_server_free (ply_boot_server_t *server)
@@ -276,6 +278,15 @@ ply_boot_connection_read_request (ply_boot_connection_t *connection,
                         free (*command);
                         return false;
                 }
+
+                if ((*argument)[argument_size - 1] != '\0') {
+                        free (*argument);
+                        free (*command);
+                        return false;
+                }
+        } else if (header[1] != '\0') {
+                free (*command);
+                return false;
         }
 
         if (!ply_get_credentials_from_fd (connection->fd, &connection->pid, &connection->uid, NULL)) {
@@ -821,9 +832,53 @@ ply_boot_connection_on_hangup (ply_boot_connection_t *connection)
 }
 
 static void
-ply_boot_server_on_new_connection (ply_boot_server_t *server)
+ply_boot_server_add_connection (ply_boot_server_t *server,
+                                int                fd)
 {
         ply_boot_connection_t *connection;
+
+        assert (server != NULL);
+        assert (server->loop != NULL);
+        assert (fd >= 0);
+
+        connection = ply_boot_connection_new (server, fd);
+        connection->watch =
+                ply_event_loop_watch_fd (server->loop,
+                                         fd,
+                                         PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
+                                         (ply_event_handler_t)
+                                         ply_boot_connection_on_request,
+                                         (ply_event_handler_t)
+                                         ply_boot_connection_on_hangup,
+                                         connection);
+        ply_list_append_data (server->connections, connection);
+}
+
+bool
+ply_boot_server_attach_connection_to_event_loop (ply_boot_server_t *server,
+                                                 ply_event_loop_t  *loop,
+                                                 int                fd)
+{
+        assert (server != NULL);
+        assert (loop != NULL);
+        assert (server->loop == NULL);
+
+        if (fd < 0)
+                return false;
+
+        server->loop = loop;
+        ply_boot_server_add_connection (server, fd);
+        ply_event_loop_watch_for_exit (loop,
+                                       (ply_event_loop_exit_handler_t)
+                                       ply_boot_server_detach_from_event_loop,
+                                       server);
+
+        return true;
+}
+
+static void
+ply_boot_server_on_new_connection (ply_boot_server_t *server)
+{
         int fd;
 
         assert (server != NULL);
@@ -833,18 +888,7 @@ ply_boot_server_on_new_connection (ply_boot_server_t *server)
         if (fd < 0)
                 return;
 
-        connection = ply_boot_connection_new (server, fd);
-
-        connection->watch =
-                ply_event_loop_watch_fd (server->loop, fd,
-                                         PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
-                                         (ply_event_handler_t)
-                                         ply_boot_connection_on_request,
-                                         (ply_event_handler_t)
-                                         ply_boot_connection_on_hangup,
-                                         connection);
-
-        ply_list_append_data (server->connections, connection);
+        ply_boot_server_add_connection (server, fd);
 }
 
 static void
@@ -882,4 +926,3 @@ ply_boot_server_attach_to_event_loop (ply_boot_server_t *server,
                                        ply_boot_server_detach_from_event_loop,
                                        server);
 }
-
