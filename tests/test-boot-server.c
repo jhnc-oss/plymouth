@@ -60,6 +60,13 @@ typedef struct
         char hidden_message[64];
         char ignored_keys[32];
         char newroot[64];
+        int password_count;
+        char password_prompt[64];
+        int keystroke_count;
+        char watched_keys[32];
+        int deactivate_count;
+        int quit_count;
+        bool retain_splash[2];
 } server_context_t;
 
 enum
@@ -75,6 +82,10 @@ enum
         DISPATCH_ERROR = 1 << 8,
         DISPATCH_REACTIVATE = 1 << 9,
         DISPATCH_RELOAD = 1 << 10,
+        DISPATCH_PASSWORD = 1 << 11,
+        DISPATCH_WATCH_KEYSTROKE = 1 << 12,
+        DISPATCH_DEACTIVATE = 1 << 13,
+        DISPATCH_QUIT = 1 << 14,
 };
 
 static bool
@@ -202,6 +213,44 @@ on_progress_unpause (void              *user_data,
 }
 
 static void
+on_password (void              *user_data,
+             const char        *prompt,
+             ply_trigger_t     *answer,
+             ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_PASSWORD))
+                return;
+
+        context->password_count++;
+        if (prompt != NULL)
+                strncpy (context->password_prompt,
+                         prompt,
+                         sizeof(context->password_prompt) - 1);
+        ply_trigger_pull (answer, "secret");
+}
+
+static void
+on_watch_keystroke (void              *user_data,
+                    const char        *keys,
+                    ply_trigger_t     *answer,
+                    ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_WATCH_KEYSTROKE))
+                return;
+
+        context->keystroke_count++;
+        if (keys != NULL)
+                strncpy (context->watched_keys,
+                         keys,
+                         sizeof(context->watched_keys) - 1);
+        ply_trigger_pull (answer, "y");
+}
+
+static void
 on_show_splash (void              *user_data,
                 ply_boot_server_t *server)
 {
@@ -274,6 +323,37 @@ on_reload (void              *user_data,
 }
 
 static void
+on_deactivate (void              *user_data,
+               ply_trigger_t     *deactivate_trigger,
+               ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_DEACTIVATE))
+                return;
+
+        context->deactivate_count++;
+        ply_trigger_pull (deactivate_trigger, NULL);
+}
+
+static void
+on_quit (void              *user_data,
+         bool               retain_splash,
+         ply_trigger_t     *quit_trigger,
+         ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_QUIT))
+                return;
+
+        if (context->quit_count < 2)
+                context->retain_splash[context->quit_count] = retain_splash;
+        context->quit_count++;
+        ply_trigger_pull (quit_trigger, NULL);
+}
+
+static void
 on_question (void              *user_data,
              const char        *prompt,
              ply_trigger_t     *answer,
@@ -312,11 +392,11 @@ new_server (server_context_t *context)
                 on_update,
                 on_change_mode,
                 on_system_update,
-                NULL,
+                on_password,
                 on_question,
                 on_display_message,
                 on_hide_message,
-                NULL,
+                on_watch_keystroke,
                 on_ignore_keystroke,
                 on_progress_pause,
                 on_progress_unpause,
@@ -325,9 +405,9 @@ new_server (server_context_t *context)
                 on_newroot,
                 on_initialized,
                 on_error,
-                NULL,
+                on_deactivate,
                 on_reactivate,
-                NULL,
+                on_quit,
                 on_has_active_vt,
                 on_reload,
                 context);
