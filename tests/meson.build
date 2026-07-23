@@ -427,6 +427,20 @@ test(
 )
 
 test(
+  'executable-plymouth-help',
+  bash,
+  args: [
+    files('test-plymouth.sh'),
+    plymouth_client,
+  ],
+  depends: plymouth_client,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['functional', 'executables'],
+  timeout: test_timeout,
+)
+
+test(
   'script-set-default-theme',
   bash,
   args: [
