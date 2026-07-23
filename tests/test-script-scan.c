@@ -178,6 +178,28 @@ test_reports_unterminated_block_comment (void)
         return true;
 }
 
+static bool
+test_reports_out_of_range_integer (void)
+{
+        script_scan_t *scan;
+        script_scan_token_t *token;
+
+        scan = script_scan_string ("9223372036854775808",
+                                   "integer-error.script");
+        PLY_TEST_ASSERT (scan != NULL);
+        token = script_scan_get_current_token (scan);
+
+        PLY_TEST_ASSERT (token->type == SCRIPT_SCAN_TOKEN_TYPE_ERROR);
+        PLY_TEST_ASSERT (strcmp (token->data.string,
+                                 "Integer literal is out of range") == 0);
+
+        token = script_scan_get_next_token (scan);
+        PLY_TEST_ASSERT (token->type == SCRIPT_SCAN_TOKEN_TYPE_EOF);
+
+        script_scan_free (scan);
+        return true;
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_scans_identifiers_numbers_strings_and_symbols),
@@ -186,6 +208,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_reports_unterminated_string),
         PLY_TEST_CASE (test_reports_line_break_inside_string),
         PLY_TEST_CASE (test_reports_unterminated_block_comment),
+        PLY_TEST_CASE (test_reports_out_of_range_integer),
 };
 
 PLY_TEST_MAIN (test_cases)
