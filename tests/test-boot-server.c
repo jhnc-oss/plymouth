@@ -54,7 +54,40 @@ typedef struct
         char question[64];
         int active_vt_count;
         bool has_active_vt;
+        uint32_t dispatches;
+        char change_mode[32];
+        char displayed_message[64];
+        char hidden_message[64];
+        char ignored_keys[32];
+        char newroot[64];
 } server_context_t;
+
+enum
+{
+        DISPATCH_CHANGE_MODE = 1 << 0,
+        DISPATCH_DISPLAY_MESSAGE = 1 << 1,
+        DISPATCH_HIDE_MESSAGE = 1 << 2,
+        DISPATCH_IGNORE_KEYSTROKE = 1 << 3,
+        DISPATCH_PROGRESS_PAUSE = 1 << 4,
+        DISPATCH_PROGRESS_UNPAUSE = 1 << 5,
+        DISPATCH_HIDE_SPLASH = 1 << 6,
+        DISPATCH_NEWROOT = 1 << 7,
+        DISPATCH_ERROR = 1 << 8,
+        DISPATCH_REACTIVATE = 1 << 9,
+        DISPATCH_RELOAD = 1 << 10,
+};
+
+static bool
+record_dispatch (server_context_t *context,
+                 ply_boot_server_t *server,
+                 uint32_t           dispatch)
+{
+        if (server != context->server)
+                return false;
+
+        context->dispatches |= dispatch;
+        return true;
+}
 
 static void
 on_update (void              *user_data,
@@ -87,6 +120,88 @@ on_system_update (void              *user_data,
 }
 
 static void
+on_change_mode (void              *user_data,
+                const char        *mode,
+                ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_CHANGE_MODE))
+                return;
+
+        if (mode != NULL)
+                strncpy (context->change_mode,
+                         mode,
+                         sizeof(context->change_mode) - 1);
+}
+
+static void
+on_display_message (void              *user_data,
+                    const char        *message,
+                    ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_DISPLAY_MESSAGE))
+                return;
+
+        if (message != NULL)
+                strncpy (context->displayed_message,
+                         message,
+                         sizeof(context->displayed_message) - 1);
+}
+
+static void
+on_hide_message (void              *user_data,
+                 const char        *message,
+                 ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_HIDE_MESSAGE))
+                return;
+
+        if (message != NULL)
+                strncpy (context->hidden_message,
+                         message,
+                         sizeof(context->hidden_message) - 1);
+}
+
+static void
+on_ignore_keystroke (void              *user_data,
+                     const char        *keys,
+                     ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_IGNORE_KEYSTROKE))
+                return;
+
+        if (keys != NULL)
+                strncpy (context->ignored_keys,
+                         keys,
+                         sizeof(context->ignored_keys) - 1);
+}
+
+static void
+on_progress_pause (void              *user_data,
+                   ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_PROGRESS_PAUSE);
+}
+
+static void
+on_progress_unpause (void              *user_data,
+                     ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_PROGRESS_UNPAUSE);
+}
+
+static void
 on_show_splash (void              *user_data,
                 ply_boot_server_t *server)
 {
@@ -97,6 +212,31 @@ on_show_splash (void              *user_data,
 }
 
 static void
+on_hide_splash (void              *user_data,
+                ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_HIDE_SPLASH);
+}
+
+static void
+on_newroot (void              *user_data,
+            const char        *root_dir,
+            ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_NEWROOT))
+                return;
+
+        if (root_dir != NULL)
+                strncpy (context->newroot,
+                         root_dir,
+                         sizeof(context->newroot) - 1);
+}
+
+static void
 on_initialized (void              *user_data,
                 ply_boot_server_t *server)
 {
@@ -104,6 +244,33 @@ on_initialized (void              *user_data,
 
         if (server == context->server)
                 context->initialized_count++;
+}
+
+static void
+on_error (void              *user_data,
+          ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_ERROR);
+}
+
+static void
+on_reactivate (void              *user_data,
+               ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_REACTIVATE);
+}
+
+static bool
+on_reload (void              *user_data,
+           ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        return record_dispatch (context, server, DISPATCH_RELOAD);
 }
 
 static void
@@ -143,26 +310,26 @@ new_server (server_context_t *context)
 {
         return ply_boot_server_new (
                 on_update,
-                NULL,
+                on_change_mode,
                 on_system_update,
                 NULL,
                 on_question,
+                on_display_message,
+                on_hide_message,
                 NULL,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
+                on_ignore_keystroke,
+                on_progress_pause,
+                on_progress_unpause,
                 on_show_splash,
-                NULL,
-                NULL,
+                on_hide_splash,
+                on_newroot,
                 on_initialized,
+                on_error,
                 NULL,
-                NULL,
-                NULL,
+                on_reactivate,
                 NULL,
                 on_has_active_vt,
-                NULL,
+                on_reload,
                 context);
 }
 
