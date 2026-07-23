@@ -18,8 +18,8 @@
 
 typedef struct
 {
-        char  **names;
-        size_t  count;
+        char **names;
+        size_t count;
 } ply_active_console_list_t;
 
 PLY_PRIVATE bool ply_active_console_list_load (const char                *path,

@@ -28,7 +28,7 @@
 typedef bool (*fixture_check_t) (const char *path);
 
 static bool
-with_fixture (const char      *contents,
+with_fixture (const char     *contents,
               fixture_check_t check)
 {
         char path[] = "/tmp/plymouth-active-console-test-XXXXXX";

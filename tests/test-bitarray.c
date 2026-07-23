@@ -31,8 +31,9 @@ test_new_bitarray_is_clear (void)
         bitarray = ply_bitarray_new (70);
         PLY_TEST_ASSERT (bitarray != NULL);
 
-        for (i = 0; i < 70; i++)
+        for (i = 0; i < 70; i++) {
                 PLY_TEST_ASSERT (ply_bitarray_lookup (bitarray, i) == 0);
+        }
 
         PLY_TEST_ASSERT (ply_bitarray_count (bitarray, 70) == 0);
 
@@ -50,11 +51,13 @@ test_set_handles_word_boundaries (void)
         bitarray = ply_bitarray_new (70);
         PLY_TEST_ASSERT (bitarray != NULL);
 
-        for (i = 0; i < sizeof (indexes) / sizeof (indexes[0]); i++)
+        for (i = 0; i < sizeof(indexes) / sizeof(indexes[0]); i++) {
                 ply_bitarray_set (bitarray, indexes[i]);
+        }
 
-        for (i = 0; i < sizeof (indexes) / sizeof (indexes[0]); i++)
+        for (i = 0; i < sizeof(indexes) / sizeof(indexes[0]); i++) {
                 PLY_TEST_ASSERT (ply_bitarray_lookup (bitarray, indexes[i]) == 1);
+        }
 
         PLY_TEST_ASSERT (ply_bitarray_lookup (bitarray, 1) == 0);
         PLY_TEST_ASSERT (ply_bitarray_lookup (bitarray, 30) == 0);

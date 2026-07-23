@@ -30,24 +30,24 @@
 
 typedef struct
 {
-        ply_event_loop_t *loop;
+        ply_event_loop_t  *loop;
         ply_boot_client_t *client;
-        int peer_fd;
-        ply_fd_watch_t *peer_watch;
-        size_t expected_request_size;
-        size_t request_size;
-        uint8_t request[512];
-        int expected_successes;
-        int successes;
-        int failures;
-        int disconnects;
-        int answer_calls;
-        int null_answers;
-        int multiple_answer_calls;
-        int multiple_answer_count;
-        char answer[64];
-        char multiple_answers[4][32];
-        bool timed_out;
+        int                peer_fd;
+        ply_fd_watch_t    *peer_watch;
+        size_t             expected_request_size;
+        size_t             request_size;
+        uint8_t            request[512];
+        int                expected_successes;
+        int                successes;
+        int                failures;
+        int                disconnects;
+        int                answer_calls;
+        int                null_answers;
+        int                multiple_answer_calls;
+        int                multiple_answer_count;
+        char               answer[64];
+        char               multiple_answers[4][32];
+        bool               timed_out;
 } client_context_t;
 
 static void
@@ -125,7 +125,7 @@ write_bytes (int            fd,
 }
 
 static void
-set_uint32_le (uint8_t  *bytes,
+set_uint32_le (uint8_t *bytes,
                uint32_t value)
 {
         bytes[0] = (uint8_t) value;
@@ -317,7 +317,7 @@ test_argument_frame_includes_marker_length_and_nul (void)
         static const uint8_t response[] = PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK;
         static const uint8_t expected_request[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0],
-                0x02, 0x06, 'r', 'e', 'a', 'd', 'y', 0x00,
+                0x02,                                    0x06,'r', 'e', 'a', 'd', 'y', 0x00,
         };
         client_context_t context;
         uint8_t request[32];
@@ -357,7 +357,7 @@ test_queued_requests_match_pipelined_acks (void)
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
         };
         static const uint8_t expected_request[] = {
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PING[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PING[0],        0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_SPLASH[0], 0x00,
         };
         client_context_t context;
@@ -398,40 +398,40 @@ static bool
 test_public_request_functions_emit_protocol_map (void)
 {
         static const uint8_t expected_request[] = {
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PING[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PING[0],               0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0],
-                0x02, 0x06, 'r', 'e', 'a', 'd', 'y', 0x00,
+                0x02,                                                 0x06,'r',   'e',  'a',  'd', 'y', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_CHANGE_MODE[0],
-                0x02, 0x09, 's', 'h', 'u', 't', 'd', 'o', 'w', 'n', 0x00,
+                0x02,                                                 0x09,'s',   'h',  'u',  't', 'd', 'o', 'w',   'n', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_SYSTEM_UPDATE[0],
-                0x02, 0x03, '7', '3', 0x00,
+                0x02,                                                 0x03,'7',   '3',  0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_NEWROOT[0],
-                0x02, 0x09, '/', 's', 'y', 's', 'r', 'o', 'o', 't', 0x00,
+                0x02,                                                 0x09,'/',   's',  'y',  's', 'r', 'o', 'o',   't', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_MESSAGE[0],
-                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                0x02,                                                 0x09,'s',   't',  'a',  'r', 't', 'i', 'n',   'g', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_MESSAGE[0],
-                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                0x02,                                                 0x09,'s',   't',  'a',  'r', 't', 'i', 'n',   'g', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_PASSWORD[0],
-                0x02, 0x0a, 'P', 'a', 's', 's', 'w', 'o', 'r', 'd', ':', 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CACHED_PASSWORD[0], 0x00,
+                0x02,                                                 0x0a,'P',   'a',  's',  's', 'w', 'o', 'r',   'd', ':', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CACHED_PASSWORD[0],    0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUESTION[0],
-                0x02, 0x07, 'R', 'e', 'a', 'd', 'y', '?', 0x00,
+                0x02,                                                 0x07,'R',   'e',  'a',  'd', 'y', '?', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE[0],
-                0x02, 0x03, 'y', 'n', 0x00,
+                0x02,                                                 0x03,'y',   'n',  0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE_REMOVE[0],
-                0x02, 0x03, 'y', 'n', 0x00,
+                0x02,                                                 0x03,'y',   'n',  0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_SYSTEM_INITIALIZED[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_SPLASH[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_SPLASH[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_DEACTIVATE[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_REACTIVATE[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x01, 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x02, 0x01, 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_RELOAD[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_PAUSE[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_UNPAUSE[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HAS_ACTIVE_VT[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_ERROR[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_SPLASH[0],        0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_SPLASH[0],        0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_DEACTIVATE[0],         0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_REACTIVATE[0],         0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0],               0x02,0x01,  0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0],               0x02,0x02,  0x01, 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_RELOAD[0],             0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_PAUSE[0],     0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_UNPAUSE[0],   0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HAS_ACTIVE_VT[0],      0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_ERROR[0],              0x00,
         };
         client_context_t context;
         uint8_t responses[24];

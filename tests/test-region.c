@@ -82,8 +82,8 @@ static bool
 test_sorted_rectangles_have_monotonic_rows (void)
 {
         ply_rectangle_t rectangles[] = {
-                { .x = 0, .y = 20, .width = 2, .height = 2 },
-                { .x = 5, .y = 2, .width = 2, .height = 2 },
+                { .x = 0,  .y = 20, .width = 2, .height = 2 },
+                { .x = 5,  .y = 2,  .width = 2, .height = 2 },
                 { .x = 10, .y = 11, .width = 2, .height = 2 },
         };
         ply_region_t *region;
@@ -93,8 +93,9 @@ test_sorted_rectangles_have_monotonic_rows (void)
         size_t i;
 
         region = ply_region_new ();
-        for (i = 0; i < sizeof (rectangles) / sizeof (rectangles[0]); i++)
+        for (i = 0; i < sizeof(rectangles) / sizeof(rectangles[0]); i++) {
                 ply_region_add_rectangle (region, &rectangles[i]);
+        }
 
         list = ply_region_get_sorted_rectangle_list (region);
         ply_list_foreach (list, node) {
@@ -121,8 +122,8 @@ test_random_union_matches_cell_oracle (void)
         int x;
         int y;
 
-        memset (expected, 0, sizeof (expected));
-        memset (observed, 0, sizeof (observed));
+        memset (expected, 0, sizeof(expected));
+        memset (observed, 0, sizeof(observed));
         region = ply_region_new ();
 
         for (i = 0; i < RANDOM_RECTANGLE_COUNT; i++) {
@@ -138,8 +139,9 @@ test_random_union_matches_cell_oracle (void)
                 bottom_edge = rectangle.y + rectangle.height;
 
                 for (y = rectangle.y; y < bottom_edge; y++) {
-                        for (x = rectangle.x; x < right_edge; x++)
+                        for (x = rectangle.x; x < right_edge; x++) {
                                 expected[y][x] = true;
+                        }
                 }
 
                 ply_region_add_rectangle (region, &rectangle);
@@ -158,8 +160,9 @@ test_random_union_matches_cell_oracle (void)
                 PLY_TEST_ASSERT (bottom_edge <= GRID_SIZE);
 
                 for (y = rectangle->y; y < bottom_edge; y++) {
-                        for (x = rectangle->x; x < right_edge; x++)
+                        for (x = rectangle->x; x < right_edge; x++) {
                                 observed[y][x]++;
+                        }
                 }
         }
 

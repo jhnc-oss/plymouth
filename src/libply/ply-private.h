@@ -12,7 +12,7 @@
 #define PLY_PRIVATE_H
 
 #if defined(__GNUC__)
-#define PLY_PRIVATE __attribute__((visibility("hidden")))
+#define PLY_PRIVATE __attribute__((visibility ("hidden")))
 #else
 #define PLY_PRIVATE
 #endif

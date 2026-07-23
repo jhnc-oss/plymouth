@@ -33,63 +33,63 @@
 
 typedef struct
 {
-        ply_event_loop_t *loop;
+        ply_event_loop_t  *loop;
         ply_boot_server_t *server;
-        int peer_fd;
-        ply_fd_watch_t *peer_watch;
-        size_t expected_response_size;
-        size_t response_size;
-        uint8_t response[64];
-        int peer_disconnects;
-        bool expect_disconnect;
-        bool timed_out;
+        int                peer_fd;
+        ply_fd_watch_t    *peer_watch;
+        size_t             expected_response_size;
+        size_t             response_size;
+        uint8_t            response[64];
+        int                peer_disconnects;
+        bool               expect_disconnect;
+        bool               timed_out;
 
-        int update_count;
-        char updates[2][64];
-        int system_update_count;
-        int system_updates[2];
-        int show_splash_count;
-        int initialized_count;
-        int question_count;
-        char question[64];
-        int active_vt_count;
-        bool has_active_vt;
-        uint32_t dispatches;
-        char change_mode[32];
-        char displayed_message[64];
-        char hidden_message[64];
-        char ignored_keys[32];
-        char newroot[64];
-        int password_count;
-        char password_prompt[64];
-        int keystroke_count;
-        char watched_keys[32];
-        int deactivate_count;
-        int quit_count;
-        bool retain_splash[2];
+        int                update_count;
+        char               updates[2][64];
+        int                system_update_count;
+        int                system_updates[2];
+        int                show_splash_count;
+        int                initialized_count;
+        int                question_count;
+        char               question[64];
+        int                active_vt_count;
+        bool               has_active_vt;
+        uint32_t           dispatches;
+        char               change_mode[32];
+        char               displayed_message[64];
+        char               hidden_message[64];
+        char               ignored_keys[32];
+        char               newroot[64];
+        int                password_count;
+        char               password_prompt[64];
+        int                keystroke_count;
+        char               watched_keys[32];
+        int                deactivate_count;
+        int                quit_count;
+        bool               retain_splash[2];
 } server_context_t;
 
 enum
 {
-        DISPATCH_CHANGE_MODE = 1 << 0,
-        DISPATCH_DISPLAY_MESSAGE = 1 << 1,
-        DISPATCH_HIDE_MESSAGE = 1 << 2,
+        DISPATCH_CHANGE_MODE      = 1 << 0,
+        DISPATCH_DISPLAY_MESSAGE  = 1 << 1,
+        DISPATCH_HIDE_MESSAGE     = 1 << 2,
         DISPATCH_IGNORE_KEYSTROKE = 1 << 3,
-        DISPATCH_PROGRESS_PAUSE = 1 << 4,
+        DISPATCH_PROGRESS_PAUSE   = 1 << 4,
         DISPATCH_PROGRESS_UNPAUSE = 1 << 5,
-        DISPATCH_HIDE_SPLASH = 1 << 6,
-        DISPATCH_NEWROOT = 1 << 7,
-        DISPATCH_ERROR = 1 << 8,
-        DISPATCH_REACTIVATE = 1 << 9,
-        DISPATCH_RELOAD = 1 << 10,
-        DISPATCH_PASSWORD = 1 << 11,
-        DISPATCH_WATCH_KEYSTROKE = 1 << 12,
-        DISPATCH_DEACTIVATE = 1 << 13,
-        DISPATCH_QUIT = 1 << 14,
+        DISPATCH_HIDE_SPLASH      = 1 << 6,
+        DISPATCH_NEWROOT          = 1 << 7,
+        DISPATCH_ERROR            = 1 << 8,
+        DISPATCH_REACTIVATE       = 1 << 9,
+        DISPATCH_RELOAD           = 1 << 10,
+        DISPATCH_PASSWORD         = 1 << 11,
+        DISPATCH_WATCH_KEYSTROKE  = 1 << 12,
+        DISPATCH_DEACTIVATE       = 1 << 13,
+        DISPATCH_QUIT             = 1 << 14,
 };
 
 static bool
-record_dispatch (server_context_t *context,
+record_dispatch (server_context_t  *context,
                  ply_boot_server_t *server,
                  uint32_t           dispatch)
 {
@@ -562,7 +562,7 @@ test_update_argument_dispatches_and_acknowledges (void)
 {
         static const uint8_t request[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0],
-                0x02, 0x06, 'r', 'e', 'a', 'd', 'y', 0x00,
+                0x02,                                    0x06,'r', 'e', 'a', 'd', 'y', 0x00,
         };
         server_context_t context;
 
@@ -588,7 +588,7 @@ static bool
 test_pipelined_notifications_each_receive_ack (void)
 {
         static const uint8_t request[] = {
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_SPLASH[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_SPLASH[0],        0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_SYSTEM_INITIALIZED[0], 0x00,
         };
         server_context_t context;
@@ -617,7 +617,7 @@ static bool
 test_unknown_command_naks_without_breaking_pipeline (void)
 {
         static const uint8_t request[] = {
-                '?', 0x00,
+                '?',                                    0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_PING[0], 0x00,
         };
         server_context_t context;
@@ -645,7 +645,7 @@ test_non_root_request_is_rejected (void)
 {
         static const uint8_t request[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0],
-                0x02, 0x04, 'b', 'a', 'd', 0x00,
+                0x02,                                    0x04,'b', 'a', 'd', 0x00,
         };
         server_context_t context;
 
@@ -671,9 +671,9 @@ test_system_update_parses_valid_and_invalid_values (void)
 {
         static const uint8_t request[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_SYSTEM_UPDATE[0],
-                0x02, 0x03, '7', '3', 0x00,
+                0x02,                                           0x03,  '7', '3', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_SYSTEM_UPDATE[0],
-                0x02, 0x04, 'b', 'a', 'd', 0x00,
+                0x02,                                           0x04,  'b', 'a', 'd', 0x00,
         };
         server_context_t context;
 
@@ -699,21 +699,21 @@ test_immediate_notifications_dispatch_and_acknowledge (void)
 {
         static const uint8_t request[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_CHANGE_MODE[0],
-                0x02, 0x09, 's', 'h', 'u', 't', 'd', 'o', 'w', 'n', 0x00,
+                0x02,                                              0x09,  's', 'h', 'u',  't', 'd', 'o', 'w', 'n', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_MESSAGE[0],
-                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                0x02,                                              0x09,  's', 't', 'a',  'r', 't', 'i', 'n', 'g', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_MESSAGE[0],
-                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                0x02,                                              0x09,  's', 't', 'a',  'r', 't', 'i', 'n', 'g', 0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE_REMOVE[0],
-                0x02, 0x03, 'y', 'n', 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_PAUSE[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_UNPAUSE[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_SPLASH[0], 0x00,
+                0x02,                                              0x03,  'y', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_PAUSE[0],  0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_UNPAUSE[0],0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_SPLASH[0],     0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_NEWROOT[0],
-                0x02, 0x09, '/', 's', 'y', 's', 'r', 'o', 'o', 't', 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_ERROR[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_REACTIVATE[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_RELOAD[0], 0x00,
+                0x02,                                              0x09,  '/', 's', 'y',  's', 'r', 'o', 'o', 't', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_ERROR[0],           0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_REACTIVATE[0],      0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_RELOAD[0],          0x00,
         };
         static const uint8_t expected_response[] = {
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
@@ -766,7 +766,7 @@ test_immediate_notifications_dispatch_and_acknowledge (void)
 }
 
 static bool
-run_active_vt_request (bool has_active_vt,
+run_active_vt_request (bool    has_active_vt,
                        uint8_t expected_response)
 {
         static const uint8_t request[] = {
@@ -811,11 +811,11 @@ test_question_trigger_sends_answer_payload (void)
 {
         static const uint8_t request[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUESTION[0],
-                0x02, 0x07, 'R', 'e', 'a', 'd', 'y', '?', 0x00,
+                0x02,                                      0x07,'R', 'e', 'a', 'd', 'y', '?', 0x00,
         };
         static const uint8_t expected_response[] = {
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ANSWER[0],
-                0x03, 0x00, 0x00, 0x00, 'y', 'e', 's',
+                0x03,                                     0x00,0x00, 0x00, 'y', 'e', 's',
         };
         server_context_t context;
 
@@ -843,21 +843,21 @@ test_triggered_requests_send_completed_replies (void)
 {
         static const uint8_t request[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_PASSWORD[0],
-                0x02, 0x0a, 'P', 'a', 's', 's', 'w', 'o', 'r', 'd', ':', 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CACHED_PASSWORD[0], 0x00,
+                0x02,                                             0x0a,  'P',  'a',  's',  's', 'w', 'o', 'r', 'd', ':', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CACHED_PASSWORD[0],0x00,
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE[0],
-                0x02, 0x03, 'y', 'n', 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_DEACTIVATE[0], 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x01, 0x00,
-                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x02, 0x01, 0x00,
+                0x02,                                             0x03,  'y',  'n',  0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_DEACTIVATE[0],     0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0],           0x02,  0x01, 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0],           0x02,  0x02, 0x01, 0x00,
         };
         static const uint8_t expected_response[] = {
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ANSWER[0],
-                0x06, 0x00, 0x00, 0x00, 's', 'e', 'c', 'r', 'e', 't',
+                0x06,                                               0x00,  0x00, 0x00, 's', 'e', 'c', 'r', 'e', 't',
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_MULTIPLE_ANSWERS[0],
-                0x07, 0x00, 0x00, 0x00, 's', 'e', 'c', 'r', 'e', 't', 0x00,
+                0x07,                                               0x00,  0x00, 0x00, 's', 'e', 'c', 'r', 'e', 't',0x00,
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ANSWER[0],
-                0x01, 0x00, 0x00, 0x00, 'y',
+                0x01,                                               0x00,  0x00, 0x00, 'y',
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
                 PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
@@ -935,11 +935,11 @@ test_malformed_and_uncredentialed_frames_disconnect (void)
         };
         static const uint8_t unterminated_argument[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0],
-                0x02, 0x03, 'b', 'a', 'd',
+                0x02,                                    0x03,'b', 'a', 'd',
         };
         static const uint8_t valid_request[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0],
-                0x02, 0x03, 'o', 'k', 0x00,
+                0x02,                                    0x03,'o', 'k', 0x00,
         };
 
         PLY_TEST_ASSERT (run_rejected_frame (truncated_header,

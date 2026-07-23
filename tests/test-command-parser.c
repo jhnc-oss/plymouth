@@ -31,10 +31,10 @@
 typedef struct
 {
         ply_event_loop_t *loop;
-        const char *commands[4];
-        int command_count;
-        int expected_command_count;
-        bool timed_out;
+        const char       *commands[4];
+        int               command_count;
+        int               expected_command_count;
+        bool              timed_out;
 } dispatch_context_t;
 
 static void
@@ -157,15 +157,15 @@ test_integer_options_enforce_int_range (void)
         bool was_set;
 
         snprintf (below_minimum,
-                  sizeof (below_minimum),
+                  sizeof(below_minimum),
                   "%ld",
                   (long) INT_MIN - 1);
         snprintf (above_maximum,
-                  sizeof (above_maximum),
+                  sizeof(above_maximum),
                   "%ld",
                   (long) INT_MAX + 1);
-        snprintf (minimum, sizeof (minimum), "%d", INT_MIN);
-        snprintf (maximum, sizeof (maximum), "%d", INT_MAX);
+        snprintf (minimum, sizeof(minimum), "%d", INT_MIN);
+        snprintf (maximum, sizeof(maximum), "%d", INT_MAX);
 
         PLY_TEST_ASSERT (parse_integer_argument (below_minimum, &value, &was_set));
         PLY_TEST_ASSERT (!was_set);

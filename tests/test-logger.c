@@ -33,14 +33,14 @@
 typedef struct
 {
         ply_logger_t *logger;
-        int calls;
-        bool received_logger;
+        int           calls;
+        bool          received_logger;
 } filter_context_t;
 
 static bool
-read_exactly (int     fd,
-              void   *bytes,
-              size_t  size)
+read_exactly (int    fd,
+              void  *bytes,
+              size_t size)
 {
         uint8_t *cursor = bytes;
         size_t bytes_read = 0;
@@ -69,7 +69,7 @@ static bool
 fd_has_data (int fd)
 {
         struct pollfd poll_fd = {
-                .fd = fd,
+                .fd     = fd,
                 .events = POLLIN,
         };
 
@@ -189,8 +189,9 @@ uppercase_filter (void         *user_data,
         if (output == NULL)
                 return;
 
-        for (size_t i = 0; i < in_size; i++)
+        for (size_t i = 0; i < in_size; i++) {
                 output[i] = (uint8_t) toupper (input[i]);
+        }
 
         *out_bytes = output;
         *out_size = in_size;

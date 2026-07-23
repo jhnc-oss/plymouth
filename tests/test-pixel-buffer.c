@@ -48,10 +48,11 @@ test_new_buffer_reports_empty_geometry (void)
                          PLY_PIXEL_BUFFER_ROTATE_UPRIGHT);
         PLY_TEST_ASSERT (!ply_pixel_buffer_is_opaque (buffer));
         PLY_TEST_ASSERT (ply_list_get_length (ply_region_get_rectangle_list (
-                                 ply_pixel_buffer_get_updated_areas (buffer))) == 0);
+                                                      ply_pixel_buffer_get_updated_areas (buffer))) == 0);
 
-        for (i = 0; i < 6; i++)
+        for (i = 0; i < 6; i++) {
                 PLY_TEST_ASSERT (pixels[i] == 0);
+        }
 
         ply_pixel_buffer_free (buffer);
         return true;
@@ -306,8 +307,9 @@ test_rotate_upright_maps_clockwise_pixels (void)
 
         rotated = ply_pixel_buffer_new (3, 2);
         pixels = ply_pixel_buffer_get_argb32_data (rotated);
-        for (i = 0; i < 6; i++)
+        for (i = 0; i < 6; i++) {
                 pixels[i] = i + 1;
+        }
 
         ply_pixel_buffer_set_device_rotation (rotated,
                                               PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE);
