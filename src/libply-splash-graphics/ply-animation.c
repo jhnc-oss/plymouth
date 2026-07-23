@@ -40,6 +40,7 @@
 #include <wchar.h>
 
 #include "ply-animation.h"
+#include "ply-animation-time-private.h"
 #include "ply-event-loop.h"
 #include "ply-array.h"
 #include "ply-logger.h"
@@ -173,14 +174,13 @@ on_timeout (ply_animation_t *animation)
         bool should_continue;
 
         animation->previous_time = animation->now;
-        animation->now = ply_get_timestamp ();
+        animation->now = ply_clock_get_time ();
 
         should_continue = animate_at_time (animation,
                                            animation->now - animation->start_time);
 
-        sleep_time = 1.0 / FRAMES_PER_SECOND;
-        sleep_time = MAX (sleep_time - (ply_get_timestamp () - animation->now),
-                          0.005);
+        sleep_time = ply_animation_time_get_delay (1.0 / FRAMES_PER_SECOND,
+                                                   animation->now);
 
         if (!should_continue) {
                 if (animation->stop_trigger != NULL) {
@@ -322,7 +322,7 @@ ply_animation_start (ply_animation_t     *animation,
         animation->x = x;
         animation->y = y;
 
-        animation->start_time = ply_get_timestamp ();
+        animation->start_time = ply_clock_get_time ();
 
         ply_event_loop_watch_for_timeout (animation->loop,
                                           1.0 / FRAMES_PER_SECOND,
@@ -407,4 +407,3 @@ ply_animation_get_height (ply_animation_t *animation)
 {
         return animation->height;
 }
-
