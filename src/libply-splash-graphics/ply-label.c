@@ -218,6 +218,11 @@ ply_label_unload_plugin (ply_label_t *label)
         assert (label->plugin_interface != NULL);
         assert (label->module_handle != NULL);
 
+        if (label->control != NULL) {
+                label->plugin_interface->destroy_control (label->control);
+                label->control = NULL;
+        }
+
         ply_close_module (label->module_handle);
         label->plugin_interface = NULL;
         label->module_handle = NULL;
