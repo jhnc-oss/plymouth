@@ -33,6 +33,26 @@ fedora-sanitizers-x86_64:
     - meson compile -C _build-sanitizers
     - ASAN_OPTIONS=detect_leaks=0:halt_on_error=1:abort_on_error=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_stacktrace=1 meson test -C _build-sanitizers --print-errorlogs
 
+fedora-coverage-x86_64:
+  extends: fedora-x86_64
+  script:
+    - dnf install -y gcovr
+    - meson setup _build-coverage -Db_coverage=true
+    - meson compile -C _build-coverage
+    - meson test -C _build-coverage --print-errorlogs
+    - gcovr --root . --filter 'src/' --xml-pretty --output _build-coverage/meson-logs/coverage.xml _build-coverage
+    - gcovr --root . --filter 'src/' --output _build-coverage/meson-logs/coverage.txt _build-coverage
+    - "awk '/^TOTAL/ { print \"Line coverage: \" $NF }' _build-coverage/meson-logs/coverage.txt"
+  coverage: '/^Line coverage: \d+(?:\.\d+)?%$/'
+  artifacts:
+    paths:
+      - _build-coverage/meson-logs/coverage.txt
+      - _build-coverage/meson-logs/coverage.xml
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: _build-coverage/meson-logs/coverage.xml
+
 debian-unstable-x86_64:
   stage: build
   image: debian:unstable
