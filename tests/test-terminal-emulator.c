@@ -27,7 +27,7 @@
 
 typedef struct
 {
-        int count;
+        int  count;
         char last_output[64];
 } output_context_t;
 
@@ -39,7 +39,7 @@ get_line_string (ply_terminal_emulator_t *terminal_emulator,
 
         return ply_rich_text_get_string (
                 ply_terminal_emulator_get_nth_line (terminal_emulator,
-                                                     line_number),
+                                                    line_number),
                 &span);
 }
 
@@ -52,7 +52,7 @@ on_output (void       *user_data,
         context->count++;
         strncpy (context->last_output,
                  output,
-                 sizeof (context->last_output) - 1);
+                 sizeof(context->last_output) - 1);
 }
 
 static bool
@@ -88,7 +88,7 @@ test_control_characters_move_cursor_and_line (void)
         terminal_emulator = ply_terminal_emulator_new (3, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input) - 1);
+                                           sizeof(input) - 1);
 
         first_line = get_line_string (terminal_emulator, 0);
         second_line = get_line_string (terminal_emulator, 1);
@@ -112,7 +112,7 @@ test_graphic_attributes_apply_per_character (void)
         terminal_emulator = ply_terminal_emulator_new (2, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input) - 1);
+                                           sizeof(input) - 1);
 
         line = ply_terminal_emulator_get_nth_line (terminal_emulator, 0);
         characters = ply_rich_text_get_characters (line);
@@ -142,7 +142,7 @@ test_graphic_attributes_can_be_disabled_individually (void)
         terminal_emulator = ply_terminal_emulator_new (2, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input) - 1);
+                                           sizeof(input) - 1);
 
         line = ply_terminal_emulator_get_nth_line (terminal_emulator, 0);
         characters = ply_rich_text_get_characters (line);
@@ -184,10 +184,10 @@ test_split_control_sequence_is_reassembled (void)
         terminal_emulator = ply_terminal_emulator_new (2, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            first_part,
-                                           sizeof (first_part) - 1);
+                                           sizeof(first_part) - 1);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            second_part,
-                                           sizeof (second_part) - 1);
+                                           sizeof(second_part) - 1);
 
         characters = ply_rich_text_get_characters (
                 ply_terminal_emulator_get_nth_line (terminal_emulator, 0));
@@ -209,7 +209,7 @@ test_malformed_control_sequence_is_ignored (void)
         terminal_emulator = ply_terminal_emulator_new (2, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input) - 1);
+                                           sizeof(input) - 1);
 
         characters = ply_rich_text_get_characters (
                 ply_terminal_emulator_get_nth_line (terminal_emulator, 0));
@@ -234,7 +234,7 @@ test_cursor_and_erase_sequences_update_line (void)
         terminal_emulator = ply_terminal_emulator_new (2, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input) - 1);
+                                           sizeof(input) - 1);
 
         line = get_line_string (terminal_emulator, 0);
         PLY_TEST_ASSERT (strcmp (line, "abcZ") == 0);
@@ -256,14 +256,14 @@ test_split_utf8_input_is_reassembled (void)
         terminal_emulator = ply_terminal_emulator_new (2, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            first_byte,
-                                           sizeof (first_byte));
+                                           sizeof(first_byte));
         line = get_line_string (terminal_emulator, 0);
         PLY_TEST_ASSERT (strcmp (line, "") == 0);
         free (line);
 
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            remaining_bytes,
-                                           sizeof (remaining_bytes));
+                                           sizeof(remaining_bytes));
         characters = ply_rich_text_get_characters (
                 ply_terminal_emulator_get_nth_line (terminal_emulator, 0));
         PLY_TEST_ASSERT (characters[0] != NULL);
@@ -286,7 +286,7 @@ test_invalid_utf8_in_escape_sequence_is_ignored (void)
         terminal_emulator = ply_terminal_emulator_new (3, 1);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input));
+                                           sizeof(input));
 
         PLY_TEST_ASSERT (ply_terminal_emulator_get_line_count (
                                  terminal_emulator) == 1);
@@ -309,7 +309,7 @@ test_recent_lines_survive_ring_rotation (void)
         terminal_emulator = ply_terminal_emulator_new (2, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input) - 1);
+                                           sizeof(input) - 1);
 
         PLY_TEST_ASSERT (ply_terminal_emulator_get_line_count (terminal_emulator) == 3);
         second_line = get_line_string (terminal_emulator, 1);
@@ -334,7 +334,7 @@ test_upward_cursor_movement_stops_at_first_line (void)
         terminal_emulator = ply_terminal_emulator_new (3, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input) - 1);
+                                           sizeof(input) - 1);
 
         first_line = get_line_string (terminal_emulator, 0);
         last_line = get_line_string (terminal_emulator, 2);
@@ -384,7 +384,7 @@ test_incomplete_escape_can_be_destroyed (void)
         terminal_emulator = ply_terminal_emulator_new (2, 10);
         ply_terminal_emulator_parse_lines (terminal_emulator,
                                            input,
-                                           sizeof (input) - 1);
+                                           sizeof(input) - 1);
         ply_terminal_emulator_free (terminal_emulator);
 
         return true;

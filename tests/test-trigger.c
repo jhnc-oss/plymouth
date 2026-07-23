@@ -23,36 +23,36 @@
 
 typedef struct
 {
-        int order[16];
-        int count;
+        int         order[16];
+        int         count;
         const void *expected_data;
-        bool data_matched;
+        bool        data_matched;
 } call_log_t;
 
 typedef struct
 {
         call_log_t *log;
-        int id;
+        int         id;
 } handler_data_t;
 
 typedef struct
 {
-        handler_data_t handler_data;
+        handler_data_t        handler_data;
         ply_trigger_handler_t target_handler;
-        void *target_user_data;
+        void                 *target_user_data;
 } removing_handler_data_t;
 
 typedef struct
 {
-        handler_data_t handler_data;
-        void *expected_instance;
-        bool instance_matched;
+        handler_data_t               handler_data;
+        void                        *expected_instance;
+        bool                         instance_matched;
         ply_trigger_handler_result_t result;
 } instance_handler_data_t;
 
 typedef struct
 {
-        int call_count;
+        int  call_count;
         bool nested_pull_started;
 } nested_handler_data_t;
 
@@ -179,14 +179,14 @@ test_instance_handler_can_abort_dispatch (void)
         int instance;
         call_log_t log = { 0 };
         instance_handler_data_t first = {
-                .handler_data = { .log = &log, .id = 1 },
+                .handler_data      = { .log = &log, .id = 1 },
                 .expected_instance = &instance,
-                .result = PLY_TRIGGER_HANDLER_RESULT_ABORT,
+                .result            = PLY_TRIGGER_HANDLER_RESULT_ABORT,
         };
         instance_handler_data_t second = {
-                .handler_data = { .log = &log, .id = 2 },
+                .handler_data      = { .log = &log, .id = 2 },
                 .expected_instance = &instance,
-                .result = PLY_TRIGGER_HANDLER_RESULT_CONTINUE,
+                .result            = PLY_TRIGGER_HANDLER_RESULT_CONTINUE,
         };
         ply_trigger_t *trigger;
 
@@ -212,8 +212,8 @@ test_callback_can_remove_later_handler (void)
         handler_data_t removed = { .log = &log, .id = 2 };
         handler_data_t retained = { .log = &log, .id = 3 };
         removing_handler_data_t remover = {
-                .handler_data = { .log = &log, .id = 1 },
-                .target_handler = record_handler,
+                .handler_data     = { .log = &log, .id = 1 },
+                .target_handler   = record_handler,
                 .target_user_data = &removed,
         };
         ply_trigger_t *trigger;

@@ -25,9 +25,9 @@ static bool
 test_contains_point_includes_outer_pixels (void)
 {
         ply_rectangle_t rectangle = {
-                .x = -2,
-                .y = 3,
-                .width = 4,
+                .x      = -2,
+                .y      = 3,
+                .width  = 4,
                 .height = 3,
         };
 

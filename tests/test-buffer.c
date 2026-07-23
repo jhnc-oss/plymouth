@@ -47,13 +47,13 @@ test_append_preserves_binary_data (void)
         ply_buffer_t *buffer;
 
         buffer = ply_buffer_new ();
-        ply_buffer_append_bytes (buffer, bytes, sizeof (bytes));
+        ply_buffer_append_bytes (buffer, bytes, sizeof(bytes));
 
-        PLY_TEST_ASSERT (ply_buffer_get_size (buffer) == sizeof (bytes));
+        PLY_TEST_ASSERT (ply_buffer_get_size (buffer) == sizeof(bytes));
         PLY_TEST_ASSERT (memcmp (ply_buffer_get_bytes (buffer),
                                  bytes,
-                                 sizeof (bytes)) == 0);
-        PLY_TEST_ASSERT (ply_buffer_get_bytes (buffer)[sizeof (bytes)] == '\0');
+                                 sizeof(bytes)) == 0);
+        PLY_TEST_ASSERT (ply_buffer_get_bytes (buffer)[sizeof(bytes)] == '\0');
 
         ply_buffer_free (buffer);
         return true;
@@ -110,13 +110,13 @@ test_append_from_ready_fd (void)
         int pipe_fds[2];
 
         PLY_TEST_ASSERT (pipe (pipe_fds) == 0);
-        PLY_TEST_ASSERT (write (pipe_fds[1], message, sizeof (message) - 1) ==
-                         sizeof (message) - 1);
+        PLY_TEST_ASSERT (write (pipe_fds[1], message, sizeof(message) - 1) ==
+                         sizeof(message) - 1);
 
         buffer = ply_buffer_new ();
         ply_buffer_append_from_fd (buffer, pipe_fds[0]);
 
-        PLY_TEST_ASSERT (ply_buffer_get_size (buffer) == sizeof (message) - 1);
+        PLY_TEST_ASSERT (ply_buffer_get_size (buffer) == sizeof(message) - 1);
         PLY_TEST_ASSERT (strcmp (ply_buffer_get_bytes (buffer), message) == 0);
 
         close (pipe_fds[0]);

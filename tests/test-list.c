@@ -133,12 +133,13 @@ test_sort_orders_elements (void)
         size_t i;
 
         list = ply_list_new ();
-        for (i = 0; i < sizeof (values) / sizeof (values[0]); i++)
+        for (i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
                 ply_list_append_data (list, &values[i]);
+        }
 
         ply_list_sort (list, compare_integers);
 
-        for (i = 0; i < sizeof (values) / sizeof (values[0]); i++) {
+        for (i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
                 int *value;
 
                 value = ply_list_node_get_data (ply_list_get_nth_node (list, i));
@@ -163,13 +164,14 @@ test_stable_sort_retains_equal_element_order (void)
         size_t i;
 
         list = ply_list_new ();
-        for (i = 0; i < sizeof (items) / sizeof (items[0]); i++)
+        for (i = 0; i < sizeof(items) / sizeof(items[0]); i++) {
                 ply_list_append_data (list, &items[i]);
+        }
 
         ply_list_sort_stable (list, compare_sortable_items);
 
         for (i = 0;
-             i < sizeof (expected_sequences) / sizeof (expected_sequences[0]);
+             i < sizeof(expected_sequences) / sizeof(expected_sequences[0]);
              i++) {
                 sortable_item_t *item;
 
