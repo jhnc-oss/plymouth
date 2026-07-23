@@ -1214,6 +1214,12 @@ ply_terminal_emulator_parse_substring (ply_terminal_emulator_t *terminal_emulato
                                 if (ply_buffer_get_size (terminal_emulator->pending_character) < terminal_emulator->pending_character_size)
                                         continue;
                         } else {
+                                if (terminal_emulator->state != PLY_TERMINAL_EMULATOR_TERMINAL_STATE_UNESCAPED) {
+                                        ply_buffer_clear (terminal_emulator->pending_character);
+                                        i++;
+                                        continue;
+                                }
+
                                 /* If this is an auxiliary Unicode byte when not handling a multi-byte character, replace it with a placeholder */
                                 terminal_emulator->pending_character_size = 1;
                                 ply_buffer_clear (terminal_emulator->pending_character);
