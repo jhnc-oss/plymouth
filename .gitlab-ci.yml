@@ -53,6 +53,13 @@ fedora-coverage-x86_64:
         coverage_format: cobertura
         path: _build-coverage/meson-logs/coverage.xml
 
+fedora-repeat-unit-tests-x86_64:
+  extends: fedora-x86_64
+  script:
+    - meson setup _build-repeat
+    - meson compile -C _build-repeat
+    - meson test -C _build-repeat --suite unit --repeat 20 --print-errorlogs
+
 debian-unstable-x86_64:
   stage: build
   image: debian:unstable
