@@ -5,7 +5,6 @@ libply_splash_graphics_sources = files(
   'ply-entry.c',
   'ply-image.c',
   'ply-keymap-icon.c',
-  'ply-label.c',
   'ply-progress-animation.c',
   'ply-progress-bar.c',
   'ply-throbber.c',
@@ -23,6 +22,15 @@ libply_splash_graphics_cflags = [
   '-DPLYMOUTH_BACKGROUND_END_COLOR=@0@'.format(get_option('background-end-color-stop')),
   '-DPLYMOUTH_PLUGIN_PATH="@0@"'.format(plymouth_plugin_path),
 ]
+
+ply_label = static_library(
+  'ply-label-private',
+  'ply-label.c',
+  dependencies: libply_splash_graphics_deps,
+  c_args: libply_splash_graphics_cflags,
+  include_directories: config_h_inc,
+  pic: true,
+)
 
 ply_animation_time = static_library(
   'ply-animation-time-private',
@@ -43,6 +51,7 @@ libply_splash_graphics = library('ply-splash-graphics',
   dependencies: libply_splash_graphics_deps + [ply_animation_time_dep],
   c_args: libply_splash_graphics_cflags,
   include_directories: config_h_inc,
+  link_whole: ply_label,
   version: plymouth_soversion,
   install: true,
 )
@@ -50,6 +59,12 @@ libply_splash_graphics = library('ply-splash-graphics',
 libply_splash_graphics_dep = declare_dependency(
   link_with: libply_splash_graphics,
   include_directories: include_directories('.'),
+)
+
+ply_label_dep = declare_dependency(
+  dependencies: libply_splash_graphics_dep,
+  include_directories: include_directories('.'),
+  link_with: ply_label,
 )
 
 libply_splash_graphics_headers = files(

@@ -20,12 +20,14 @@
  * Written by: Ray Strode <rstrode@redhat.com>
  */
 #include "ply-label.h"
+#include "ply-label-private.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -45,6 +47,7 @@ struct _ply_label
         const ply_label_plugin_interface_t *plugin_interface;
         ply_label_plugin_control_t         *control;
 
+        char                               *plugin_directory;
         char                               *text;
 
         ply_rich_text_t                    *rich_text;
@@ -67,9 +70,18 @@ static void ply_label_unload_plugin (ply_label_t *label);
 ply_label_t *
 ply_label_new (void)
 {
+        return ply_label_new_with_plugin_directory (PLYMOUTH_PLUGIN_PATH);
+}
+
+ply_label_t *
+ply_label_new_with_plugin_directory (const char *plugin_directory)
+{
         ply_label_t *label;
 
+        assert (plugin_directory != NULL);
+
         label = calloc (1, sizeof(struct _ply_label));
+        label->plugin_directory = strdup (plugin_directory);
         label->red = 1;
         label->green = 1;
         label->blue = 1;
@@ -90,6 +102,7 @@ ply_label_free (ply_label_t *label)
                 ply_label_unload_plugin (label);
         }
 
+        free (label->plugin_directory);
         free (label->text);
         free (label->font);
 
@@ -104,15 +117,37 @@ ply_label_free (ply_label_t *label)
 static bool
 ply_label_load_plugin (ply_label_t *label)
 {
+        static const char *const plugin_names[] = {
+                /* Prefer Pango; the FreeType plugin is not a complete substitute. */
+                "label-pango.so",
+                "label-freetype.so",
+        };
         assert (label != NULL);
 
         get_plugin_interface_function_t get_label_plugin_interface;
+        size_t i;
 
-        label->module_handle = ply_open_module (PLYMOUTH_PLUGIN_PATH "label-pango.so");
+        for (i = 0; i < sizeof(plugin_names) / sizeof(plugin_names[0]); i++) {
+                const char *separator;
+                char *plugin_path = NULL;
 
-        /* and the FreeType based one after that, it is not a complete substitute (yet). */
-        if (label->module_handle == NULL)
-                label->module_handle = ply_open_module (PLYMOUTH_PLUGIN_PATH "label-freetype.so");
+                if (label->plugin_directory[0] == '\0' ||
+                    label->plugin_directory[strlen (label->plugin_directory) - 1] == '/')
+                        separator = "";
+                else
+                        separator = "/";
+
+                asprintf (&plugin_path,
+                          "%s%s%s",
+                          label->plugin_directory,
+                          separator,
+                          plugin_names[i]);
+                label->module_handle = ply_open_module (plugin_path);
+                free (plugin_path);
+
+                if (label->module_handle != NULL)
+                        break;
+        }
 
         if (label->module_handle == NULL)
                 return false;
@@ -182,6 +217,11 @@ ply_label_unload_plugin (ply_label_t *label)
         assert (label != NULL);
         assert (label->plugin_interface != NULL);
         assert (label->module_handle != NULL);
+
+        if (label->control != NULL) {
+                label->plugin_interface->destroy_control (label->control);
+                label->control = NULL;
+        }
 
         ply_close_module (label->module_handle);
         label->plugin_interface = NULL;
@@ -350,14 +390,7 @@ ply_label_set_hex_color (ply_label_t *label,
         blue = ((double) (hex_color & 0x0000ff00) / 0x0000ff00);
         alpha = ((double) (hex_color & 0x000000ff) / 0x000000ff);
 
-        if (label->plugin_interface == NULL)
-                return;
-
-        label->plugin_interface->set_color_for_control (label->control,
-                                                        red,
-                                                        green,
-                                                        blue,
-                                                        alpha);
+        ply_label_set_color (label, red, green, blue, alpha);
 }
 
 void

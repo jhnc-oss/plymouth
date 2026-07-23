@@ -314,6 +314,36 @@ test(
   timeout: test_timeout,
 )
 
+label_test_c_args = test_c_args + [
+  '-DTEST_LABEL_PLUGIN_DIR="@0@"'.format(
+    meson.project_build_root() / 'tests/plugins'
+  ),
+  '-DTEST_LABEL_PLUGIN_PATH="@0@"'.format(
+    fake_label_plugin.full_path()
+  ),
+]
+
+label_test_executable = executable(
+  'test-label',
+  'test-label.c',
+  c_args: label_test_c_args,
+  dependencies: [libply_dep, libply_splash_core_dep, ply_label_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-graphics'),
+  ],
+)
+
+test(
+  'splash-graphics-label-plugin',
+  label_test_executable,
+  depends: fake_label_plugin,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-graphics'],
+  timeout: test_timeout,
+)
+
 bash = find_program('bash')
 
 test(
