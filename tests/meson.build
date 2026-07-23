@@ -44,6 +44,7 @@ endforeach
 
 splash_core_test_sources = {
   'rich-text': 'test-rich-text.c',
+  'terminal-emulator': 'test-terminal-emulator.c',
 }
 
 foreach test_name, test_source : splash_core_test_sources
