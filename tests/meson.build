@@ -361,6 +361,42 @@ test(
   timeout: test_timeout,
 )
 
+boot_splash_test_c_args = test_c_args + [
+  '-DTEST_SPLASH_PLUGIN_DIR="@0@/"'.format(
+    meson.project_build_root() / 'tests/plugins'
+  ),
+  '-DTEST_SPLASH_PLUGIN_PATH="@0@"'.format(
+    fake_splash_plugin.full_path()
+  ),
+  '-DTEST_SPLASH_THEME_PATH="@0@"'.format(
+    meson.current_source_dir() / 'plugins/fake-splash-theme.conf'
+  ),
+  '-DTEST_RENDERER_PLUGIN_DIR="@0@"'.format(
+    meson.project_build_root() / 'tests/plugins'
+  ),
+]
+
+boot_splash_test_executable = executable(
+  'test-boot-splash',
+  'test-boot-splash.c',
+  c_args: boot_splash_test_c_args,
+  dependencies: [libply_dep, libply_splash_core_dep, ply_renderer_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'splash-core-boot-splash-plugin',
+  boot_splash_test_executable,
+  depends: [fake_renderer_plugin, fake_splash_plugin],
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-core'],
+  timeout: test_timeout,
+)
+
 bash = find_program('bash')
 
 test(
