@@ -10,6 +10,7 @@ libply_test_sources = {
   'logger': 'test-logger.c',
   'rectangle': 'test-rectangle.c',
   'region': 'test-region.c',
+  'terminal-session': 'test-terminal-session.c',
   'trigger': 'test-trigger.c',
   'utils': 'test-utils.c',
 }
