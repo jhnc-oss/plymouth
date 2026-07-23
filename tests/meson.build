@@ -62,6 +62,23 @@ test(
   timeout: test_timeout,
 )
 
+secure_boot_test_executable = executable(
+  'test-secure-boot',
+  'test-secure-boot.c',
+  c_args: test_c_args,
+  dependencies: [libply_dep, ply_secure_boot_dep],
+  include_directories: include_directories('.'),
+)
+
+test(
+  'libply-secure-boot',
+  secure_boot_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'libply'],
+  timeout: test_timeout,
+)
+
 boot_client_test_executable = executable(
   'test-boot-client',
   'test-boot-client.c',
