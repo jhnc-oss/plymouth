@@ -47,6 +47,23 @@ foreach test_name, test_source : libply_test_sources
   )
 endforeach
 
+command_parser_fuzz_executable = executable(
+  'fuzz-command-parser',
+  'fuzz-command-parser.c',
+  c_args: test_c_args,
+  dependencies: libply_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'fuzz-command-parser',
+  command_parser_fuzz_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['fuzz', 'libply'],
+  timeout: test_timeout,
+)
+
 progress_test_executable = executable(
   'test-progress',
   'test-progress.c',
