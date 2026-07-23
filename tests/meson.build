@@ -211,3 +211,18 @@ test(
   suite: ['unit', 'splash-graphics'],
   timeout: test_timeout,
 )
+
+bash = find_program('bash')
+
+test(
+  'script-generate-version',
+  bash,
+  args: [
+    files('test-generate-version.sh'),
+    meson.project_source_root() / 'scripts/generate-version.sh',
+  ],
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['functional', 'scripts'],
+  timeout: test_timeout,
+)
