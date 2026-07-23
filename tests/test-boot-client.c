@@ -395,6 +395,116 @@ test_queued_requests_match_pipelined_acks (void)
 }
 
 static bool
+test_public_request_functions_emit_protocol_map (void)
+{
+        static const uint8_t expected_request[] = {
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PING[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0],
+                0x02, 0x06, 'r', 'e', 'a', 'd', 'y', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CHANGE_MODE[0],
+                0x02, 0x09, 's', 'h', 'u', 't', 'd', 'o', 'w', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SYSTEM_UPDATE[0],
+                0x02, 0x03, '7', '3', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_NEWROOT[0],
+                0x02, 0x09, '/', 's', 'y', 's', 'r', 'o', 'o', 't', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_MESSAGE[0],
+                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_MESSAGE[0],
+                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PASSWORD[0],
+                0x02, 0x0a, 'P', 'a', 's', 's', 'w', 'o', 'r', 'd', ':', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CACHED_PASSWORD[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUESTION[0],
+                0x02, 0x07, 'R', 'e', 'a', 'd', 'y', '?', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE[0],
+                0x02, 0x03, 'y', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE_REMOVE[0],
+                0x02, 0x03, 'y', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SYSTEM_INITIALIZED[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_SPLASH[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_SPLASH[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_DEACTIVATE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_REACTIVATE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x01, 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x02, 0x01, 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_RELOAD[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_PAUSE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_UNPAUSE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HAS_ACTIVE_VT[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_ERROR[0], 0x00,
+        };
+        client_context_t context;
+        uint8_t responses[24];
+
+        PLY_TEST_ASSERT (initialize_client (&context));
+        memset (responses,
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                sizeof(responses));
+        PLY_TEST_ASSERT (write_bytes (context.peer_fd,
+                                      responses,
+                                      sizeof(responses)));
+        watch_for_request (&context, sizeof(expected_request));
+
+        ply_boot_client_ping_daemon (context.client, NULL, NULL, NULL);
+        ply_boot_client_update_daemon (context.client,
+                                       "ready", NULL, NULL, NULL);
+        ply_boot_client_change_mode (context.client,
+                                     "shutdown", NULL, NULL, NULL);
+        ply_boot_client_system_update (context.client,
+                                       "73", NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_change_root (context.client,
+                                                    "/sysroot", NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_display_message (context.client,
+                                                        "starting", NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_hide_message (context.client,
+                                                     "starting", NULL, NULL, NULL);
+        ply_boot_client_ask_daemon_for_password (context.client,
+                                                 "Password:", NULL, NULL, NULL);
+        ply_boot_client_ask_daemon_for_cached_passwords (context.client,
+                                                         NULL, NULL, NULL);
+        ply_boot_client_ask_daemon_question (context.client,
+                                             "Ready?", NULL, NULL, NULL);
+        ply_boot_client_ask_daemon_to_watch_for_keystroke (context.client,
+                                                           "yn", NULL, NULL, NULL);
+        ply_boot_client_ask_daemon_to_ignore_keystroke (context.client,
+                                                        "yn", NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_system_is_initialized (context.client,
+                                                           NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_show_splash (context.client,
+                                                    NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_hide_splash (context.client,
+                                                    NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_deactivate (context.client,
+                                                   NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_reactivate (context.client,
+                                                   NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_quit (context.client,
+                                             false, NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_quit (context.client,
+                                             true, NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_reload (context.client,
+                                               NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_progress_pause (context.client,
+                                                       NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_to_progress_unpause (context.client,
+                                                         NULL, NULL, NULL);
+        ply_boot_client_ask_daemon_has_active_vt (context.client,
+                                                  NULL, NULL, NULL);
+        ply_boot_client_tell_daemon_about_error (context.client,
+                                                 NULL, NULL, NULL);
+
+        PLY_TEST_ASSERT (ply_event_loop_run (context.loop) == 0);
+        PLY_TEST_ASSERT (!context.timed_out);
+        PLY_TEST_ASSERT (context.request_size == sizeof(expected_request));
+        PLY_TEST_ASSERT (memcmp (context.request,
+                                 expected_request,
+                                 sizeof(expected_request)) == 0);
+
+        free_client_context (&context);
+        return true;
+}
+
+static bool
 test_answer_and_no_answer_responses (void)
 {
         uint8_t answer_response[1 + 4 + 6] = {
@@ -574,6 +684,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_ping_frame_receives_ack),
         PLY_TEST_CASE (test_argument_frame_includes_marker_length_and_nul),
         PLY_TEST_CASE (test_queued_requests_match_pipelined_acks),
+        PLY_TEST_CASE (test_public_request_functions_emit_protocol_map),
         PLY_TEST_CASE (test_answer_and_no_answer_responses),
         PLY_TEST_CASE (test_multiple_answer_response_splits_strings),
         PLY_TEST_CASE (test_nak_and_malformed_payloads_fail_requests),
