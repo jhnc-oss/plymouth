@@ -64,6 +64,23 @@ test(
   timeout: test_timeout,
 )
 
+key_file_fuzz_executable = executable(
+  'fuzz-key-file',
+  'fuzz-key-file.c',
+  c_args: test_c_args,
+  dependencies: libply_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'fuzz-key-file',
+  key_file_fuzz_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['fuzz', 'libply'],
+  timeout: test_timeout,
+)
+
 progress_test_executable = executable(
   'test-progress',
   'test-progress.c',
