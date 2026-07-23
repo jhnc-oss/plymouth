@@ -686,7 +686,7 @@ ply_pixels_interpolate (uint32_t *bytes,
         y -= iy;
         for (i = 0; i < 4; i++) {
                 uint32_t value = 0;
-                uint32_t mask = 0xFF << (i * 8);
+                uint32_t mask = UINT32_C (0xff) << (i * 8);
                 value += ((pixels[0][0]) & mask) * (1 - x) * (1 - y);
                 value += ((pixels[0][1]) & mask) * x * (1 - y);
                 value += ((pixels[1][0]) & mask) * (1 - x) * y;
