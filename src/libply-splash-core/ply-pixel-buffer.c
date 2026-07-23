@@ -686,7 +686,7 @@ ply_pixels_interpolate (uint32_t *bytes,
         y -= iy;
         for (i = 0; i < 4; i++) {
                 uint32_t value = 0;
-                uint32_t mask = 0xFF << (i * 8);
+                uint32_t mask = UINT32_C (0xff) << (i * 8);
                 value += ((pixels[0][0]) & mask) * (1 - x) * (1 - y);
                 value += ((pixels[0][1]) & mask) * x * (1 - y);
                 value += ((pixels[1][0]) & mask) * (1 - x) * y;
@@ -1096,13 +1096,22 @@ void
 ply_pixel_buffer_set_device_rotation (ply_pixel_buffer_t         *buffer,
                                       ply_pixel_buffer_rotation_t device_rotation)
 {
+        bool old_rotation_is_sideways;
+        bool new_rotation_is_sideways;
+
         if (buffer->device_rotation == device_rotation)
                 return;
 
+        old_rotation_is_sideways =
+                buffer->device_rotation == PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE ||
+                buffer->device_rotation == PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE;
+        new_rotation_is_sideways =
+                device_rotation == PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE ||
+                device_rotation == PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE;
+
         buffer->device_rotation = device_rotation;
 
-        if (device_rotation == PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE ||
-            device_rotation == PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE) {
+        if (old_rotation_is_sideways != new_rotation_is_sideways) {
                 unsigned long tmp = buffer->area.width;
                 buffer->area.width = buffer->area.height;
                 buffer->area.height = tmp;
@@ -1140,4 +1149,3 @@ ply_pixel_buffer_rotate_upright (ply_pixel_buffer_t *old_buffer)
 
         return buffer;
 }
-
