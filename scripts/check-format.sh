@@ -29,7 +29,9 @@ find -name '*.[ch]' -exec git diff -- {} \; >> before
 
 interdiff -B --no-revert-omitted before after > diff
 
-if [ -n "$(cat diff | grep -vE '^only in patch[12]:')" ]; then
+# Forward patches describe formatting changes introduced by the branch.
+# Reverse patches only remove formatting changes already needed upstream.
+if grep -qE '^(--- a/|\+\+\+ b/)' diff; then
     echo "Uncrustify found style abnormalities" 2>&1
     cat diff
     exit 1
@@ -43,4 +45,3 @@ fi
 
 echo "No new style abnormalities found by uncrustify!"
 exit 0
-
