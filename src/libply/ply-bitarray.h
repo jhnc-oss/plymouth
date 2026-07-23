@@ -19,11 +19,12 @@
  *
  * Written by: Charlie Brej <cbrej@cs.man.ac.uk>
  */
-#ifndef PLY_ARRAY_H
-#define PLY_ARRAY_H
+#ifndef PLY_BITARRAY_H
+#define PLY_BITARRAY_H
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define PLY_BITARRAY_BASE_SIZE 32
 #define PLY_BITARRAY_BASE_MASK (PLY_BITARRAY_BASE_SIZE - 1)
@@ -34,12 +35,12 @@ typedef uint32_t ply_bitarray_t;
 #define ply_bitarray_new(size) calloc ((size + PLY_BITARRAY_BASE_SIZE - 1) / PLY_BITARRAY_BASE_SIZE, sizeof(ply_bitarray_t))
 #define ply_bitarray_free(bitarray) free (bitarray)
 #define ply_bitarray_lookup(bitarray, index) ((bitarray[index / PLY_BITARRAY_BASE_SIZE] >> (index & PLY_BITARRAY_BASE_MASK)) & 1)
-#define ply_bitarray_set(bitarray, index) (bitarray[index / PLY_BITARRAY_BASE_SIZE] |= 1 << (index & PLY_BITARRAY_BASE_MASK))
-#define ply_bitarray_clear(bitarray, index) (bitarray[index / PLY_BITARRAY_BASE_SIZE] &= ~(1 << (index & PLY_BITARRAY_BASE_MASK)))
-#define ply_bitarray_toggle(bitarray, index) (bitarray[index / PLY_BITARRAY_BASE_SIZE] ^= 1 << (index & PLY_BITARRAY_BASE_MASK))
+#define ply_bitarray_set(bitarray, index) (bitarray[index / PLY_BITARRAY_BASE_SIZE] |= UINT32_C (1) << (index & PLY_BITARRAY_BASE_MASK))
+#define ply_bitarray_clear(bitarray, index) (bitarray[index / PLY_BITARRAY_BASE_SIZE] &= ~(UINT32_C (1) << (index & PLY_BITARRAY_BASE_MASK)))
+#define ply_bitarray_toggle(bitarray, index) (bitarray[index / PLY_BITARRAY_BASE_SIZE] ^= UINT32_C (1) << (index & PLY_BITARRAY_BASE_MASK))
 int ply_bitarray_count (ply_bitarray_t *bitarray,
                         int             size);
 
 #endif
 
-#endif /* PLY_ARRAY_H */
+#endif /* PLY_BITARRAY_H */
