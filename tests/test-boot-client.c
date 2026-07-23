@@ -33,6 +33,10 @@ typedef struct
         ply_event_loop_t *loop;
         ply_boot_client_t *client;
         int peer_fd;
+        ply_fd_watch_t *peer_watch;
+        size_t expected_request_size;
+        size_t request_size;
+        uint8_t request[512];
         int expected_successes;
         int successes;
         int failures;
@@ -141,6 +145,25 @@ on_watchdog (void             *user_data,
 }
 
 static void
+on_peer_request (void *user_data,
+                 int   source_fd)
+{
+        client_context_t *context = user_data;
+        ssize_t bytes_read;
+
+        bytes_read = recv (source_fd,
+                           context->request + context->request_size,
+                           sizeof(context->request) - context->request_size,
+                           0);
+        if (bytes_read <= 0)
+                return;
+
+        context->request_size += (size_t) bytes_read;
+        if (context->request_size >= context->expected_request_size)
+                ply_event_loop_exit (context->loop, 0);
+}
+
+static void
 on_success (void              *user_data,
             ply_boot_client_t *client)
 {
@@ -226,6 +249,21 @@ watch_for_timeout (client_context_t *context)
                                           1.0,
                                           on_watchdog,
                                           context);
+}
+
+static void
+watch_for_request (client_context_t *context,
+                   size_t            request_size)
+{
+        context->expected_request_size = request_size;
+        context->peer_watch =
+                ply_event_loop_watch_fd (context->loop,
+                                         context->peer_fd,
+                                         PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
+                                         on_peer_request,
+                                         NULL,
+                                         context);
+        watch_for_timeout (context);
 }
 
 static ssize_t
