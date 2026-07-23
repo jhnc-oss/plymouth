@@ -226,3 +226,16 @@ test(
   suite: ['functional', 'scripts'],
   timeout: test_timeout,
 )
+
+test(
+  'script-set-default-theme',
+  bash,
+  args: [
+    files('test-set-default-theme.sh'),
+    meson.project_build_root() / 'scripts/plymouth-set-default-theme',
+  ],
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['functional', 'scripts'],
+  timeout: test_timeout,
+)
