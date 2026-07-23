@@ -28,6 +28,7 @@
 #include "ply-boot-protocol.h"
 #include "ply-boot-server-private.h"
 #include "ply-event-loop.h"
+#include "ply-peer-credentials-private.h"
 #include "ply-trigger.h"
 
 typedef struct
@@ -53,27 +54,49 @@ typedef struct
         char question[64];
         int active_vt_count;
         bool has_active_vt;
+        uint32_t dispatches;
+        char change_mode[32];
+        char displayed_message[64];
+        char hidden_message[64];
+        char ignored_keys[32];
+        char newroot[64];
+        int password_count;
+        char password_prompt[64];
+        int keystroke_count;
+        char watched_keys[32];
+        int deactivate_count;
+        int quit_count;
+        bool retain_splash[2];
 } server_context_t;
 
-static uid_t test_credential_uid;
-static bool test_credentials_available;
-
-bool
-__wrap_ply_get_credentials_from_fd (int    fd,
-                                    pid_t *pid,
-                                    uid_t *uid,
-                                    gid_t *gid)
+enum
 {
-        if (!test_credentials_available)
+        DISPATCH_CHANGE_MODE = 1 << 0,
+        DISPATCH_DISPLAY_MESSAGE = 1 << 1,
+        DISPATCH_HIDE_MESSAGE = 1 << 2,
+        DISPATCH_IGNORE_KEYSTROKE = 1 << 3,
+        DISPATCH_PROGRESS_PAUSE = 1 << 4,
+        DISPATCH_PROGRESS_UNPAUSE = 1 << 5,
+        DISPATCH_HIDE_SPLASH = 1 << 6,
+        DISPATCH_NEWROOT = 1 << 7,
+        DISPATCH_ERROR = 1 << 8,
+        DISPATCH_REACTIVATE = 1 << 9,
+        DISPATCH_RELOAD = 1 << 10,
+        DISPATCH_PASSWORD = 1 << 11,
+        DISPATCH_WATCH_KEYSTROKE = 1 << 12,
+        DISPATCH_DEACTIVATE = 1 << 13,
+        DISPATCH_QUIT = 1 << 14,
+};
+
+static bool
+record_dispatch (server_context_t *context,
+                 ply_boot_server_t *server,
+                 uint32_t           dispatch)
+{
+        if (server != context->server)
                 return false;
 
-        if (pid != NULL)
-                *pid = getpid ();
-        if (uid != NULL)
-                *uid = test_credential_uid;
-        if (gid != NULL)
-                *gid = getgid ();
-
+        context->dispatches |= dispatch;
         return true;
 }
 
@@ -108,6 +131,126 @@ on_system_update (void              *user_data,
 }
 
 static void
+on_change_mode (void              *user_data,
+                const char        *mode,
+                ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_CHANGE_MODE))
+                return;
+
+        if (mode != NULL)
+                strncpy (context->change_mode,
+                         mode,
+                         sizeof(context->change_mode) - 1);
+}
+
+static void
+on_display_message (void              *user_data,
+                    const char        *message,
+                    ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_DISPLAY_MESSAGE))
+                return;
+
+        if (message != NULL)
+                strncpy (context->displayed_message,
+                         message,
+                         sizeof(context->displayed_message) - 1);
+}
+
+static void
+on_hide_message (void              *user_data,
+                 const char        *message,
+                 ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_HIDE_MESSAGE))
+                return;
+
+        if (message != NULL)
+                strncpy (context->hidden_message,
+                         message,
+                         sizeof(context->hidden_message) - 1);
+}
+
+static void
+on_ignore_keystroke (void              *user_data,
+                     const char        *keys,
+                     ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_IGNORE_KEYSTROKE))
+                return;
+
+        if (keys != NULL)
+                strncpy (context->ignored_keys,
+                         keys,
+                         sizeof(context->ignored_keys) - 1);
+}
+
+static void
+on_progress_pause (void              *user_data,
+                   ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_PROGRESS_PAUSE);
+}
+
+static void
+on_progress_unpause (void              *user_data,
+                     ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_PROGRESS_UNPAUSE);
+}
+
+static void
+on_password (void              *user_data,
+             const char        *prompt,
+             ply_trigger_t     *answer,
+             ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_PASSWORD))
+                return;
+
+        context->password_count++;
+        if (prompt != NULL)
+                strncpy (context->password_prompt,
+                         prompt,
+                         sizeof(context->password_prompt) - 1);
+        ply_trigger_pull (answer, "secret");
+}
+
+static void
+on_watch_keystroke (void              *user_data,
+                    const char        *keys,
+                    ply_trigger_t     *answer,
+                    ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_WATCH_KEYSTROKE))
+                return;
+
+        context->keystroke_count++;
+        if (keys != NULL)
+                strncpy (context->watched_keys,
+                         keys,
+                         sizeof(context->watched_keys) - 1);
+        ply_trigger_pull (answer, "y");
+}
+
+static void
 on_show_splash (void              *user_data,
                 ply_boot_server_t *server)
 {
@@ -118,6 +261,31 @@ on_show_splash (void              *user_data,
 }
 
 static void
+on_hide_splash (void              *user_data,
+                ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_HIDE_SPLASH);
+}
+
+static void
+on_newroot (void              *user_data,
+            const char        *root_dir,
+            ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_NEWROOT))
+                return;
+
+        if (root_dir != NULL)
+                strncpy (context->newroot,
+                         root_dir,
+                         sizeof(context->newroot) - 1);
+}
+
+static void
 on_initialized (void              *user_data,
                 ply_boot_server_t *server)
 {
@@ -125,6 +293,64 @@ on_initialized (void              *user_data,
 
         if (server == context->server)
                 context->initialized_count++;
+}
+
+static void
+on_error (void              *user_data,
+          ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_ERROR);
+}
+
+static void
+on_reactivate (void              *user_data,
+               ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        record_dispatch (context, server, DISPATCH_REACTIVATE);
+}
+
+static bool
+on_reload (void              *user_data,
+           ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        return record_dispatch (context, server, DISPATCH_RELOAD);
+}
+
+static void
+on_deactivate (void              *user_data,
+               ply_trigger_t     *deactivate_trigger,
+               ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_DEACTIVATE))
+                return;
+
+        context->deactivate_count++;
+        ply_trigger_pull (deactivate_trigger, NULL);
+}
+
+static void
+on_quit (void              *user_data,
+         bool               retain_splash,
+         ply_trigger_t     *quit_trigger,
+         ply_boot_server_t *server)
+{
+        server_context_t *context = user_data;
+
+        if (!record_dispatch (context, server, DISPATCH_QUIT))
+                return;
+
+        if (context->quit_count < 2)
+                context->retain_splash[context->quit_count] = retain_splash;
+        context->quit_count++;
+        ply_trigger_pull (quit_trigger, NULL);
 }
 
 static void
@@ -164,26 +390,26 @@ new_server (server_context_t *context)
 {
         return ply_boot_server_new (
                 on_update,
-                NULL,
+                on_change_mode,
                 on_system_update,
-                NULL,
+                on_password,
                 on_question,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
+                on_display_message,
+                on_hide_message,
+                on_watch_keystroke,
+                on_ignore_keystroke,
+                on_progress_pause,
+                on_progress_unpause,
                 on_show_splash,
-                NULL,
-                NULL,
+                on_hide_splash,
+                on_newroot,
                 on_initialized,
-                NULL,
-                NULL,
-                NULL,
-                NULL,
+                on_error,
+                on_deactivate,
+                on_reactivate,
+                on_quit,
                 on_has_active_vt,
-                NULL,
+                on_reload,
                 context);
 }
 
@@ -243,8 +469,11 @@ initialize_server (server_context_t *context,
                         socket_fds) < 0)
                 return false;
 
-        test_credential_uid = credential_uid;
-        test_credentials_available = credentials_available;
+        if (credentials_available)
+                ply_peer_credentials_set (getpid (), credential_uid, getgid ());
+        else
+                ply_peer_credentials_set_unavailable ();
+
         context->loop = ply_event_loop_new ();
         context->server = new_server (context);
         context->peer_fd = socket_fds[1];
@@ -270,6 +499,7 @@ free_server_context (server_context_t *context)
         ply_event_loop_free (context->loop);
         if (context->peer_fd >= 0)
                 close (context->peer_fd);
+        ply_peer_credentials_use_system ();
 }
 
 static bool
@@ -465,6 +695,77 @@ test_system_update_parses_valid_and_invalid_values (void)
 }
 
 static bool
+test_immediate_notifications_dispatch_and_acknowledge (void)
+{
+        static const uint8_t request[] = {
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CHANGE_MODE[0],
+                0x02, 0x09, 's', 'h', 'u', 't', 'd', 'o', 'w', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_MESSAGE[0],
+                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_MESSAGE[0],
+                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE_REMOVE[0],
+                0x02, 0x03, 'y', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_PAUSE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_UNPAUSE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_SPLASH[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_NEWROOT[0],
+                0x02, 0x09, '/', 's', 'y', 's', 'r', 'o', 'o', 't', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_ERROR[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_REACTIVATE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_RELOAD[0], 0x00,
+        };
+        static const uint8_t expected_response[] = {
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+        };
+        static const uint32_t expected_dispatches =
+                DISPATCH_CHANGE_MODE |
+                DISPATCH_DISPLAY_MESSAGE |
+                DISPATCH_HIDE_MESSAGE |
+                DISPATCH_IGNORE_KEYSTROKE |
+                DISPATCH_PROGRESS_PAUSE |
+                DISPATCH_PROGRESS_UNPAUSE |
+                DISPATCH_HIDE_SPLASH |
+                DISPATCH_NEWROOT |
+                DISPATCH_ERROR |
+                DISPATCH_REACTIVATE |
+                DISPATCH_RELOAD;
+        server_context_t context;
+
+        PLY_TEST_ASSERT (initialize_server (&context, 0, true));
+        PLY_TEST_ASSERT (write_bytes (context.peer_fd,
+                                      request,
+                                      sizeof(request)));
+        watch_for_response (&context, sizeof(expected_response));
+
+        PLY_TEST_ASSERT (ply_event_loop_run (context.loop) == 0);
+        PLY_TEST_ASSERT (!context.timed_out);
+        PLY_TEST_ASSERT (context.dispatches == expected_dispatches);
+        PLY_TEST_ASSERT (strcmp (context.change_mode, "shutdown") == 0);
+        PLY_TEST_ASSERT (strcmp (context.displayed_message, "starting") == 0);
+        PLY_TEST_ASSERT (strcmp (context.hidden_message, "starting") == 0);
+        PLY_TEST_ASSERT (strcmp (context.ignored_keys, "yn") == 0);
+        PLY_TEST_ASSERT (strcmp (context.newroot, "/sysroot") == 0);
+        PLY_TEST_ASSERT (context.response_size == sizeof(expected_response));
+        PLY_TEST_ASSERT (memcmp (context.response,
+                                 expected_response,
+                                 sizeof(expected_response)) == 0);
+
+        free_server_context (&context);
+        return true;
+}
+
+static bool
 run_active_vt_request (bool has_active_vt,
                        uint8_t expected_response)
 {
@@ -528,6 +829,63 @@ test_question_trigger_sends_answer_payload (void)
         PLY_TEST_ASSERT (!context.timed_out);
         PLY_TEST_ASSERT (context.question_count == 1);
         PLY_TEST_ASSERT (strcmp (context.question, "Ready?") == 0);
+        PLY_TEST_ASSERT (context.response_size == sizeof(expected_response));
+        PLY_TEST_ASSERT (memcmp (context.response,
+                                 expected_response,
+                                 sizeof(expected_response)) == 0);
+
+        free_server_context (&context);
+        return true;
+}
+
+static bool
+test_triggered_requests_send_completed_replies (void)
+{
+        static const uint8_t request[] = {
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PASSWORD[0],
+                0x02, 0x0a, 'P', 'a', 's', 's', 'w', 'o', 'r', 'd', ':', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CACHED_PASSWORD[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE[0],
+                0x02, 0x03, 'y', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_DEACTIVATE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x01, 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x02, 0x01, 0x00,
+        };
+        static const uint8_t expected_response[] = {
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ANSWER[0],
+                0x06, 0x00, 0x00, 0x00, 's', 'e', 'c', 'r', 'e', 't',
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_MULTIPLE_ANSWERS[0],
+                0x07, 0x00, 0x00, 0x00, 's', 'e', 'c', 'r', 'e', 't', 0x00,
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ANSWER[0],
+                0x01, 0x00, 0x00, 0x00, 'y',
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+        };
+        static const uint32_t expected_dispatches =
+                DISPATCH_PASSWORD |
+                DISPATCH_WATCH_KEYSTROKE |
+                DISPATCH_DEACTIVATE |
+                DISPATCH_QUIT;
+        server_context_t context;
+
+        PLY_TEST_ASSERT (initialize_server (&context, 0, true));
+        PLY_TEST_ASSERT (write_bytes (context.peer_fd,
+                                      request,
+                                      sizeof(request)));
+        watch_for_response (&context, sizeof(expected_response));
+
+        PLY_TEST_ASSERT (ply_event_loop_run (context.loop) == 0);
+        PLY_TEST_ASSERT (!context.timed_out);
+        PLY_TEST_ASSERT (context.dispatches == expected_dispatches);
+        PLY_TEST_ASSERT (context.password_count == 1);
+        PLY_TEST_ASSERT (strcmp (context.password_prompt, "Password:") == 0);
+        PLY_TEST_ASSERT (context.keystroke_count == 1);
+        PLY_TEST_ASSERT (strcmp (context.watched_keys, "yn") == 0);
+        PLY_TEST_ASSERT (context.deactivate_count == 1);
+        PLY_TEST_ASSERT (context.quit_count == 2);
+        PLY_TEST_ASSERT (!context.retain_splash[0]);
+        PLY_TEST_ASSERT (context.retain_splash[1]);
         PLY_TEST_ASSERT (context.response_size == sizeof(expected_response));
         PLY_TEST_ASSERT (memcmp (context.response,
                                  expected_response,
@@ -609,8 +967,10 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_unknown_command_naks_without_breaking_pipeline),
         PLY_TEST_CASE (test_non_root_request_is_rejected),
         PLY_TEST_CASE (test_system_update_parses_valid_and_invalid_values),
+        PLY_TEST_CASE (test_immediate_notifications_dispatch_and_acknowledge),
         PLY_TEST_CASE (test_active_vt_response_follows_handler),
         PLY_TEST_CASE (test_question_trigger_sends_answer_payload),
+        PLY_TEST_CASE (test_triggered_requests_send_completed_replies),
         PLY_TEST_CASE (test_malformed_and_uncredentialed_frames_disconnect),
 };
 
