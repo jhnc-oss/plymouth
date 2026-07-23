@@ -198,6 +198,26 @@ test(
   timeout: test_timeout,
 )
 
+script_scan_fuzz_executable = executable(
+  'fuzz-script-scan',
+  'fuzz-script-scan.c',
+  c_args: test_c_args,
+  dependencies: script_engine_dep,
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/plugins/splash/script'),
+  ],
+)
+
+test(
+  'fuzz-script-scan',
+  script_scan_fuzz_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['fuzz', 'script'],
+  timeout: test_timeout,
+)
+
 script_execute_test_c_args = test_c_args + [
   '-DPLYMOUTH_SOURCE_ROOT="@0@"'.format(meson.project_source_root()),
 ]
