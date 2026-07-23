@@ -569,6 +569,9 @@ test_malformed_and_uncredentialed_frames_disconnect (void)
         static const uint8_t truncated_header[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0],
         };
+        static const uint8_t invalid_argument_marker[] = {
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0], 0x01,
+        };
         static const uint8_t zero_length_argument[] = {
                 PLY_BOOT_PROTOCOL_REQUEST_TYPE_UPDATE[0], 0x02, 0x00,
         };
@@ -583,6 +586,9 @@ test_malformed_and_uncredentialed_frames_disconnect (void)
 
         PLY_TEST_ASSERT (run_rejected_frame (truncated_header,
                                              sizeof(truncated_header),
+                                             true));
+        PLY_TEST_ASSERT (run_rejected_frame (invalid_argument_marker,
+                                             sizeof(invalid_argument_marker),
                                              true));
         PLY_TEST_ASSERT (run_rejected_frame (zero_length_argument,
                                              sizeof(zero_length_argument),
