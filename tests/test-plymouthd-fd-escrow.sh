@@ -27,7 +27,7 @@ trap cleanup EXIT
 escrow_pid=$!
 
 echo 'TAP version 13'
-echo '1..1'
+echo '1..2'
 
 process_name=
 for attempt in {1..100}; do
@@ -47,3 +47,13 @@ if [[ $process_name != @* ]]; then
 fi
 
 echo 'ok 1 - escrow marks process name for shutdown survival'
+
+kill -TERM "$escrow_pid"
+sleep 0.02
+
+if ! kill -0 "$escrow_pid" 2> /dev/null; then
+        echo 'not ok 2 - escrow survives normal termination signal'
+        exit 1
+fi
+
+echo 'ok 2 - escrow survives normal termination signal'
