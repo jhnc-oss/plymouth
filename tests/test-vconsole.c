@@ -29,7 +29,7 @@
 typedef bool (*fixture_check_t) (const char *path);
 
 static bool
-with_fixture (const char      *contents,
+with_fixture (const char     *contents,
               fixture_check_t check)
 {
         char path[] = "/tmp/plymouth-vconsole-test-XXXXXX";
@@ -64,7 +64,7 @@ fixture_loads_keyboard_settings (const char *path)
         PLY_TEST_ASSERT (strcmp (settings.xkb_model, "pc105") == 0);
         PLY_TEST_ASSERT (strcmp (settings.xkb_variant, "nodeadkeys") == 0);
         PLY_TEST_ASSERT (strcmp (settings.xkb_options,
-                                "grp:alt_shift_toggle") == 0);
+                                 "grp:alt_shift_toggle") == 0);
 
         ply_vconsole_settings_clear (&settings);
         return true;

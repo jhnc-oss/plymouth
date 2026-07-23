@@ -29,7 +29,7 @@ test_style_initializes_to_terminal_defaults (void)
 {
         ply_rich_text_character_style_t style;
 
-        memset (&style, 0xff, sizeof (style));
+        memset (&style, 0xff, sizeof(style));
         ply_rich_text_character_style_initialize (&style);
 
         PLY_TEST_ASSERT (style.foreground_color == PLY_TERMINAL_COLOR_DEFAULT);
@@ -70,24 +70,24 @@ test_character_storage_preserves_bytes_and_style (void)
                                      style,
                                      2,
                                      bounded_bytes,
-                                     sizeof (bounded_bytes));
+                                     sizeof(bounded_bytes));
 
         PLY_TEST_ASSERT (ply_rich_text_get_length (rich_text) == 3);
         characters = ply_rich_text_get_characters (rich_text);
         PLY_TEST_ASSERT (characters[1]->length == 3);
         PLY_TEST_ASSERT (memcmp (characters[1]->bytes, euro, 3) == 0);
-        PLY_TEST_ASSERT (characters[2]->length == sizeof (bounded_bytes));
+        PLY_TEST_ASSERT (characters[2]->length == sizeof(bounded_bytes));
         PLY_TEST_ASSERT (memcmp (characters[2]->bytes,
                                  bounded_bytes,
-                                 sizeof (bounded_bytes)) == 0);
-        PLY_TEST_ASSERT (characters[2]->bytes[sizeof (bounded_bytes)] == '\0');
+                                 sizeof(bounded_bytes)) == 0);
+        PLY_TEST_ASSERT (characters[2]->bytes[sizeof(bounded_bytes)] == '\0');
         PLY_TEST_ASSERT (characters[2]->style.foreground_color ==
                          PLY_TERMINAL_COLOR_RED);
         PLY_TEST_ASSERT (characters[2]->style.bold_enabled);
 
         string = ply_rich_text_get_string (rich_text, &full_span);
-        PLY_TEST_ASSERT (memcmp (string, expected, sizeof (expected)) == 0);
-        PLY_TEST_ASSERT (string[sizeof (expected)] == '\0');
+        PLY_TEST_ASSERT (memcmp (string, expected, sizeof(expected)) == 0);
+        PLY_TEST_ASSERT (string[sizeof(expected)] == '\0');
 
         free (string);
         ply_rich_text_free (rich_text);

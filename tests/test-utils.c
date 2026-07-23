@@ -61,7 +61,7 @@ static bool
 test_pipe_io_preserves_uint32_byte_order (void)
 {
         static const uint8_t encoded_value[] = { 0xef, 0xcd, 0xab, 0x89 };
-        uint8_t bytes[sizeof (encoded_value)];
+        uint8_t bytes[sizeof(encoded_value)];
         uint32_t decoded_value = 0;
         int sender_fd;
         int receiver_fd;
@@ -70,12 +70,12 @@ test_pipe_io_preserves_uint32_byte_order (void)
 
         PLY_TEST_ASSERT (ply_write_uint32 (sender_fd, UINT32_C (0x89abcdef)));
         PLY_TEST_ASSERT (ply_fd_has_data (receiver_fd));
-        PLY_TEST_ASSERT (ply_read (receiver_fd, bytes, sizeof (bytes)));
-        PLY_TEST_ASSERT (memcmp (bytes, encoded_value, sizeof (bytes)) == 0);
+        PLY_TEST_ASSERT (ply_read (receiver_fd, bytes, sizeof(bytes)));
+        PLY_TEST_ASSERT (memcmp (bytes, encoded_value, sizeof(bytes)) == 0);
 
         PLY_TEST_ASSERT (ply_write (sender_fd,
                                     encoded_value,
-                                    sizeof (encoded_value)));
+                                    sizeof(encoded_value)));
         PLY_TEST_ASSERT (ply_read_uint32 (receiver_fd, &decoded_value));
         PLY_TEST_ASSERT (decoded_value == UINT32_C (0x89abcdef));
 

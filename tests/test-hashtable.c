@@ -144,8 +144,9 @@ test_resize_preserves_live_entries (void)
                 ply_hashtable_insert (table, &keys[i], &values[i]);
         }
 
-        for (i = 0; i < 64; i += 2)
+        for (i = 0; i < 64; i += 2) {
                 PLY_TEST_ASSERT (ply_hashtable_remove (table, &keys[i]) == &values[i]);
+        }
 
         ply_hashtable_resize (table);
 
@@ -171,8 +172,9 @@ test_foreach_visits_each_live_entry (void)
         size_t i;
 
         table = ply_hashtable_new (NULL, NULL);
-        for (i = 0; i < sizeof (keys) / sizeof (keys[0]); i++)
+        for (i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
                 ply_hashtable_insert (table, &keys[i], &values[i]);
+        }
 
         ply_hashtable_foreach (table, count_entry, &result);
 

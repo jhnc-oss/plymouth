@@ -32,16 +32,16 @@
 
 typedef struct
 {
-        ply_event_loop_t *loop;
+        ply_event_loop_t       *loop;
         ply_terminal_session_t *session;
-        uint8_t output[128];
-        size_t output_size;
-        int output_calls;
-        int hangup_calls;
-        bool output_overflowed;
-        bool output_session_matched;
-        bool hangup_session_matched;
-        bool timed_out;
+        uint8_t                 output[128];
+        size_t                  output_size;
+        int                     output_calls;
+        int                     hangup_calls;
+        bool                    output_overflowed;
+        bool                    output_session_matched;
+        bool                    hangup_session_matched;
+        bool                    timed_out;
 } session_context_t;
 
 static int

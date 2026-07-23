@@ -30,7 +30,7 @@ typedef struct
         bool saw_theme;
         bool saw_enabled;
         bool saw_other;
-        int count;
+        int  count;
 } foreach_result_t;
 
 static bool

@@ -62,8 +62,9 @@ ply_active_console_list_clear (ply_active_console_list_t *consoles)
 {
         size_t i;
 
-        for (i = 0; i < consoles->count; i++)
+        for (i = 0; i < consoles->count; i++) {
                 free (consoles->names[i]);
+        }
 
         free (consoles->names);
         memset (consoles, 0, sizeof(*consoles));

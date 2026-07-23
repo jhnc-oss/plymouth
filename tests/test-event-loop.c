@@ -30,35 +30,35 @@
 typedef struct
 {
         ply_event_loop_t *loop;
-        ply_fd_watch_t *watch;
-        int calls;
-        int disconnected_calls;
-        int source_value;
-        int read_result;
-        char byte;
-        bool timed_out;
+        ply_fd_watch_t   *watch;
+        int               calls;
+        int               disconnected_calls;
+        int               source_value;
+        int               read_result;
+        char              byte;
+        bool              timed_out;
 } fd_context_t;
 
 typedef struct
 {
         ply_event_loop_t *loop;
-        int order[4];
-        int count;
-        bool canceled_timeout_ran;
-        bool timed_out;
+        int               order[4];
+        int               count;
+        bool              canceled_timeout_ran;
+        bool              timed_out;
 } timeout_context_t;
 
 typedef struct
 {
         timeout_context_t *context;
-        int value;
-        bool exits_loop;
+        int                value;
+        bool               exits_loop;
 } ordered_timeout_t;
 
 typedef struct
 {
-        int calls;
-        int exit_code;
+        int               calls;
+        int               exit_code;
         ply_event_loop_t *loop;
 } exit_context_t;
 
@@ -250,11 +250,11 @@ test_timeouts_run_in_order_and_can_be_canceled (void)
         timeout_context_t context = { 0 };
         ordered_timeout_t first = {
                 .context = &context,
-                .value = 1,
+                .value   = 1,
         };
         ordered_timeout_t second = {
-                .context = &context,
-                .value = 2,
+                .context    = &context,
+                .value      = 2,
                 .exits_loop = true,
         };
         ply_event_loop_t *loop;

@@ -104,7 +104,7 @@ with_fixture (const uint8_t          *data,
 }
 
 static void
-set_uint32_le (uint8_t  *bytes,
+set_uint32_le (uint8_t *bytes,
                uint32_t value)
 {
         bytes[0] = (uint8_t) value;
@@ -240,38 +240,38 @@ test_invalid_bmp_headers_are_rejected (void)
         memcpy (malformed_bmp, bottom_up_bmp, sizeof(malformed_bmp));
         malformed_bmp[28] = 32;
         PLY_TEST_ASSERT (with_fixture (malformed_bmp,
-                                      sizeof(malformed_bmp),
-                                      fixture_is_rejected));
+                                       sizeof(malformed_bmp),
+                                       fixture_is_rejected));
 
         memcpy (malformed_bmp, bottom_up_bmp, sizeof(malformed_bmp));
         set_uint32_le (&malformed_bmp[18], 0);
         PLY_TEST_ASSERT (with_fixture (malformed_bmp,
-                                      sizeof(malformed_bmp),
-                                      fixture_is_rejected));
+                                       sizeof(malformed_bmp),
+                                       fixture_is_rejected));
 
         memcpy (malformed_bmp, bottom_up_bmp, sizeof(malformed_bmp));
         set_uint32_le (&malformed_bmp[22], 0);
         PLY_TEST_ASSERT (with_fixture (malformed_bmp,
-                                      sizeof(malformed_bmp),
-                                      fixture_is_rejected));
+                                       sizeof(malformed_bmp),
+                                       fixture_is_rejected));
 
         memcpy (malformed_bmp, bottom_up_bmp, sizeof(malformed_bmp));
         set_uint32_le (&malformed_bmp[22], UINT32_C (0x80000000));
         PLY_TEST_ASSERT (with_fixture (malformed_bmp,
-                                      sizeof(malformed_bmp),
-                                      fixture_is_rejected));
+                                       sizeof(malformed_bmp),
+                                       fixture_is_rejected));
 
         memcpy (malformed_bmp, bottom_up_bmp, sizeof(malformed_bmp));
         set_uint32_le (&malformed_bmp[18], UINT32_C (65536));
         PLY_TEST_ASSERT (with_fixture (malformed_bmp,
-                                      sizeof(malformed_bmp),
-                                      fixture_is_rejected));
+                                       sizeof(malformed_bmp),
+                                       fixture_is_rejected));
 
         memcpy (malformed_bmp, bottom_up_bmp, sizeof(malformed_bmp));
         set_uint32_le (&malformed_bmp[22], UINT32_C (65536));
         PLY_TEST_ASSERT (with_fixture (malformed_bmp,
-                                      sizeof(malformed_bmp),
-                                      fixture_is_rejected));
+                                       sizeof(malformed_bmp),
+                                       fixture_is_rejected));
 
         return true;
 }

@@ -30,12 +30,12 @@
 typedef struct
 {
         script_state_t *state;
-        script_op_t *op;
+        script_op_t    *op;
 } executed_script_t;
 
 typedef struct
 {
-        int calls;
+        int    calls;
         double offset;
         double argument_count;
 } native_context_t;
@@ -80,11 +80,11 @@ test_arithmetic_assignment_comparison_and_strings (void)
 
         PLY_TEST_ASSERT (execute_script (source, &script));
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "value") == 16);
+                                                     "value") == 16);
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "quotient") == 4);
+                                                     "quotient") == 4);
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "remainder") == 1);
+                                                     "remainder") == 1);
         PLY_TEST_ASSERT (script_obj_hash_get_bool (script.state->global,
                                                    "matches"));
         text = script_obj_hash_get_string (script.state->global, "text");
@@ -113,11 +113,11 @@ test_loops_break_and_continue_update_state (void)
 
         PLY_TEST_ASSERT (execute_script (source, &script));
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "sum") == 8);
+                                                     "sum") == 8);
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "index") == 5);
+                                                     "index") == 5);
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "count") == 1);
+                                                     "count") == 1);
 
         free_executed_script (&script);
         return true;
@@ -139,11 +139,11 @@ test_functions_use_local_parameters_and_global_state (void)
 
         PLY_TEST_ASSERT (execute_script (source, &script));
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "first") == 7);
+                                                     "first") == 7);
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "second") == 15);
+                                                     "second") == 15);
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "total") == 15);
+                                                     "total") == 15);
 
         free_executed_script (&script);
         return true;
@@ -166,9 +166,9 @@ test_sets_and_dynamic_hash_keys_store_values (void)
 
         PLY_TEST_ASSERT (execute_script (source, &script));
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "selected") == 20);
+                                                     "selected") == 20);
         PLY_TEST_ASSERT (script_obj_hash_get_number (script.state->global,
-                                                      "updated") == 25);
+                                                     "updated") == 25);
 
         record = script_obj_hash_get_element (script.state->global, "record");
         name = script_obj_hash_get_string (record, "name");
@@ -230,7 +230,7 @@ test_native_function_receives_named_arguments (void)
         PLY_TEST_ASSERT (context.calls == 1);
         PLY_TEST_ASSERT (context.argument_count == 2);
         PLY_TEST_ASSERT (script_obj_hash_get_number (state->global,
-                                                      "result") == 9.5);
+                                                     "result") == 9.5);
 
         script_obj_unref (result.object);
         script_state_destroy (state);
