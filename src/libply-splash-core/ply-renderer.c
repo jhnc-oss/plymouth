@@ -197,6 +197,11 @@ ply_renderer_unload_plugin (ply_renderer_t *renderer)
         assert (renderer->plugin_interface != NULL);
         assert (renderer->module_handle != NULL);
 
+        if (renderer->backend != NULL) {
+                renderer->plugin_interface->destroy_backend (renderer->backend);
+                renderer->backend = NULL;
+        }
+
         ply_close_module (renderer->module_handle);
         renderer->plugin_interface = NULL;
         renderer->module_handle = NULL;
