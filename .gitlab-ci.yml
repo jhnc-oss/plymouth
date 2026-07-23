@@ -66,7 +66,7 @@ fedora-qemu-initramfs-x86_64:
   before_script:
     - dnf install -y gcc git libpng-devel gettext-devel systemd-devel systemd-udev meson ninja-build xkeyboard-config-devel libevdev-devel qemu-system-x86-core kernel-core dracut cpio ShellCheck
   script:
-    - meson setup _build-qemu -Ddocs=false -Dgtk=disabled -Dpango=disabled -Dfreetype=disabled -Ddrm=false
+    - meson setup _build-qemu --prefix=/usr --libdir=lib64 -Ddocs=false -Dgtk=disabled -Dpango=disabled -Dfreetype=disabled -Ddrm=false
     - meson compile -C _build-qemu
     - shellcheck tests/qemu-init.sh tests/test-qemu-boot.sh
     - tests/test-qemu-boot.sh _build-qemu
