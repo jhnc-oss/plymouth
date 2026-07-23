@@ -8,6 +8,19 @@ plymouthd_run_dir = plymouth_runtime_dir
 plymouthd_spool_dir = '/var/spool/plymouth'
 plymouthd_time_dir = plymouth_time_dir
 
+ply_peer_credentials = static_library(
+  'ply-peer-credentials-private',
+  'ply-peer-credentials.c',
+  dependencies: libply_dep,
+  include_directories: config_h_inc,
+)
+
+ply_peer_credentials_dep = declare_dependency(
+  dependencies: libply_dep,
+  include_directories: include_directories('.'),
+  link_with: ply_peer_credentials,
+)
+
 ply_boot_server_sources = files('ply-boot-server.c')
 
 ply_boot_server = static_library(
@@ -18,7 +31,7 @@ ply_boot_server = static_library(
 )
 
 ply_boot_server_dep = declare_dependency(
-  dependencies: libply_dep,
+  dependencies: [libply_dep, ply_peer_credentials_dep],
   include_directories: include_directories('.'),
   link_with: ply_boot_server,
 )

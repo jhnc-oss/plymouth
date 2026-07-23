@@ -36,6 +36,7 @@
 #include "ply-event-loop.h"
 #include "ply-list.h"
 #include "ply-logger.h"
+#include "ply-peer-credentials-private.h"
 #include "ply-trigger.h"
 #include "ply-utils.h"
 
@@ -289,7 +290,7 @@ ply_boot_connection_read_request (ply_boot_connection_t *connection,
                 return false;
         }
 
-        if (!ply_get_credentials_from_fd (connection->fd, &connection->pid, &connection->uid, NULL)) {
+        if (!ply_peer_credentials_read (connection->fd, &connection->pid, &connection->uid, NULL)) {
                 ply_trace ("couldn't read credentials from connection: %m");
                 free (*argument);
                 free (*command);
