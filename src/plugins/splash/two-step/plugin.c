@@ -40,6 +40,7 @@
 #include <wchar.h>
 
 #include "ply-boot-splash-plugin.h"
+#include "ply-bgrt-private.h"
 #include "ply-buffer.h"
 #include "ply-capslock-icon.h"
 #include "ply-entry.h"
@@ -75,11 +76,7 @@
 #define PROGRESS_BAR_WIDTH  400
 #define PROGRESS_BAR_HEIGHT 5
 
-#define BGRT_STATUS_ORIENTATION_OFFSET_0    (0 << 1)
-#define BGRT_STATUS_ORIENTATION_OFFSET_90   (1 << 1)
-#define BGRT_STATUS_ORIENTATION_OFFSET_180  (2 << 1)
-#define BGRT_STATUS_ORIENTATION_OFFSET_270  (3 << 1)
-#define BGRT_STATUS_ORIENTATION_OFFSET_MASK (3 << 1)
+#define BGRT_SYSFS_DIRECTORY "/sys/firmware/acpi/bgrt"
 
 typedef enum
 {
@@ -361,71 +358,6 @@ view_load_end_animation (view_t *view)
         plugin->mode_settings[plugin->mode].use_end_animation = false;
 }
 
-static bool
-get_bgrt_sysfs_info (int                         *x_offset,
-                     int                         *y_offset,
-                     ply_pixel_buffer_rotation_t *rotation)
-{
-        bool ret = false;
-        char buf[64];
-        int status;
-        FILE *f;
-
-        f = fopen ("/sys/firmware/acpi/bgrt/status", "r");
-        if (!f)
-                return false;
-
-        if (!fgets (buf, sizeof(buf), f))
-                goto out;
-
-        if (sscanf (buf, "%d", &status) != 1)
-                goto out;
-
-        fclose (f);
-
-        switch (status & BGRT_STATUS_ORIENTATION_OFFSET_MASK) {
-        case BGRT_STATUS_ORIENTATION_OFFSET_0:
-                *rotation = PLY_PIXEL_BUFFER_ROTATE_UPRIGHT;
-                break;
-        case BGRT_STATUS_ORIENTATION_OFFSET_90:
-                *rotation = PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE;
-                break;
-        case BGRT_STATUS_ORIENTATION_OFFSET_180:
-                *rotation = PLY_PIXEL_BUFFER_ROTATE_UPSIDE_DOWN;
-                break;
-        case BGRT_STATUS_ORIENTATION_OFFSET_270:
-                *rotation = PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE;
-                break;
-        }
-
-        f = fopen ("/sys/firmware/acpi/bgrt/xoffset", "r");
-        if (!f)
-                return false;
-
-        if (!fgets (buf, sizeof(buf), f))
-                goto out;
-
-        if (sscanf (buf, "%d", x_offset) != 1)
-                goto out;
-
-        fclose (f);
-
-        f = fopen ("/sys/firmware/acpi/bgrt/yoffset", "r");
-        if (!f)
-                return false;
-
-        if (!fgets (buf, sizeof(buf), f))
-                goto out;
-
-        if (sscanf (buf, "%d", y_offset) != 1)
-                goto out;
-
-        ret = true;
-out:
-        fclose (f);
-        return ret;
-}
-
 /* The Microsoft boot logo spec says that the logo must use a black background
  * and have its center at 38.2% from the screen's top (golden ratio).
  * We reproduce this exactly here so that we get a background which is an exact
@@ -440,6 +372,7 @@ out:
 static void
 view_set_bgrt_background (view_t *view)
 {
+        ply_bgrt_info_t bgrt_info;
         ply_pixel_buffer_rotation_t panel_rotation = PLY_PIXEL_BUFFER_ROTATE_UPRIGHT;
         ply_pixel_buffer_rotation_t bgrt_rotation = PLY_PIXEL_BUFFER_ROTATE_UPRIGHT;
         int x_offset, y_offset, sysfs_x_offset, sysfs_y_offset, width, height;
@@ -451,11 +384,14 @@ view_set_bgrt_background (view_t *view)
         if (!view->plugin->background_bgrt_image)
                 return;
 
-        if (!get_bgrt_sysfs_info (&sysfs_x_offset, &sysfs_y_offset,
-                                  &bgrt_rotation)) {
+        if (!ply_bgrt_info_load (BGRT_SYSFS_DIRECTORY, &bgrt_info)) {
                 ply_trace ("get bgrt sysfs info failed");
                 return;
         }
+
+        sysfs_x_offset = bgrt_info.x_offset;
+        sysfs_y_offset = bgrt_info.y_offset;
+        bgrt_rotation = bgrt_info.rotation;
 
         screen_width = ply_pixel_display_get_width (view->display);
         screen_height = ply_pixel_display_get_height (view->display);
@@ -1347,7 +1283,7 @@ create_plugin (ply_key_file_t *key_file)
         load_mode_settings (plugin, key_file, "system-reset", PLY_BOOT_SPLASH_MODE_SYSTEM_RESET);
 
         if (plugin->use_firmware_background) {
-                plugin->background_bgrt_image = ply_image_new ("/sys/firmware/acpi/bgrt/image");
+                plugin->background_bgrt_image = ply_image_new (BGRT_SYSFS_DIRECTORY "/image");
 
                 asprintf (&image_path, "%s/bgrt-fallback.png", image_dir);
                 plugin->background_bgrt_fallback_image = ply_image_new (image_path);
@@ -2400,4 +2336,3 @@ ply_boot_splash_plugin_get_interface (void)
 
         return &plugin_interface;
 }
-

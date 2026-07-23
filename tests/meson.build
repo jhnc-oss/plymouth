@@ -265,6 +265,23 @@ test(
   timeout: test_timeout,
 )
 
+bgrt_test_executable = executable(
+  'test-bgrt',
+  'test-bgrt.c',
+  c_args: test_c_args,
+  dependencies: ply_bgrt_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'splash-plugin-boot-logo-metadata',
+  bgrt_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-plugin'],
+  timeout: test_timeout,
+)
+
 bash = find_program('bash')
 
 test(
