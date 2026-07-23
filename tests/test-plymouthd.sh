@@ -17,7 +17,7 @@ help_output=$test_directory/help.out
 help_error=$test_directory/help.err
 
 echo 'TAP version 13'
-echo '1..1'
+echo '1..2'
 
 if ! "$daemon" --help > "$help_output" 2> "$help_error"; then
         echo 'not ok 1 - daemon help exits successfully'
@@ -54,3 +54,19 @@ if [[ -s $help_error ]] ||
 fi
 
 echo 'ok 1 - daemon help describes its complete option surface'
+
+invalid_output=$test_directory/invalid.out
+invalid_error=$test_directory/invalid.err
+set +e
+"$daemon" --definitely-invalid > "$invalid_output" 2> "$invalid_error"
+invalid_status=$?
+set -e
+
+if [[ $invalid_status -ne 64 ]] || [[ -s $invalid_output ]] ||
+        ! grep --quiet --fixed-strings 'USAGE: plymouthd [OPTION...]' \
+                "$invalid_error"; then
+        echo 'not ok 2 - invalid daemon option reports command usage'
+        exit 1
+fi
+
+echo 'ok 2 - invalid daemon option reports command usage'
