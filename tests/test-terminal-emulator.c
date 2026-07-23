@@ -277,6 +277,28 @@ test_split_utf8_input_is_reassembled (void)
 }
 
 static bool
+test_invalid_utf8_in_escape_sequence_is_ignored (void)
+{
+        static const char input[] = { '\033', '\x80', '\x80' };
+        ply_terminal_emulator_t *terminal_emulator;
+        char *line;
+
+        terminal_emulator = ply_terminal_emulator_new (3, 1);
+        ply_terminal_emulator_parse_lines (terminal_emulator,
+                                           input,
+                                           sizeof (input));
+
+        PLY_TEST_ASSERT (ply_terminal_emulator_get_line_count (
+                                 terminal_emulator) == 1);
+        line = get_line_string (terminal_emulator, 0);
+        PLY_TEST_ASSERT (strcmp (line, "") == 0);
+
+        free (line);
+        ply_terminal_emulator_free (terminal_emulator);
+        return true;
+}
+
+static bool
 test_recent_lines_survive_ring_rotation (void)
 {
         static const char input[] = "one\ntwo\nthree";
@@ -378,6 +400,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_malformed_control_sequence_is_ignored),
         PLY_TEST_CASE (test_cursor_and_erase_sequences_update_line),
         PLY_TEST_CASE (test_split_utf8_input_is_reassembled),
+        PLY_TEST_CASE (test_invalid_utf8_in_escape_sequence_is_ignored),
         PLY_TEST_CASE (test_recent_lines_survive_ring_rotation),
         PLY_TEST_CASE (test_upward_cursor_movement_stops_at_first_line),
         PLY_TEST_CASE (test_boot_buffer_notifies_output_watcher),
