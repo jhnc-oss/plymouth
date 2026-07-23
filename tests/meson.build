@@ -41,3 +41,26 @@ foreach test_name, test_source : libply_test_sources
     timeout: test_timeout,
   )
 endforeach
+
+splash_core_test_sources = {
+  'rich-text': 'test-rich-text.c',
+}
+
+foreach test_name, test_source : splash_core_test_sources
+  test_executable = executable(
+    'test-' + test_name,
+    test_source,
+    c_args: test_c_args,
+    dependencies: libply_splash_core_dep,
+    include_directories: include_directories('.'),
+  )
+
+  test(
+    'splash-core-' + test_name,
+    test_executable,
+    env: test_environment,
+    protocol: 'tap',
+    suite: ['unit', 'splash-core'],
+    timeout: test_timeout,
+  )
+endforeach
