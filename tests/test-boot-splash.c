@@ -24,6 +24,13 @@
 #include "ply-text-display.h"
 #include "ply-utils.h"
 
+typedef struct
+{
+        ply_event_loop_t *loop;
+        int               idle_count;
+        bool              timed_out;
+} idle_context_t;
+
 static const test_splash_plugin_state_t *
 get_plugin_state (ply_module_handle_t *module)
 {
@@ -228,10 +235,69 @@ test_runtime_operations_reach_splash_plugin (void)
         return true;
 }
 
+static void
+on_idle (void *user_data)
+{
+        idle_context_t *context = user_data;
+
+        context->idle_count++;
+        ply_event_loop_exit (context->loop, 23);
+}
+
+static void
+on_idle_timeout (void             *user_data,
+                 ply_event_loop_t *loop)
+{
+        idle_context_t *context = user_data;
+
+        context->timed_out = true;
+        ply_event_loop_exit (loop, 99);
+}
+
+static bool
+test_plugin_idle_completion_reaches_caller (void)
+{
+        const test_splash_plugin_state_t *state;
+        idle_context_t context = { 0 };
+        ply_module_handle_t *module;
+        ply_boot_splash_t *splash;
+        ply_buffer_t *boot_buffer;
+
+        module = ply_open_module (TEST_SPLASH_PLUGIN_PATH);
+        PLY_TEST_ASSERT (module != NULL);
+        context.loop = ply_event_loop_new ();
+        PLY_TEST_ASSERT (context.loop != NULL);
+        boot_buffer = ply_buffer_new ();
+        splash = load_splash (boot_buffer);
+        PLY_TEST_ASSERT (splash != NULL);
+        ply_boot_splash_attach_to_event_loop (splash, context.loop);
+
+        ply_event_loop_watch_for_timeout (context.loop,
+                                          1.0,
+                                          on_idle_timeout,
+                                          &context);
+        ply_boot_splash_become_idle (splash, on_idle, &context);
+
+        PLY_TEST_ASSERT (ply_event_loop_run (context.loop) == 23);
+        PLY_TEST_ASSERT (!context.timed_out);
+        PLY_TEST_ASSERT (context.idle_count == 1);
+        state = get_plugin_state (module);
+        PLY_TEST_ASSERT (state != NULL);
+        PLY_TEST_ASSERT (state->idle_count == 1);
+
+        ply_boot_splash_free (splash);
+        PLY_TEST_ASSERT (state->destroy_count == 1);
+        ply_event_loop_free (context.loop);
+        ply_buffer_free (boot_buffer);
+        ply_close_module (module);
+        return true;
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_theme_loads_and_attached_devices_are_removed),
         PLY_TEST_CASE (test_runtime_operations_reach_splash_plugin),
+        PLY_TEST_CASE (test_plugin_idle_completion_reaches_caller),
 };
 
 PLY_TEST_MAIN (test_cases)
