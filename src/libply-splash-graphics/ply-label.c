@@ -385,14 +385,7 @@ ply_label_set_hex_color (ply_label_t *label,
         blue = ((double) (hex_color & 0x0000ff00) / 0x0000ff00);
         alpha = ((double) (hex_color & 0x000000ff) / 0x000000ff);
 
-        if (label->plugin_interface == NULL)
-                return;
-
-        label->plugin_interface->set_color_for_control (label->control,
-                                                        red,
-                                                        green,
-                                                        blue,
-                                                        alpha);
+        ply_label_set_color (label, red, green, blue, alpha);
 }
 
 void
