@@ -66,3 +66,23 @@ foreach test_name, test_source : splash_core_test_sources
     timeout: test_timeout,
   )
 endforeach
+
+image_test_executable = executable(
+  'test-image',
+  'test-image.c',
+  c_args: test_c_args,
+  dependencies: [
+    libply_splash_core_dep,
+    libply_splash_graphics_dep,
+  ],
+  include_directories: include_directories('.'),
+)
+
+test(
+  'splash-graphics-image',
+  image_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-graphics'],
+  timeout: test_timeout,
+)
