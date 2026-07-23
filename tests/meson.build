@@ -442,6 +442,20 @@ test(
 )
 
 test(
+  'executable-plymouthd-fd-escrow',
+  bash,
+  args: [
+    files('test-plymouthd-fd-escrow.sh'),
+    plymouthd_fd_escrow,
+  ],
+  depends: plymouthd_fd_escrow,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['functional', 'executables'],
+  timeout: test_timeout,
+)
+
+test(
   'script-set-default-theme',
   bash,
   args: [
