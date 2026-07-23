@@ -124,6 +124,8 @@ typedef struct
         const char             *default_tty;
 
         int                     number_of_errors;
+
+        char                  **argv;
 } state_t;
 
 static void show_splash (state_t *state);
@@ -859,6 +861,14 @@ on_system_initialized (state_t *state)
 {
         ply_trace ("system now initialized, opening log");
         state->system_initialized = true;
+
+        /* Switch-root is complete, clear the '@' prefix from argv[0] so that
+         * systemd-shutdown can kill us during shutdown, allowing /var to be
+         * unmounted cleanly.
+         */
+        if (state->argv != NULL &&
+            state->argv[0][0] == '@')
+                state->argv[0][0] = '/';
 
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
         if (state->is_attached)
@@ -2521,6 +2531,8 @@ main (int    argc,
                         ply_detach_daemon (daemon_handle, EX_OSERR);
                 return EX_OSERR;
         }
+
+        state.argv = argv;
 
         /* Make the first byte in argv be '@' so that we can survive systemd's killing
          * spree when going from initrd to /
