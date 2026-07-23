@@ -304,6 +304,26 @@ test(
   timeout: test_timeout,
 )
 
+image_fuzz_executable = executable(
+  'fuzz-image',
+  'fuzz-image.c',
+  c_args: test_c_args,
+  dependencies: [
+    libply_splash_core_dep,
+    libply_splash_graphics_dep,
+  ],
+  include_directories: include_directories('.'),
+)
+
+test(
+  'fuzz-image',
+  image_fuzz_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['fuzz', 'splash-graphics'],
+  timeout: test_timeout,
+)
+
 vconsole_test_executable = executable(
   'test-vconsole',
   'test-vconsole.c',
