@@ -394,10 +394,10 @@ ply_read_uint32 (int       fd,
         if (!ply_read (fd, buffer, 4 * sizeof(uint8_t)))
                 return false;
 
-        *value = (buffer[0] << 0) |
-                 (buffer[1] << 8) |
-                 (buffer[2] << 16) |
-                 (buffer[3] << 24);
+        *value = ((uint32_t) buffer[0] << 0) |
+                 ((uint32_t) buffer[1] << 8) |
+                 ((uint32_t) buffer[2] << 16) |
+                 ((uint32_t) buffer[3] << 24);
         return true;
 }
 
@@ -1267,19 +1267,20 @@ const char *
 ply_kernel_command_line_get_string_after_prefix (const char *prefix)
 {
         const char *command_line = ply_get_kernel_command_line ();
-        char *argument;
+        const char *remaining_command_line;
+        const char *argument;
 
         if (!command_line)
                 return NULL;
 
-        argument = strstr (command_line, prefix);
+        remaining_command_line = command_line;
+        while ((argument = strstr (remaining_command_line, prefix)) != NULL) {
+                if (argument == command_line ||
+                    isspace ((unsigned char) argument[-1]))
+                        return argument + strlen (prefix);
 
-        if (argument == NULL)
-                return NULL;
-
-        if (argument == command_line ||
-            argument[-1] == ' ')
-                return argument + strlen (prefix);
+                remaining_command_line = argument + 1;
+        }
 
         return NULL;
 }
