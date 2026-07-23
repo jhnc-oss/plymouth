@@ -8,7 +8,6 @@ libply_sources = files(
   'ply-key-file.c',
   'ply-list.c',
   'ply-logger.c',
-  'ply-progress.c',
   'ply-rectangle.c',
   'ply-region.c',
   'ply-terminal-session.c',
@@ -21,10 +20,31 @@ libply_deps = [
   lm_dep,
 ]
 
+ply_clock = static_library(
+  'ply-clock-private',
+  'ply-clock.c',
+  include_directories: config_h_inc,
+  pic: true,
+)
+
+ply_clock_dep = declare_dependency(
+  include_directories: include_directories('.'),
+  link_with: ply_clock,
+)
+
+ply_progress = static_library(
+  'ply-progress-private',
+  'ply-progress.c',
+  dependencies: lm_dep,
+  include_directories: config_h_inc,
+  pic: true,
+)
+
 libply = library('ply',
   libply_sources,
   dependencies: libply_deps,
   include_directories: config_h_inc,
+  link_whole: [ply_clock, ply_progress],
   version: plymouth_soversion,
   install: true,
 )
@@ -33,6 +53,12 @@ libply_dep = declare_dependency(
   link_with: libply,
   dependencies: libply_deps,
   include_directories: include_directories('.'),
+)
+
+ply_progress_dep = declare_dependency(
+  dependencies: [libply_dep, ply_clock_dep],
+  include_directories: include_directories('.'),
+  link_with: ply_progress,
 )
 
 libply_headers = files(
