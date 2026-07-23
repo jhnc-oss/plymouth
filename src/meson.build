@@ -8,6 +8,19 @@ plymouthd_run_dir = plymouth_runtime_dir
 plymouthd_spool_dir = '/var/spool/plymouth'
 plymouthd_time_dir = plymouth_time_dir
 
+plymouthd_policy = static_library(
+  'plymouthd-policy-private',
+  'plymouthd-policy.c',
+  dependencies: libply_splash_core_dep,
+  include_directories: config_h_inc,
+)
+
+plymouthd_policy_dep = declare_dependency(
+  dependencies: libply_splash_core_dep,
+  include_directories: include_directories('.'),
+  link_with: plymouthd_policy,
+)
+
 ply_peer_credentials = static_library(
   'ply-peer-credentials-private',
   'ply-peer-credentials.c',
@@ -47,6 +60,7 @@ plymouthd_deps = [
   libply_dep,
   libply_splash_core_dep,
   ply_boot_server_dep,
+  plymouthd_policy_dep,
 ]
 
 plymouthd_cflags = [

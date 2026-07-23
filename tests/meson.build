@@ -125,6 +125,23 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_policy_test_executable = executable(
+  'test-plymouthd-policy',
+  'test-plymouthd-policy.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_policy_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-policy',
+  plymouthd_policy_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 script_source_dir = meson.project_source_root() / 'src/plugins/splash/script'
 
 script_scan_test_executable = executable(

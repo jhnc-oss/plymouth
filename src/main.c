@@ -55,6 +55,7 @@
 #include "ply-utils.h"
 #include "ply-progress.h"
 #include "ply-kmsg-reader.h"
+#include "plymouthd-policy-private.h"
 
 #define BOOT_DURATION_FILE     PLYMOUTH_TIME_DIRECTORY "/boot-duration"
 #define SHUTDOWN_DURATION_FILE PLYMOUTH_TIME_DIRECTORY "/shutdown-duration"
@@ -204,23 +205,14 @@ static void
 on_change_mode (state_t    *state,
                 const char *mode)
 {
+        ply_boot_splash_mode_t new_mode;
+
         ply_trace ("updating mode to '%s'", mode);
-        if (strcmp (mode, "boot-up") == 0)
-                state->mode = PLY_BOOT_SPLASH_MODE_BOOT_UP;
-        else if (strcmp (mode, "shutdown") == 0)
-                state->mode = PLY_BOOT_SPLASH_MODE_SHUTDOWN;
-        else if (strcmp (mode, "reboot") == 0)
-                state->mode = PLY_BOOT_SPLASH_MODE_REBOOT;
-        else if (strcmp (mode, "updates") == 0)
-                state->mode = PLY_BOOT_SPLASH_MODE_UPDATES;
-        else if (strcmp (mode, "system-upgrade") == 0)
-                state->mode = PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE;
-        else if (strcmp (mode, "firmware-upgrade") == 0)
-                state->mode = PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE;
-        else if (strcmp (mode, "system-reset") == 0)
-                state->mode = PLY_BOOT_SPLASH_MODE_SYSTEM_RESET;
-        else
+        new_mode = plymouthd_mode_from_string (mode);
+        if (new_mode == PLY_BOOT_SPLASH_MODE_INVALID)
                 return;
+
+        state->mode = new_mode;
 
         if (state->session != NULL) {
                 prepare_logging (state);
@@ -344,9 +336,6 @@ load_settings (state_t    *state,
         if (state->extra_esc_key == XKB_KEY_NoSymbol)
                 state->extra_esc_key = ply_key_file_get_ulong (key_file, "Daemon", "XkbExtraEscButton", XKB_KEY_NoSymbol);
 
-        if (state->use_simpledrm == -1)
-                state->use_simpledrm = ply_key_file_get_ulong (key_file, "Daemon", "UseSimpledrm", -1);
-
         /*
          * Check the special UseSimpledrmNoLuks config file keyword this enables
          * simpledrm use except when using LUKS. Showing the LUKS unlock screen
@@ -362,14 +351,32 @@ load_settings (state_t    *state,
          *    https://bugzilla.redhat.com/show_bug.cgi?id=2359283
          */
         if (state->use_simpledrm == -1) {
-                state->use_simpledrm = ply_key_file_get_ulong (key_file, "Daemon", "UseSimpledrmNoLuks", -1);
-                if (state->use_simpledrm != -1 &&
-                    ply_kernel_command_line_get_string_after_prefix ("rd.luks.uuid=")) {
-                        ply_trace ("Ignoring UseSimpledrmNoLuks because of LUKS use");
-                        state->use_simpledrm = -1;
-                }
-        }
+                int direct_setting;
+                int setting_without_encryption;
+                bool uses_disk_encryption;
 
+                direct_setting = ply_key_file_get_ulong (key_file,
+                                                         "Daemon",
+                                                         "UseSimpledrm",
+                                                         -1);
+                setting_without_encryption = ply_key_file_get_ulong (key_file,
+                                                                     "Daemon",
+                                                                     "UseSimpledrmNoLuks",
+                                                                     -1);
+                uses_disk_encryption =
+                        ply_kernel_command_line_get_string_after_prefix ("rd.luks.uuid=") != NULL;
+
+                state->use_simpledrm =
+                        plymouthd_select_simpledrm_config (state->use_simpledrm,
+                                                           direct_setting,
+                                                           setting_without_encryption,
+                                                           uses_disk_encryption);
+
+                if (direct_setting == -1 &&
+                    setting_without_encryption != -1 &&
+                    uses_disk_encryption)
+                        ply_trace ("Ignoring UseSimpledrmNoLuks because of LUKS use");
+        }
         settings_loaded = true;
 out:
         free (splash_string);
@@ -432,14 +439,16 @@ find_override_splash (state_t *state)
         if (state->device_scale == -1)
                 state->device_scale = ply_kernel_command_line_get_ulong ("plymouth.force-scale=", -1);
 
-        if (state->use_simpledrm == -1)
-                state->use_simpledrm = ply_kernel_command_line_get_ulong ("plymouth.use-simpledrm=", -1);
-
         if (state->use_simpledrm == -1) {
-                if (ply_kernel_command_line_has_argument ("plymouth.use-simpledrm"))
-                        state->use_simpledrm = 1;
-                else if (ply_kernel_command_line_has_argument ("nomodeset"))
-                        state->use_simpledrm = 2;
+                int numeric_setting;
+
+                numeric_setting = ply_kernel_command_line_get_ulong ("plymouth.use-simpledrm=", -1);
+                state->use_simpledrm =
+                        plymouthd_select_simpledrm_command_line (
+                                state->use_simpledrm,
+                                numeric_setting,
+                                ply_kernel_command_line_has_argument ("plymouth.use-simpledrm"),
+                                ply_kernel_command_line_has_argument ("nomodeset"));
         }
 }
 
@@ -2451,19 +2460,8 @@ main (int    argc,
                 ply_toggle_tracing ();
 
         if (mode_string != NULL) {
-                if (strcmp (mode_string, "shutdown") == 0)
-                        state.mode = PLY_BOOT_SPLASH_MODE_SHUTDOWN;
-                else if (strcmp (mode_string, "reboot") == 0)
-                        state.mode = PLY_BOOT_SPLASH_MODE_REBOOT;
-                else if (strcmp (mode_string, "updates") == 0)
-                        state.mode = PLY_BOOT_SPLASH_MODE_UPDATES;
-                else if (strcmp (mode_string, "system-upgrade") == 0)
-                        state.mode = PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE;
-                else if (strcmp (mode_string, "firmware-upgrade") == 0)
-                        state.mode = PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE;
-                else if (strcmp (mode_string, "system-reset") == 0)
-                        state.mode = PLY_BOOT_SPLASH_MODE_SYSTEM_RESET;
-                else
+                state.mode = plymouthd_mode_from_string (mode_string);
+                if (state.mode == PLY_BOOT_SPLASH_MODE_INVALID)
                         state.mode = PLY_BOOT_SPLASH_MODE_BOOT_UP;
 
                 free (mode_string);
@@ -2607,11 +2605,8 @@ main (int    argc,
         if (state.device_scale != -1)
                 ply_set_device_scale (state.device_scale);
 
-        if (state.use_simpledrm >= 1)
-                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_USE_SIMPLEDRM;
-
-        if (state.use_simpledrm >= 2)
-                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_OPEN;
+        device_manager_flags = plymouthd_add_simpledrm_flags (device_manager_flags,
+                                                              state.use_simpledrm);
 
         load_devices (&state, device_manager_flags);
 
