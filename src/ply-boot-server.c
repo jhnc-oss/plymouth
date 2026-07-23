@@ -284,6 +284,9 @@ ply_boot_connection_read_request (ply_boot_connection_t *connection,
                         free (*command);
                         return false;
                 }
+        } else if (header[1] != '\0') {
+                free (*command);
+                return false;
         }
 
         if (!ply_get_credentials_from_fd (connection->fd, &connection->pid, &connection->uid, NULL)) {
