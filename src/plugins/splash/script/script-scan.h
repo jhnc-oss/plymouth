@@ -69,6 +69,7 @@ typedef struct
         int                   line_index;
         int                   column_index;
         bool                  source_is_file;
+        bool                  has_error;
 } script_scan_t;
 
 
