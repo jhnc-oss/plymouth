@@ -615,6 +615,77 @@ test_system_update_parses_valid_and_invalid_values (void)
 }
 
 static bool
+test_immediate_notifications_dispatch_and_acknowledge (void)
+{
+        static const uint8_t request[] = {
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CHANGE_MODE[0],
+                0x02, 0x09, 's', 'h', 'u', 't', 'd', 'o', 'w', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_SHOW_MESSAGE[0],
+                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_MESSAGE[0],
+                0x02, 0x09, 's', 't', 'a', 'r', 't', 'i', 'n', 'g', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE_REMOVE[0],
+                0x02, 0x03, 'y', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_PAUSE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PROGRESS_UNPAUSE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_HIDE_SPLASH[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_NEWROOT[0],
+                0x02, 0x09, '/', 's', 'y', 's', 'r', 'o', 'o', 't', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_ERROR[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_REACTIVATE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_RELOAD[0], 0x00,
+        };
+        static const uint8_t expected_response[] = {
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+        };
+        static const uint32_t expected_dispatches =
+                DISPATCH_CHANGE_MODE |
+                DISPATCH_DISPLAY_MESSAGE |
+                DISPATCH_HIDE_MESSAGE |
+                DISPATCH_IGNORE_KEYSTROKE |
+                DISPATCH_PROGRESS_PAUSE |
+                DISPATCH_PROGRESS_UNPAUSE |
+                DISPATCH_HIDE_SPLASH |
+                DISPATCH_NEWROOT |
+                DISPATCH_ERROR |
+                DISPATCH_REACTIVATE |
+                DISPATCH_RELOAD;
+        server_context_t context;
+
+        PLY_TEST_ASSERT (initialize_server (&context, 0, true));
+        PLY_TEST_ASSERT (write_bytes (context.peer_fd,
+                                      request,
+                                      sizeof(request)));
+        watch_for_response (&context, sizeof(expected_response));
+
+        PLY_TEST_ASSERT (ply_event_loop_run (context.loop) == 0);
+        PLY_TEST_ASSERT (!context.timed_out);
+        PLY_TEST_ASSERT (context.dispatches == expected_dispatches);
+        PLY_TEST_ASSERT (strcmp (context.change_mode, "shutdown") == 0);
+        PLY_TEST_ASSERT (strcmp (context.displayed_message, "starting") == 0);
+        PLY_TEST_ASSERT (strcmp (context.hidden_message, "starting") == 0);
+        PLY_TEST_ASSERT (strcmp (context.ignored_keys, "yn") == 0);
+        PLY_TEST_ASSERT (strcmp (context.newroot, "/sysroot") == 0);
+        PLY_TEST_ASSERT (context.response_size == sizeof(expected_response));
+        PLY_TEST_ASSERT (memcmp (context.response,
+                                 expected_response,
+                                 sizeof(expected_response)) == 0);
+
+        free_server_context (&context);
+        return true;
+}
+
+static bool
 run_active_vt_request (bool has_active_vt,
                        uint8_t expected_response)
 {
@@ -759,6 +830,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_unknown_command_naks_without_breaking_pipeline),
         PLY_TEST_CASE (test_non_root_request_is_rejected),
         PLY_TEST_CASE (test_system_update_parses_valid_and_invalid_values),
+        PLY_TEST_CASE (test_immediate_notifications_dispatch_and_acknowledge),
         PLY_TEST_CASE (test_active_vt_response_follows_handler),
         PLY_TEST_CASE (test_question_trigger_sends_answer_payload),
         PLY_TEST_CASE (test_malformed_and_uncredentialed_frames_disconnect),
