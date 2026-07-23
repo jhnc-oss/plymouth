@@ -267,6 +267,23 @@ foreach test_name, test_source : splash_core_test_sources
   )
 endforeach
 
+terminal_emulator_fuzz_executable = executable(
+  'fuzz-terminal-emulator',
+  'fuzz-terminal-emulator.c',
+  c_args: test_c_args,
+  dependencies: libply_splash_core_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'fuzz-terminal-emulator',
+  terminal_emulator_fuzz_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['fuzz', 'splash-core'],
+  timeout: test_timeout,
+)
+
 image_test_executable = executable(
   'test-image',
   'test-image.c',
