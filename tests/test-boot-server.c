@@ -839,6 +839,63 @@ test_question_trigger_sends_answer_payload (void)
 }
 
 static bool
+test_triggered_requests_send_completed_replies (void)
+{
+        static const uint8_t request[] = {
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_PASSWORD[0],
+                0x02, 0x0a, 'P', 'a', 's', 's', 'w', 'o', 'r', 'd', ':', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_CACHED_PASSWORD[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_KEYSTROKE[0],
+                0x02, 0x03, 'y', 'n', 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_DEACTIVATE[0], 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x01, 0x00,
+                PLY_BOOT_PROTOCOL_REQUEST_TYPE_QUIT[0], 0x02, 0x02, 0x01, 0x00,
+        };
+        static const uint8_t expected_response[] = {
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ANSWER[0],
+                0x06, 0x00, 0x00, 0x00, 's', 'e', 'c', 'r', 'e', 't',
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_MULTIPLE_ANSWERS[0],
+                0x07, 0x00, 0x00, 0x00, 's', 'e', 'c', 'r', 'e', 't', 0x00,
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ANSWER[0],
+                0x01, 0x00, 0x00, 0x00, 'y',
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+                PLY_BOOT_PROTOCOL_RESPONSE_TYPE_ACK[0],
+        };
+        static const uint32_t expected_dispatches =
+                DISPATCH_PASSWORD |
+                DISPATCH_WATCH_KEYSTROKE |
+                DISPATCH_DEACTIVATE |
+                DISPATCH_QUIT;
+        server_context_t context;
+
+        PLY_TEST_ASSERT (initialize_server (&context, 0, true));
+        PLY_TEST_ASSERT (write_bytes (context.peer_fd,
+                                      request,
+                                      sizeof(request)));
+        watch_for_response (&context, sizeof(expected_response));
+
+        PLY_TEST_ASSERT (ply_event_loop_run (context.loop) == 0);
+        PLY_TEST_ASSERT (!context.timed_out);
+        PLY_TEST_ASSERT (context.dispatches == expected_dispatches);
+        PLY_TEST_ASSERT (context.password_count == 1);
+        PLY_TEST_ASSERT (strcmp (context.password_prompt, "Password:") == 0);
+        PLY_TEST_ASSERT (context.keystroke_count == 1);
+        PLY_TEST_ASSERT (strcmp (context.watched_keys, "yn") == 0);
+        PLY_TEST_ASSERT (context.deactivate_count == 1);
+        PLY_TEST_ASSERT (context.quit_count == 2);
+        PLY_TEST_ASSERT (!context.retain_splash[0]);
+        PLY_TEST_ASSERT (context.retain_splash[1]);
+        PLY_TEST_ASSERT (context.response_size == sizeof(expected_response));
+        PLY_TEST_ASSERT (memcmp (context.response,
+                                 expected_response,
+                                 sizeof(expected_response)) == 0);
+
+        free_server_context (&context);
+        return true;
+}
+
+static bool
 run_rejected_frame (const uint8_t *request,
                     size_t         request_size,
                     bool           credentials_available)
@@ -913,6 +970,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_immediate_notifications_dispatch_and_acknowledge),
         PLY_TEST_CASE (test_active_vt_response_follows_handler),
         PLY_TEST_CASE (test_question_trigger_sends_answer_payload),
+        PLY_TEST_CASE (test_triggered_requests_send_completed_replies),
         PLY_TEST_CASE (test_malformed_and_uncredentialed_frames_disconnect),
 };
 
