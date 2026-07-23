@@ -26,6 +26,8 @@ test_environment = environment()
 test_environment.set('LC_ALL', 'C')
 test_timeout = 30
 
+subdir('plugins')
+
 foreach test_name, test_source : libply_test_sources
   test_executable = executable(
     'test-' + test_name,
