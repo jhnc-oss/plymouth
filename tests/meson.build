@@ -2,6 +2,7 @@ libply_test_sources = {
   'array': 'test-array.c',
   'bitarray': 'test-bitarray.c',
   'buffer': 'test-buffer.c',
+  'command-parser': 'test-command-parser.c',
   'hashtable': 'test-hashtable.c',
   'key-file': 'test-key-file.c',
   'list': 'test-list.c',

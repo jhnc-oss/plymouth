@@ -27,6 +27,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "ply-buffer.h"
 #include "ply-list.h"
@@ -96,6 +97,9 @@ ply_command_option_free (ply_command_option_t *option)
 {
         if (option == NULL)
                 return;
+
+        if (option->type == PLY_COMMAND_OPTION_TYPE_STRING)
+                free (option->result.as_string);
 
         free (option->name);
         free (option->description);
@@ -633,7 +637,7 @@ ply_command_parser_get_command_option (ply_command_parser_t *parser,
                 return;
 
         ply_command_parser_get_option_for_command (parser,
-                                                   parser->main_command,
+                                                   command,
                                                    option_name,
                                                    option_result,
                                                    option_is_set);
@@ -730,20 +734,31 @@ ply_command_option_read_arguments (ply_command_option_t *option,
         switch (option->type) {
         case PLY_COMMAND_OPTION_TYPE_FLAG:
         case PLY_COMMAND_OPTION_TYPE_BOOLEAN:
+        {
+                int match;
+
+                if (strcasecmp (argument, "true") == 0)
+                        match = 1;
+                else if (strcasecmp (argument, "false") == 0)
+                        match = 0;
+                else
+                        match = rpmatch (argument);
 
                 /* next argument isn't ours, so treat it like an unqualified
                  * flag
                  */
-                if (rpmatch (argument) < 0) {
+                if (match < 0) {
                         option->result.as_boolean = true;
                         return true;
                 }
 
-                option->result.as_boolean = (bool) rpmatch (argument);
+                option->result.as_boolean = (bool) match;
                 ply_list_remove_node (arguments, node);
                 return true;
+        }
 
         case PLY_COMMAND_OPTION_TYPE_STRING:
+                free (option->result.as_string);
                 option->result.as_string = strdup (argument);
                 ply_list_remove_node (arguments, node);
                 return true;
@@ -756,16 +771,17 @@ ply_command_option_read_arguments (ply_command_option_t *option,
                 if (argument[0] == '\0')
                         return false;
 
+                errno = 0;
                 argument_as_long = strtol (argument, &end, 0);
 
                 if (*end != '\0')
                         return false;
 
-                if (argument_as_long == LONG_MIN &&
-                    errno == ERANGE)
+                if (errno == ERANGE)
                         return false;
 
-                if (argument_as_long > INT_MAX)
+                if (argument_as_long < INT_MIN ||
+                    argument_as_long > INT_MAX)
                         return false;
 
                 option->result.as_integer = (int) argument_as_long;
@@ -946,4 +962,3 @@ ply_command_parser_parse_arguments (ply_command_parser_t *parser,
 
         return parsed_arguments;
 }
-
