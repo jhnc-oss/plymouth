@@ -123,6 +123,12 @@ static void ply_event_loop_remove_source (ply_event_loop_t   *loop,
                                           ply_event_source_t *source);
 static ply_list_node_t *ply_event_loop_find_source_node (ply_event_loop_t *loop,
                                                          int               fd);
+static void ply_event_loop_free_watches_for_source (ply_event_loop_t   *loop,
+                                                    ply_event_source_t *source);
+static void ply_event_loop_free_destinations_for_source (ply_event_loop_t   *loop,
+                                                         ply_event_source_t *source);
+static void ply_event_loop_free_sources (ply_event_loop_t *loop);
+static void ply_event_loop_free_timeout_watches (ply_event_loop_t *loop);
 
 static ply_list_node_t *
 ply_signal_dispatcher_find_source_node (ply_signal_dispatcher_t *dispatcher,
@@ -178,26 +184,24 @@ ply_signal_dispatcher_free (ply_signal_dispatcher_t *dispatcher)
         if (dispatcher == NULL)
                 return;
 
-        close (ply_signal_dispatcher_receiver_fd);
-        ply_signal_dispatcher_receiver_fd = -1;
-        close (ply_signal_dispatcher_sender_fd);
-        ply_signal_dispatcher_sender_fd = -1;
-
-        node = ply_list_get_first_node (dispatcher->sources);
-        while (node != NULL) {
-                ply_list_node_t *next_node;
+        while ((node = ply_list_get_last_node (dispatcher->sources)) != NULL) {
                 ply_signal_source_t *source;
 
                 source = (ply_signal_source_t *) ply_list_node_get_data (node);
 
-                next_node = ply_list_get_next_node (dispatcher->sources, node);
-
+                signal (source->signal_number,
+                        source->old_posix_signal_handler != NULL ?
+                        source->old_posix_signal_handler : SIG_DFL);
+                ply_list_remove_node (dispatcher->sources, node);
                 ply_signal_source_free (source);
-
-                node = next_node;
         }
 
         ply_list_free (dispatcher->sources);
+
+        close (ply_signal_dispatcher_receiver_fd);
+        ply_signal_dispatcher_receiver_fd = -1;
+        close (ply_signal_dispatcher_sender_fd);
+        ply_signal_dispatcher_sender_fd = -1;
 
         free (dispatcher);
 }
@@ -573,6 +577,8 @@ ply_event_loop_free (ply_event_loop_t *loop)
 
         assert (!loop->is_running);
 
+        ply_event_loop_free_sources (loop);
+        ply_event_loop_free_timeout_watches (loop);
         ply_signal_dispatcher_free (loop->signal_dispatcher);
         ply_event_loop_free_exit_closures (loop);
 
@@ -677,8 +683,12 @@ ply_event_loop_free_sources (ply_event_loop_t *loop)
         node = ply_list_get_first_node (loop->sources);
         while (node != NULL) {
                 ply_list_node_t *next_node;
+                ply_event_source_t *source;
 
+                source = (ply_event_source_t *) ply_list_node_get_data (node);
                 next_node = ply_list_get_next_node (loop->sources, node);
+                ply_event_loop_free_watches_for_source (loop, source);
+                ply_event_loop_free_destinations_for_source (loop, source);
                 ply_event_loop_remove_source_node (loop, node);
                 node = next_node;
         }
@@ -845,6 +855,7 @@ ply_signal_dispatcher_remove_source_node (ply_signal_dispatcher_t *dispatcher,
                 source->old_posix_signal_handler : SIG_DFL);
 
         ply_list_remove_node (dispatcher->sources, node);
+        ply_signal_source_free (source);
 }
 
 void
@@ -1320,4 +1331,3 @@ ply_event_loop_run (ply_event_loop_t *loop)
 
         return loop->exit_code;
 }
-
