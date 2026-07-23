@@ -20,6 +20,7 @@
  * Written by: Ray Strode <rstrode@redhat.com>
  */
 #include "ply-boot-client.h"
+#include "ply-boot-client-private.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -83,6 +84,7 @@ ply_boot_client_new (void)
         client->is_connected = false;
         client->disconnect_handler = NULL;
         client->disconnect_handler_user_data = NULL;
+        client->socket_fd = -1;
 
         return client;
 }
@@ -167,7 +169,32 @@ ply_boot_client_free (ply_boot_client_t *client)
         ply_list_free (client->requests_to_send);
         ply_list_free (client->requests_waiting_for_replies);
 
+        if (client->socket_fd >= 0)
+                close (client->socket_fd);
+
         free (client);
+}
+
+bool
+ply_boot_client_connect_to_fd (ply_boot_client_t                   *client,
+                               int                                  fd,
+                               ply_boot_client_disconnect_handler_t disconnect_handler,
+                               void                                *user_data)
+{
+        assert (client != NULL);
+        assert (!client->is_connected);
+        assert (client->disconnect_handler == NULL);
+        assert (client->disconnect_handler_user_data == NULL);
+
+        if (fd < 0)
+                return false;
+
+        client->socket_fd = fd;
+        client->disconnect_handler = disconnect_handler;
+        client->disconnect_handler_user_data = user_data;
+        client->is_connected = true;
+
+        return true;
 }
 
 bool
@@ -175,33 +202,34 @@ ply_boot_client_connect (ply_boot_client_t                   *client,
                          ply_boot_client_disconnect_handler_t disconnect_handler,
                          void                                *user_data)
 {
+        int socket_fd;
+
         assert (client != NULL);
         assert (!client->is_connected);
         assert (client->disconnect_handler == NULL);
         assert (client->disconnect_handler_user_data == NULL);
 
-        client->socket_fd =
+        socket_fd =
                 ply_connect_to_unix_socket (PLY_BOOT_PROTOCOL_TRIMMED_ABSTRACT_SOCKET_PATH,
                                             PLY_UNIX_SOCKET_TYPE_TRIMMED_ABSTRACT);
 
-        if (client->socket_fd < 0) {
+        if (socket_fd < 0) {
                 ply_trace ("could not connect to " PLY_BOOT_PROTOCOL_TRIMMED_ABSTRACT_SOCKET_PATH ": %m");
                 ply_trace ("trying old fallback path " PLY_BOOT_PROTOCOL_OLD_ABSTRACT_SOCKET_PATH);
 
-                client->socket_fd =
+                socket_fd =
                         ply_connect_to_unix_socket (PLY_BOOT_PROTOCOL_OLD_ABSTRACT_SOCKET_PATH,
                                                     PLY_UNIX_SOCKET_TYPE_ABSTRACT);
-                if (client->socket_fd < 0) {
+                if (socket_fd < 0) {
                         ply_trace ("could not connect to " PLY_BOOT_PROTOCOL_OLD_ABSTRACT_SOCKET_PATH ": %m");
                         return false;
                 }
         }
 
-        client->disconnect_handler = disconnect_handler;
-        client->disconnect_handler_user_data = user_data;
-
-        client->is_connected = true;
-        return true;
+        return ply_boot_client_connect_to_fd (client,
+                                              socket_fd,
+                                              disconnect_handler,
+                                              user_data);
 }
 
 static ply_boot_client_request_t *
@@ -366,6 +394,7 @@ out:
                         request->failed_handler (request->user_data, client);
 
         ply_list_remove_node (client->requests_waiting_for_replies, request_node);
+        ply_boot_client_request_free (request);
 
         if (ply_list_get_length (client->requests_waiting_for_replies) == 0) {
                 if (client->daemon_has_reply_watch != NULL) {
@@ -863,4 +892,3 @@ ply_boot_client_attach_to_event_loop (ply_boot_client_t *client,
                                        ply_boot_client_detach_from_event_loop,
                                        client);
 }
-

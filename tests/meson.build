@@ -43,6 +43,26 @@ foreach test_name, test_source : libply_test_sources
   )
 endforeach
 
+boot_client_test_executable = executable(
+  'test-boot-client',
+  'test-boot-client.c',
+  c_args: test_c_args,
+  dependencies: [
+    libply_dep,
+    libply_boot_client_dep,
+  ],
+  include_directories: include_directories('.'),
+)
+
+test(
+  'boot-client-protocol',
+  boot_client_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'boot-client'],
+  timeout: test_timeout,
+)
+
 splash_core_test_sources = {
   'pixel-buffer': 'test-pixel-buffer.c',
   'rich-text': 'test-rich-text.c',
