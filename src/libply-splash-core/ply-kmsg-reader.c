@@ -23,6 +23,7 @@
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +76,13 @@ handle_kmsg_message (ply_kmsg_reader_t *kmsg_reader,
                                  &default_log_level);
 
         bytes_read = read (fd, read_buffer, sizeof(read_buffer) - 1);
+        /* The kernel advances readers to the oldest available record when
+         * reporting overwritten messages. Keep the watch active so the next
+         * event can consume that record.
+         */
+        if (bytes_read < 0 && errno == EPIPE)
+                return 0;
+
         if (bytes_read > 0) {
                 bool bold_enabled = false;
                 ply_terminal_color_t color = PLY_TERMINAL_ATTRIBUTE_FOREGROUND_COLOR_OFFSET + PLY_TERMINAL_COLOR_DEFAULT;
