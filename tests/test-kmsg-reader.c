@@ -180,10 +180,47 @@ test_disconnect_clears_reader_state (void)
         return true;
 }
 
+static bool
+test_overflow_preserves_reader_watch (void)
+{
+        ply_kmsg_reader_t kmsg_reader = { 0 };
+        ply_fd_watch_t *fd_watch;
+        int socket_fds[2];
+        int reader_fd;
+
+        PLY_TEST_ASSERT (start_reader_on_socket (&kmsg_reader, socket_fds));
+        reader_fd = kmsg_reader.kmsg_fd;
+        fd_watch = kmsg_reader.fd_watch;
+
+        next_read_result = -1;
+        next_read_errno = EPIPE;
+        read_calls = 0;
+        last_read_fd = -1;
+
+        PLY_TEST_ASSERT (handle_kmsg_message (&kmsg_reader, reader_fd) == 0);
+        PLY_TEST_ASSERT (read_calls == 1);
+        PLY_TEST_ASSERT (last_read_fd == reader_fd);
+        PLY_TEST_ASSERT (kmsg_reader.kmsg_fd == reader_fd);
+        PLY_TEST_ASSERT (kmsg_reader.fd_watch == fd_watch);
+
+        ply_kmsg_reader_stop (&kmsg_reader);
+
+        PLY_TEST_ASSERT (kmsg_reader.kmsg_fd == -1);
+        PLY_TEST_ASSERT (kmsg_reader.fd_watch == NULL);
+
+        errno = 0;
+        PLY_TEST_ASSERT (fcntl (reader_fd, F_GETFD) == -1);
+        PLY_TEST_ASSERT (errno == EBADF);
+
+        close (socket_fds[1]);
+        return true;
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_terminal_read_failure_clears_reader_state),
         PLY_TEST_CASE (test_disconnect_clears_reader_state),
+        PLY_TEST_CASE (test_overflow_preserves_reader_watch),
 };
 
 PLY_TEST_MAIN (test_cases)
