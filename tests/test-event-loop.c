@@ -178,6 +178,57 @@ on_disconnected (void *user_data,
         ply_event_loop_exit (context->loop, 0);
 }
 
+static void
+on_stop_watch_timeout (void             *user_data,
+                       ply_event_loop_t *loop)
+{
+        fd_context_t *context = user_data;
+
+        context->timed_out = true;
+        ply_event_loop_stop_watching_fd (loop, context->watch);
+        context->watch = NULL;
+}
+
+static bool
+test_timeout_stops_ready_fd_before_dispatch (void)
+{
+        fd_context_t context = { 0 };
+        ply_event_loop_t *loop;
+        int socket_fds[2];
+
+        PLY_TEST_ASSERT (socketpair (AF_UNIX,
+                                     SOCK_STREAM | SOCK_CLOEXEC,
+                                     0,
+                                     socket_fds) == 0);
+        loop = ply_event_loop_new ();
+        PLY_TEST_ASSERT (loop != NULL);
+        context.loop = loop;
+        context.watch = ply_event_loop_watch_fd (
+                loop,
+                socket_fds[0],
+                PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
+                on_readable,
+                on_disconnected,
+                &context);
+        ply_event_loop_watch_for_timeout (loop,
+                                          0.001,
+                                          on_stop_watch_timeout,
+                                          &context);
+
+        close (socket_fds[1]);
+        usleep (10000);
+        ply_event_loop_process_pending_events (loop);
+
+        PLY_TEST_ASSERT (context.timed_out);
+        PLY_TEST_ASSERT (context.watch == NULL);
+        PLY_TEST_ASSERT (context.calls == 0);
+        PLY_TEST_ASSERT (context.disconnected_calls == 0);
+
+        ply_event_loop_free (loop);
+        close (socket_fds[0]);
+        return true;
+}
+
 static bool
 test_closed_peer_dispatches_disconnect (void)
 {
@@ -490,6 +541,7 @@ static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_readable_fd_dispatches_and_preserves_exit_code),
         PLY_TEST_CASE (test_writable_fd_can_stop_its_own_watch),
+        PLY_TEST_CASE (test_timeout_stops_ready_fd_before_dispatch),
         PLY_TEST_CASE (test_closed_peer_dispatches_disconnect),
         PLY_TEST_CASE (test_timeouts_run_in_order_and_can_be_canceled),
         PLY_TEST_CASE (test_exit_watch_runs_and_removed_watch_stays_idle),
