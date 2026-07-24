@@ -584,3 +584,25 @@ test(
   suite: ['functional', 'scripts'],
   timeout: test_timeout,
 )
+
+server_connection_hangup_test_executable = executable(
+  'test-server-connection-hangup',
+  'test-server-connection-hangup.c',
+  c_args: test_c_args,
+  dependencies: ply_boot_server_dep,
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src'),
+  ],
+)
+
+# Reports its cases as TAP skips when not run as root, since the server
+# checks SO_PEERCRED credentials before serving password requests.
+test(
+  'server-connection-hangup',
+  server_connection_hangup_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['functional', 'boot-server'],
+  timeout: 15,
+)

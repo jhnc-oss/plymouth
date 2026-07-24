@@ -213,10 +213,11 @@ on_progress_unpause (void              *user_data,
 }
 
 static void
-on_password (void              *user_data,
-             const char        *prompt,
-             ply_trigger_t     *answer,
-             ply_boot_server_t *server)
+on_password (void                  *user_data,
+             const char            *prompt,
+             ply_trigger_t         *answer,
+             ply_boot_connection_t *connection,
+             ply_boot_server_t     *server)
 {
         server_context_t *context = user_data;
 
@@ -232,10 +233,11 @@ on_password (void              *user_data,
 }
 
 static void
-on_watch_keystroke (void              *user_data,
-                    const char        *keys,
-                    ply_trigger_t     *answer,
-                    ply_boot_server_t *server)
+on_watch_keystroke (void                  *user_data,
+                    const char            *keys,
+                    ply_trigger_t         *answer,
+                    ply_boot_connection_t *connection,
+                    ply_boot_server_t     *server)
 {
         server_context_t *context = user_data;
 
@@ -354,10 +356,11 @@ on_quit (void              *user_data,
 }
 
 static void
-on_question (void              *user_data,
-             const char        *prompt,
-             ply_trigger_t     *answer,
-             ply_boot_server_t *server)
+on_question (void                  *user_data,
+             const char            *prompt,
+             ply_trigger_t         *answer,
+             ply_boot_connection_t *connection,
+             ply_boot_server_t     *server)
 {
         server_context_t *context = user_data;
 
@@ -410,6 +413,7 @@ new_server (server_context_t *context)
                 on_quit,
                 on_has_active_vt,
                 on_reload,
+                NULL, /* connection_hangup */
                 context);
 }
 

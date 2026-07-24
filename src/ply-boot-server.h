@@ -31,6 +31,7 @@
 #include "ply-event-loop.h"
 
 typedef struct _ply_boot_server ply_boot_server_t;
+typedef struct _ply_boot_connection ply_boot_connection_t;
 
 typedef void (*ply_boot_server_update_handler_t) (void              *user_data,
                                                   const char        *status,
@@ -57,27 +58,33 @@ typedef void (*ply_boot_server_hide_splash_handler_t) (void              *user_d
 typedef void (*ply_boot_server_password_answer_handler_t) (void              *answer_data,
                                                            const char        *password,
                                                            ply_boot_server_t *server);
-typedef void (*ply_boot_server_ask_for_password_handler_t) (void              *user_data,
-                                                            const char        *prompt,
-                                                            ply_trigger_t     *answer,
-                                                            ply_boot_server_t *server);
+typedef void (*ply_boot_server_ask_for_password_handler_t) (void                  *user_data,
+                                                            const char            *prompt,
+                                                            ply_trigger_t         *answer,
+                                                            ply_boot_connection_t *connection,
+                                                            ply_boot_server_t     *server);
 typedef void (*ply_boot_server_question_answer_handler_t) (void              *answer_data,
                                                            const char        *answer,
                                                            ply_boot_server_t *server);
-typedef void (*ply_boot_server_ask_question_handler_t)      (void              *user_data,
-                                                             const char        *prompt,
-                                                             ply_trigger_t     *answer,
-                                                             ply_boot_server_t *server);
+typedef void (*ply_boot_server_ask_question_handler_t)      (void                  *user_data,
+                                                             const char            *prompt,
+                                                             ply_trigger_t         *answer,
+                                                             ply_boot_connection_t *connection,
+                                                             ply_boot_server_t     *server);
 typedef void (*ply_boot_server_display_message_handler_t)   (void              *user_data,
                                                              const char        *message,
                                                              ply_boot_server_t *server);
 typedef void (*ply_boot_server_hide_message_handler_t)   (void              *user_data,
                                                           const char        *message,
                                                           ply_boot_server_t *server);
-typedef void (*ply_boot_server_watch_for_keystroke_handler_t) (void              *user_data,
-                                                               const char        *keys,
-                                                               ply_trigger_t     *answer,
-                                                               ply_boot_server_t *server);
+typedef void (*ply_boot_server_watch_for_keystroke_handler_t) (void                  *user_data,
+                                                               const char            *keys,
+                                                               ply_trigger_t         *answer,
+                                                               ply_boot_connection_t *connection,
+                                                               ply_boot_server_t     *server);
+typedef void (*ply_boot_server_connection_hangup_handler_t) (void                  *user_data,
+                                                             ply_boot_connection_t *connection,
+                                                             ply_boot_server_t     *server);
 typedef void (*ply_boot_server_ignore_keystroke_handler_t) (void              *user_data,
                                                             const char        *keys,
                                                             ply_boot_server_t *server);
@@ -127,6 +134,7 @@ ply_boot_server_t *ply_boot_server_new (ply_boot_server_update_handler_t        
                                         ply_boot_server_quit_handler_t                quit_handler,
                                         ply_boot_server_has_active_vt_handler_t       has_active_vt_handler,
                                         ply_boot_server_reload_handler_t              reload_handler,
+                                        ply_boot_server_connection_hangup_handler_t   connection_hangup_handler,
                                         void                                         *user_data);
 
 void ply_boot_server_free (ply_boot_server_t *server);
