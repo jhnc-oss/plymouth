@@ -1267,6 +1267,7 @@ ply_event_loop_process_pending_events (ply_event_loop_t *loop)
         for (i = 0; i < number_of_received_events; i++) {
                 ply_event_source_t *source;
                 ply_event_loop_fd_status_t status;
+                bool has_met_status;
                 bool is_disconnected;
 
                 source = (ply_event_source_t *) (events[i].data.ptr);
@@ -1281,22 +1282,28 @@ ply_event_loop_process_pending_events (ply_event_loop_t *loop)
                 }
 
                 status = ply_event_loop_get_fd_status_from_poll_mask (events[i].events);
+                has_met_status = ply_event_loop_source_has_met_status (source, status);
 
                 is_disconnected = false;
                 if ((events[i].events & EPOLLHUP) || (events[i].events & EPOLLERR)) {
                         int bytes_ready;
 
                         bytes_ready = 0;
-                        if (ioctl (source->fd, FIONREAD, &bytes_ready) < 0)
-                                bytes_ready = 0;
-
-                        if (bytes_ready <= 0)
+                        if (ioctl (source->fd, FIONREAD, &bytes_ready) < 0) {
+                                /* ENOTTY means the descriptor does not implement
+                                 * FIONREAD. If it also reports a requested status,
+                                 * let the status handler decide how to proceed.
+                                 */
+                                if (errno != ENOTTY || !has_met_status)
+                                        is_disconnected = true;
+                        } else if (bytes_ready <= 0) {
                                 is_disconnected = true;
+                        }
                 }
 
                 if (is_disconnected)
                         ply_event_loop_disconnect_source (loop, source);
-                else if (ply_event_loop_source_has_met_status (source, status))
+                else if (has_met_status)
                         ply_event_loop_handle_met_status_for_source (loop, source, status);
 
                 if (loop->should_exit)
