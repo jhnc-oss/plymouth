@@ -990,8 +990,6 @@ ply_terminal_emulator_break_string_t
 on_escape_character_carriage_return (ply_terminal_emulator_t *terminal_emulator,
                                      const char               code)
 {
-        ply_trace ("terminal escape character: carriage return");
-
         assert (code == '\r');
 
         terminal_emulator->cursor_column = 0;
