@@ -19,10 +19,14 @@
 
 #include "ply-test.h"
 
+#include <errno.h>
 #include <signal.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/syscall.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "ply-event-loop.h"
@@ -168,6 +172,17 @@ test_writable_fd_can_stop_its_own_watch (void)
 }
 
 static void
+on_ready_without_fionread (void *user_data,
+                           int   source_fd)
+{
+        fd_context_t *context = user_data;
+
+        context->calls++;
+        context->source_value = source_fd;
+        ply_event_loop_exit (context->loop, 0);
+}
+
+static void
 on_disconnected (void *user_data,
                  int   source_fd)
 {
@@ -176,6 +191,112 @@ on_disconnected (void *user_data,
         context->disconnected_calls++;
         context->source_value = source_fd;
         ply_event_loop_exit (context->loop, 0);
+}
+
+static void
+on_stop_watch_timeout (void             *user_data,
+                       ply_event_loop_t *loop)
+{
+        fd_context_t *context = user_data;
+
+        context->timed_out = true;
+        ply_event_loop_stop_watching_fd (loop, context->watch);
+        context->watch = NULL;
+}
+
+static bool
+test_timeout_stops_ready_fd_before_dispatch (void)
+{
+        fd_context_t context = { 0 };
+        ply_event_loop_t *loop;
+        int socket_fds[2];
+
+        PLY_TEST_ASSERT (socketpair (AF_UNIX,
+                                     SOCK_STREAM | SOCK_CLOEXEC,
+                                     0,
+                                     socket_fds) == 0);
+        loop = ply_event_loop_new ();
+        PLY_TEST_ASSERT (loop != NULL);
+        context.loop = loop;
+        context.watch = ply_event_loop_watch_fd (
+                loop,
+                socket_fds[0],
+                PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
+                on_readable,
+                on_disconnected,
+                &context);
+        ply_event_loop_watch_for_timeout (loop,
+                                          0.001,
+                                          on_stop_watch_timeout,
+                                          &context);
+
+        close (socket_fds[1]);
+        usleep (10000);
+        ply_event_loop_process_pending_events (loop);
+
+        PLY_TEST_ASSERT (context.timed_out);
+        PLY_TEST_ASSERT (context.watch == NULL);
+        PLY_TEST_ASSERT (context.calls == 0);
+        PLY_TEST_ASSERT (context.disconnected_calls == 0);
+
+        ply_event_loop_free (loop);
+        close (socket_fds[0]);
+        return true;
+}
+
+static bool
+test_ready_fd_without_fionread_dispatches_before_hangup (void)
+{
+#ifdef SYS_pidfd_open
+        fd_context_t context = { 0 };
+        ply_event_loop_t *loop;
+        pid_t child_pid;
+        int pid_fd;
+        int pid_fd_errno;
+        int wait_status;
+        int bytes_ready = 0;
+
+        child_pid = fork ();
+        PLY_TEST_ASSERT (child_pid >= 0);
+
+        if (child_pid == 0)
+                _exit (0);
+
+        pid_fd = (int) syscall (SYS_pidfd_open, child_pid, 0);
+        pid_fd_errno = errno;
+
+        PLY_TEST_ASSERT (waitpid (child_pid, &wait_status, 0) == child_pid);
+        PLY_TEST_ASSERT (WIFEXITED (wait_status));
+
+        if (pid_fd < 0 && pid_fd_errno == ENOSYS)
+                return true;
+
+        PLY_TEST_ASSERT (pid_fd >= 0);
+        errno = 0;
+        PLY_TEST_ASSERT (ioctl (pid_fd, FIONREAD, &bytes_ready) < 0);
+        PLY_TEST_ASSERT (errno == ENOTTY);
+
+        loop = ply_event_loop_new ();
+        PLY_TEST_ASSERT (loop != NULL);
+        context.loop = loop;
+        ply_event_loop_watch_fd (loop,
+                                 pid_fd,
+                                 PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
+                                 on_ready_without_fionread,
+                                 on_disconnected,
+                                 &context);
+        ply_event_loop_watch_for_timeout (loop, 1.0, on_watchdog, &context);
+
+        PLY_TEST_ASSERT (ply_event_loop_run (loop) == 0);
+        PLY_TEST_ASSERT (!context.timed_out);
+        PLY_TEST_ASSERT (context.calls == 1);
+        PLY_TEST_ASSERT (context.disconnected_calls == 0);
+        PLY_TEST_ASSERT (context.source_value == pid_fd);
+
+        ply_event_loop_free (loop);
+        close (pid_fd);
+#endif
+        return true;
 }
 
 static bool
@@ -490,6 +611,8 @@ static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_readable_fd_dispatches_and_preserves_exit_code),
         PLY_TEST_CASE (test_writable_fd_can_stop_its_own_watch),
+        PLY_TEST_CASE (test_timeout_stops_ready_fd_before_dispatch),
+        PLY_TEST_CASE (test_ready_fd_without_fionread_dispatches_before_hangup),
         PLY_TEST_CASE (test_closed_peer_dispatches_disconnect),
         PLY_TEST_CASE (test_timeouts_run_in_order_and_can_be_canceled),
         PLY_TEST_CASE (test_exit_watch_runs_and_removed_watch_stays_idle),

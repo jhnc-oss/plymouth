@@ -23,6 +23,7 @@
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,6 +76,13 @@ handle_kmsg_message (ply_kmsg_reader_t *kmsg_reader,
                                  &default_log_level);
 
         bytes_read = read (fd, read_buffer, sizeof(read_buffer) - 1);
+        /* The kernel advances readers to the oldest available record when
+         * reporting overwritten messages. Keep the watch active so the next
+         * event can consume that record.
+         */
+        if (bytes_read < 0 && errno == EPIPE)
+                return 0;
+
         if (bytes_read > 0) {
                 bool bold_enabled = false;
                 ply_terminal_color_t color = PLY_TERMINAL_ATTRIBUTE_FOREGROUND_COLOR_OFFSET + PLY_TERMINAL_COLOR_DEFAULT;
@@ -156,8 +164,7 @@ handle_kmsg_message (ply_kmsg_reader_t *kmsg_reader,
 
                 return 0;
         } else {
-                ply_event_loop_stop_watching_fd (ply_event_loop_get_default (), kmsg_reader->fd_watch);
-                close (kmsg_reader->kmsg_fd);
+                ply_kmsg_reader_stop (kmsg_reader);
                 return -1;
         }
 }
@@ -200,6 +207,17 @@ ply_kmsg_reader_free (ply_kmsg_reader_t *kmsg_reader)
         free (kmsg_reader);
 }
 
+static void
+handle_kmsg_disconnect (void *user_data,
+                        int   fd)
+{
+        ply_kmsg_reader_t *kmsg_reader = user_data;
+
+        kmsg_reader->fd_watch = NULL;
+        close (fd);
+        kmsg_reader->kmsg_fd = -1;
+}
+
 void
 ply_kmsg_reader_start (ply_kmsg_reader_t *kmsg_reader)
 {
@@ -211,7 +229,7 @@ ply_kmsg_reader_start (ply_kmsg_reader_t *kmsg_reader)
 
         kmsg_reader->fd_watch = ply_event_loop_watch_fd (ply_event_loop_get_default (), kmsg_reader->kmsg_fd, PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
                                                          (ply_event_handler_t) handle_kmsg_message,
-                                                         NULL,
+                                                         handle_kmsg_disconnect,
                                                          kmsg_reader);
 }
 
