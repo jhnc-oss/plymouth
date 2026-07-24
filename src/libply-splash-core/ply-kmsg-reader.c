@@ -199,6 +199,17 @@ ply_kmsg_reader_free (ply_kmsg_reader_t *kmsg_reader)
         free (kmsg_reader);
 }
 
+static void
+handle_kmsg_disconnect (void *user_data,
+                        int   fd)
+{
+        ply_kmsg_reader_t *kmsg_reader = user_data;
+
+        kmsg_reader->fd_watch = NULL;
+        close (fd);
+        kmsg_reader->kmsg_fd = -1;
+}
+
 void
 ply_kmsg_reader_start (ply_kmsg_reader_t *kmsg_reader)
 {
@@ -210,7 +221,7 @@ ply_kmsg_reader_start (ply_kmsg_reader_t *kmsg_reader)
 
         kmsg_reader->fd_watch = ply_event_loop_watch_fd (ply_event_loop_get_default (), kmsg_reader->kmsg_fd, PLY_EVENT_LOOP_FD_STATUS_HAS_DATA,
                                                          (ply_event_handler_t) handle_kmsg_message,
-                                                         NULL,
+                                                         handle_kmsg_disconnect,
                                                          kmsg_reader);
 }
 
