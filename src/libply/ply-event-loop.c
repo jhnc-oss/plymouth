@@ -1270,6 +1270,16 @@ ply_event_loop_process_pending_events (ply_event_loop_t *loop)
                 bool is_disconnected;
 
                 source = (ply_event_source_t *) (events[i].data.ptr);
+
+                /* A timeout handler can stop a source after epoll_wait ()
+                 * reports it but before its event is dispatched.
+                 */
+                if (!source->is_getting_polled) {
+                        if (loop->should_exit)
+                                break;
+                        continue;
+                }
+
                 status = ply_event_loop_get_fd_status_from_poll_mask (events[i].events);
 
                 is_disconnected = false;
