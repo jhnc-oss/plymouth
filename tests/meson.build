@@ -267,6 +267,33 @@ foreach test_name, test_source : splash_core_test_sources
   )
 endforeach
 
+kmsg_reader_test_executable = executable(
+  'test-kmsg-reader',
+  [
+    'test-kmsg-reader.c',
+    '../src/libply-splash-core/ply-kmsg-reader.c',
+  ],
+  c_args: test_c_args + [
+    '-Dopen=ply_test_kmsg_open',
+    '-Dread=ply_test_kmsg_read',
+    '-Wno-cast-function-type',
+  ],
+  dependencies: libply_dep,
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'splash-core-kmsg-reader',
+  kmsg_reader_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-core'],
+  timeout: test_timeout,
+)
+
 terminal_emulator_fuzz_executable = executable(
   'fuzz-terminal-emulator',
   'fuzz-terminal-emulator.c',
