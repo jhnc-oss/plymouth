@@ -132,9 +132,58 @@ test_terminal_read_failure_clears_reader_state (void)
         return true;
 }
 
+static void
+on_disconnect_timeout (void             *user_data,
+                       ply_event_loop_t *loop)
+{
+        bool *timed_out = user_data;
+
+        *timed_out = true;
+}
+
+static bool
+test_disconnect_clears_reader_state (void)
+{
+        ply_kmsg_reader_t kmsg_reader = { 0 };
+        ply_event_loop_t *loop;
+        int socket_fds[2];
+        int reader_fd;
+        bool timed_out = false;
+
+        PLY_TEST_ASSERT (start_reader_on_socket (&kmsg_reader, socket_fds));
+        reader_fd = kmsg_reader.kmsg_fd;
+        loop = ply_event_loop_get_default ();
+
+        ply_event_loop_watch_for_timeout (loop,
+                                          1.0,
+                                          on_disconnect_timeout,
+                                          &timed_out);
+        close (socket_fds[1]);
+        ply_event_loop_process_pending_events (loop);
+
+        if (!timed_out) {
+                ply_event_loop_stop_watching_for_timeout (
+                        loop,
+                        on_disconnect_timeout,
+                        &timed_out);
+        }
+
+        PLY_TEST_ASSERT (!timed_out);
+        PLY_TEST_ASSERT (kmsg_reader.kmsg_fd == -1);
+        PLY_TEST_ASSERT (kmsg_reader.fd_watch == NULL);
+
+        errno = 0;
+        PLY_TEST_ASSERT (fcntl (reader_fd, F_GETFD) == -1);
+        PLY_TEST_ASSERT (errno == EBADF);
+
+        ply_kmsg_reader_stop (&kmsg_reader);
+        return true;
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_terminal_read_failure_clears_reader_state),
+        PLY_TEST_CASE (test_disconnect_clears_reader_state),
 };
 
 PLY_TEST_MAIN (test_cases)
