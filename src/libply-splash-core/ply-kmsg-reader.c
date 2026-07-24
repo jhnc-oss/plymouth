@@ -156,8 +156,7 @@ handle_kmsg_message (ply_kmsg_reader_t *kmsg_reader,
 
                 return 0;
         } else {
-                ply_event_loop_stop_watching_fd (ply_event_loop_get_default (), kmsg_reader->fd_watch);
-                close (kmsg_reader->kmsg_fd);
+                ply_kmsg_reader_stop (kmsg_reader);
                 return -1;
         }
 }
