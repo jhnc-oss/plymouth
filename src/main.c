@@ -1630,6 +1630,12 @@ update_display (state_t *state)
 static void
 toggle_between_splash_and_details (state_t *state)
 {
+        if (state->local_console_terminal == NULL ||
+            !ply_terminal_is_active_vt (state->local_console_terminal)) {
+                ply_trace ("not toggling between splash and details, VT is not active");
+                return;
+        }
+
         ply_trace ("toggling between splash and details");
         if (state->boot_splash != NULL) {
                 ply_trace ("hiding and freeing current splash");

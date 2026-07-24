@@ -704,6 +704,15 @@ ply_terminal_is_active (ply_terminal_t *terminal)
         return terminal->is_active;
 }
 
+bool
+ply_terminal_is_active_vt (ply_terminal_t *terminal)
+{
+        if (!ply_terminal_is_vt (terminal))
+                return false;
+
+        return get_active_vt (terminal) == terminal->vt_number;
+}
+
 void
 ply_terminal_close (ply_terminal_t *terminal)
 {
