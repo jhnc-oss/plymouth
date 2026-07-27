@@ -181,7 +181,7 @@ rev_lib_symlinks() {
 # Same as above, but specialized to handle dynamic libraries.
 # It handles making symlinks according to how the original library
 # is referenced.
-inst_library() {
+inst_normal_library() {
     local _src="$1" _dest=${2:-$1} _reallib _symlink
     strstr "$1" "/" || return 1
     [[ -e $initdir/$_dest ]] && return 0
@@ -210,6 +210,24 @@ inst_library() {
             inst_symlink $_symlink
         }
     done
+}
+
+# Install dynamic library, with special handling for glibc-hwcaps libraries:
+# If the library is a glibc-hwcaps variant, all architecture-specific variants
+# of that library will be installed.
+inst_library() {
+    local _libdir _basename _src
+    inst_normal_library "$@"
+    hwcaps_pattern='(.*)/glibc-hwcaps/[^/]*/([^/]*\.so[^/]*)$'
+    if [[ $1 =~ $hwcaps_pattern ]]; then
+        _libdir="${PLYMOUTH_SYSROOT}${BASH_REMATCH[1]}"
+        _basename="${BASH_REMATCH[2]}"
+        for _src in "${_libdir}/${_basename}" "${_libdir}"/glibc-hwcaps/*/"${_basename}"; do
+            if [[ -e "${_src}" ]]; then
+                inst_normal_library "${_src#"${PLYMOUTH_SYSROOT}"}"
+            fi
+        done
+    fi
 }
 
 # find a binary.  If we were not passed the full path directly,
