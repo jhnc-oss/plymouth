@@ -205,6 +205,8 @@ ply_boot_splash_plugin_interface_t *ply_boot_splash_plugin_get_interface (void);
 
 static void stop_animation (ply_boot_splash_plugin_t *plugin);
 static void detach_from_event_loop (ply_boot_splash_plugin_t *plugin);
+static void update_progress_animation (ply_boot_splash_plugin_t *plugin,
+                                       double                    fraction_done);
 static void display_message (ply_boot_splash_plugin_t *plugin,
                              const char               *message);
 static void become_idle (ply_boot_splash_plugin_t *plugin,
@@ -1886,6 +1888,12 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                 ply_trace ("couldn't load views");
                 return false;
         }
+
+        /* Normal boot progress updates these widgets even when they are
+         * hidden. Do not carry that progress into a system update.
+         */
+        if (mode_uses_system_update (mode))
+                update_progress_animation (plugin, 0.0);
 
         ply_event_loop_watch_for_exit (loop, (ply_event_loop_exit_handler_t)
                                        detach_from_event_loop,
