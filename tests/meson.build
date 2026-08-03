@@ -419,6 +419,50 @@ test(
   timeout: test_timeout,
 )
 
+two_step_test_theme_config = configuration_data()
+two_step_test_theme_config.set(
+  'IMAGE_DIR',
+  meson.project_source_root() / 'themes/spinner',
+)
+configure_file(
+  input: 'plugins/two-step-theme.conf.in',
+  output: 'two-step-theme.conf',
+  configuration: two_step_test_theme_config,
+)
+
+two_step_test_c_args = test_c_args + [
+  '-DTEST_TWO_STEP_PLUGIN_PATH="@0@"'.format(
+    two_step_plugin.full_path()
+  ),
+  '-DTEST_TWO_STEP_THEME_PATH="@0@"'.format(
+    meson.current_build_dir() / 'two-step-theme.conf'
+  ),
+  '-DTEST_RENDERER_PLUGIN_DIR="@0@"'.format(
+    meson.project_build_root() / 'tests/plugins'
+  ),
+]
+
+two_step_test_executable = executable(
+  'test-two-step',
+  'test-two-step.c',
+  c_args: two_step_test_c_args,
+  dependencies: [libply_dep, libply_splash_core_dep, ply_renderer_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'splash-plugin-two-step-progress',
+  two_step_test_executable,
+  depends: [fake_renderer_plugin, two_step_plugin],
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'splash-plugin'],
+  timeout: test_timeout,
+)
+
 renderer_test_c_args = test_c_args + [
   '-DTEST_RENDERER_PLUGIN_DIR="@0@"'.format(
     meson.project_build_root() / 'tests/plugins'
