@@ -205,6 +205,8 @@ ply_boot_splash_plugin_interface_t *ply_boot_splash_plugin_get_interface (void);
 
 static void stop_animation (ply_boot_splash_plugin_t *plugin);
 static void detach_from_event_loop (ply_boot_splash_plugin_t *plugin);
+static void update_progress_animation (ply_boot_splash_plugin_t *plugin,
+                                       double                    fraction_done);
 static void display_message (ply_boot_splash_plugin_t *plugin,
                              const char               *message);
 static void become_idle (ply_boot_splash_plugin_t *plugin,
@@ -221,6 +223,15 @@ static void toggle_console_messages (ply_boot_splash_plugin_t *plugin);
 static void display_console_messages (ply_boot_splash_plugin_t *plugin);
 static void hide_console_messages (ply_boot_splash_plugin_t *plugin);
 static void unhide_console_messages (ply_boot_splash_plugin_t *plugin);
+
+static bool
+mode_uses_system_update (ply_boot_splash_mode_t mode)
+{
+        return mode == PLY_BOOT_SPLASH_MODE_UPDATES ||
+               mode == PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE ||
+               mode == PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE ||
+               mode == PLY_BOOT_SPLASH_MODE_SYSTEM_RESET;
+}
 
 static view_t *
 view_new (ply_boot_splash_plugin_t *plugin,
@@ -1878,6 +1889,12 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                 return false;
         }
 
+        /* Normal boot progress updates these widgets even when they are
+         * hidden. Do not carry that progress into a system update.
+         */
+        if (mode_uses_system_update (mode))
+                update_progress_animation (plugin, 0.0);
+
         ply_event_loop_watch_for_exit (loop, (ply_event_loop_exit_handler_t)
                                        detach_from_event_loop,
                                        plugin);
@@ -1939,10 +1956,7 @@ on_boot_progress (ply_boot_splash_plugin_t *plugin,
                   double                    duration,
                   double                    fraction_done)
 {
-        if (plugin->mode == PLY_BOOT_SPLASH_MODE_UPDATES ||
-            plugin->mode == PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE ||
-            plugin->mode == PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE ||
-            plugin->mode == PLY_BOOT_SPLASH_MODE_SYSTEM_RESET)
+        if (mode_uses_system_update (plugin->mode))
                 return;
 
         if (plugin->state != PLY_BOOT_SPLASH_DISPLAY_NORMAL)
@@ -2127,10 +2141,7 @@ static void
 system_update (ply_boot_splash_plugin_t *plugin,
                int                       progress)
 {
-        if (plugin->mode != PLY_BOOT_SPLASH_MODE_UPDATES &&
-            plugin->mode != PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE &&
-            plugin->mode != PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE &&
-            plugin->mode != PLY_BOOT_SPLASH_MODE_SYSTEM_RESET)
+        if (!mode_uses_system_update (plugin->mode))
                 return;
 
         update_progress_animation (plugin, progress / 100.0);

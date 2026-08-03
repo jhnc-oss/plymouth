@@ -1,0 +1,28 @@
+[Plymouth Theme]
+Name=Two-step test
+Description=Two-step splash module test fixture
+ModuleName=two-step
+
+[two-step]
+ImageDir=@IMAGE_DIR@
+HorizontalAlignment=0
+VerticalAlignment=0
+ProgressBarHorizontalAlignment=0
+ProgressBarVerticalAlignment=0
+ProgressBarWidth=80
+ProgressBarHeight=4
+BackgroundStartColor=0x000000
+BackgroundEndColor=0x000000
+ProgressBarBackgroundColor=0xff0000
+ProgressBarForegroundColor=0x00ff00
+ProgressFunction=linear
+ShowAnimationPercent=1.0
+
+[boot-up]
+UseAnimation=false
+UseEndAnimation=false
+
+[updates]
+UseAnimation=false
+UseEndAnimation=false
+UseProgressBar=true
