@@ -14,14 +14,12 @@
 
 #include "ply-buffer.h"
 #include "ply-event-loop.h"
-#include "ply-logger.h"
 #include "ply-utils.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
-#include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-transition-private.h"
 
@@ -45,8 +43,6 @@ plymouthd_free_state (plymouthd_t *state)
         if (state == NULL)
                 return;
 
-        ply_trace ("freeing terminal session");
-        plymouthd_session_free (state->session);
         plymouthd_transition_free (state->transition);
         ply_buffer_free (state->boot_buffer);
         plymouthd_progress_free (state->progress);
