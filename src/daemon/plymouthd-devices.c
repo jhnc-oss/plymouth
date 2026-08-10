@@ -229,6 +229,15 @@ plymouthd_free_devices (plymouthd_t *daemon)
 }
 
 static void
+on_keyboard_added (void           *user_data,
+                   ply_keyboard_t *keyboard)
+{
+        plymouthd_t *daemon = user_data;
+
+        daemon->devices->event_handlers.keyboard_added (daemon, keyboard);
+}
+
+static void
 load_devices (plymouthd_t                              *daemon,
               ply_device_manager_flags_t                flags,
               const plymouthd_devices_event_handlers_t *event_handlers)
@@ -245,8 +254,7 @@ load_devices (plymouthd_t                              *daemon,
         ply_device_manager_watch_devices (
                 daemon->devices->device_manager,
                 daemon->settings.device_timeout,
-                (ply_keyboard_added_handler_t)
-                plymouthd_handle_keyboard_added,
+                on_keyboard_added,
                 (ply_keyboard_removed_handler_t)
                 plymouthd_handle_keyboard_removed,
                 (ply_pixel_display_added_handler_t)
