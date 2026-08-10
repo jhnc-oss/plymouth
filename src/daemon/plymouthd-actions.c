@@ -16,7 +16,6 @@
 
 #include "ply-boot-splash.h"
 #include "ply-logger.h"
-#include "ply-terminal.h"
 #include "ply-trigger.h"
 #include "plymouthd-control-private.h"
 #include "plymouthd-devices-private.h"
@@ -278,8 +277,5 @@ plymouthd_handle_reload (state_t *state)
 bool
 plymouthd_handle_has_active_vt (state_t *state)
 {
-        if (state->local_console_terminal != NULL)
-                return ply_terminal_is_active (state->local_console_terminal);
-        else
-                return false;
+        return plymouthd_has_active_vt (state);
 }
