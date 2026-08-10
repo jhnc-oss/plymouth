@@ -15,6 +15,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include "ply-boot-splash.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -199,5 +200,9 @@ plymouthd_run (plymouthd_t *daemon)
 void
 plymouthd_free (plymouthd_t *daemon)
 {
+        if (daemon == NULL)
+                return;
+
+        ply_boot_splash_free (daemon->boot_splash);
         plymouthd_free_state (daemon);
 }

@@ -13,7 +13,6 @@
 #include <stdlib.h>
 
 #include "ply-boot-server.h"
-#include "ply-boot-splash.h"
 #include "ply-buffer.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
@@ -48,7 +47,6 @@ plymouthd_free_state (plymouthd_t *state)
         if (state == NULL)
                 return;
 
-        ply_boot_splash_free (state->boot_splash);
         ply_boot_server_free (state->boot_server);
         plymouthd_free_devices (state);
 
