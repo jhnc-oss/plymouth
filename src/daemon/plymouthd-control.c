@@ -40,114 +40,112 @@
 #include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
 
-typedef plymouthd_t state_t;
-
-static void detach_from_running_session (state_t *state);
-static void dump_details_and_quit_splash (state_t *state);
+static void detach_from_running_session (plymouthd_t *daemon);
+static void dump_details_and_quit_splash (plymouthd_t *daemon);
 void
-plymouthd_handle_show_splash (state_t *state)
+plymouthd_handle_show_splash (plymouthd_t *daemon)
 {
         bool has_displays;
 
-        if (state->is_shown) {
+        if (daemon->is_shown) {
                 ply_trace ("show splash called while already shown");
                 return;
         }
 
-        if (state->is_inactive) {
+        if (daemon->is_inactive) {
                 ply_trace ("show splash called while inactive");
                 return;
         }
 
-        if (plymouthd_should_ignore_show_splash_calls (state->mode)) {
+        if (plymouthd_should_ignore_show_splash_calls (daemon->mode)) {
                 ply_trace ("show splash called while ignoring show splash calls");
-                plymouthd_transition_set_retain_splash (state->transition,
+                plymouthd_transition_set_retain_splash (daemon->transition,
                                                         true);
-                dump_details_and_quit_splash (state);
+                dump_details_and_quit_splash (daemon);
                 return;
         }
 
-        state->is_shown = true;
-        has_displays = plymouthd_has_displays (state);
+        daemon->is_shown = true;
+        has_displays = plymouthd_has_displays (daemon);
 
-        if (!plymouthd_session_is_attached (state->session) &&
-            state->should_be_attached && has_displays)
-                plymouthd_attach_session (state);
+        if (!plymouthd_session_is_attached (daemon->session) &&
+            daemon->should_be_attached && has_displays)
+                plymouthd_attach_session (daemon);
 
-        plymouthd_prepare_console (state);
+        plymouthd_prepare_console (daemon);
 
-        plymouthd_session_request_details (state->session);
+        plymouthd_session_request_details (daemon->session);
 
         if (has_displays) {
                 ply_trace ("at least one display already available, so loading splash");
-                plymouthd_show_splash (state);
+                plymouthd_show_splash (daemon);
         } else {
                 ply_trace ("no displays available to show splash on, waiting...");
         }
 }
 
 static void
-quit_splash (state_t *state)
+quit_splash (plymouthd_t *daemon)
 {
         ply_trace ("quitting splash");
-        if (state->boot_splash != NULL) {
+        if (daemon->boot_splash != NULL) {
                 ply_trace ("freeing splash");
-                ply_boot_splash_free (state->boot_splash);
-                state->boot_splash = NULL;
+                ply_boot_splash_free (daemon->boot_splash);
+                daemon->boot_splash = NULL;
         }
 
-        plymouthd_deactivate_keyboards (state);
+        plymouthd_deactivate_keyboards (daemon);
 
-        if (!plymouthd_transition_should_retain_splash (state->transition))
-                plymouthd_release_console (state);
+        if (!plymouthd_transition_should_retain_splash (daemon->transition))
+                plymouthd_release_console (daemon);
 
-        detach_from_running_session (state);
+        detach_from_running_session (daemon);
 }
 
 static void
-dump_details_and_quit_splash (state_t *state)
+dump_details_and_quit_splash (plymouthd_t *daemon)
 {
-        state->showing_details = false;
-        plymouthd_toggle_details (state);
+        daemon->showing_details = false;
+        plymouthd_toggle_details (daemon);
 
-        plymouthd_hide_splash (state);
-        quit_splash (state);
+        plymouthd_hide_splash (daemon);
+        quit_splash (daemon);
 }
 
 void
-plymouthd_handle_hide_splash (state_t *state)
+plymouthd_handle_hide_splash (plymouthd_t *daemon)
 {
-        if (state->is_inactive)
+        if (daemon->is_inactive)
                 return;
 
-        if (state->boot_splash == NULL)
+        if (daemon->boot_splash == NULL)
                 return;
 
         ply_trace ("hiding boot splash");
-        plymouthd_transition_set_retain_splash (state->transition, true);
-        dump_details_and_quit_splash (state);
+        plymouthd_transition_set_retain_splash (daemon->transition, true);
+        dump_details_and_quit_splash (daemon);
 }
 
 static void
-quit_program (state_t *state)
+quit_program (plymouthd_t *daemon)
 {
         ply_trace ("cleaning up devices");
-        plymouthd_free_devices (state);
+        plymouthd_free_devices (daemon);
 
         ply_trace ("exiting event loop");
-        ply_event_loop_exit (state->loop, 0);
+        ply_event_loop_exit (daemon->loop, 0);
 
-        plymouthd_process_remove_pid_file (state->process);
+        plymouthd_process_remove_pid_file (daemon->process);
 
-        plymouthd_transition_complete_all (state->transition);
+        plymouthd_transition_complete_all (daemon->transition);
 }
 
 static void
-deactivate_console (state_t *state)
+deactivate_console (plymouthd_t *daemon)
 {
-        detach_from_running_session (state);
+        detach_from_running_session (daemon);
 
-        plymouthd_deactivate_console (state);
+        plymouthd_deactivate_console (daemon);
 
         /* do not let any tty opened where we could write after deactivate */
         if (ply_kernel_command_line_has_argument ("plymouth.debug"))
@@ -155,156 +153,156 @@ deactivate_console (state_t *state)
 }
 
 static void
-deactivate_splash (state_t *state)
+deactivate_splash (plymouthd_t *daemon)
 {
-        assert (!state->is_inactive);
+        assert (!daemon->is_inactive);
 
-        if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
-                plymouthd_deactivate_renderers (state);
+        if (daemon->boot_splash && ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
+                plymouthd_deactivate_renderers (daemon);
 
-        deactivate_console (state);
+        deactivate_console (daemon);
 
-        state->is_inactive = true;
+        daemon->is_inactive = true;
 
-        plymouthd_transition_complete_deactivate (state->transition);
+        plymouthd_transition_complete_deactivate (daemon->transition);
 }
 
 static void
-on_boot_splash_idle (state_t *state)
+on_boot_splash_idle (plymouthd_t *daemon)
 {
         ply_trace ("boot splash idle");
 
         /* In the case where we've received both a deactivate command and a
          * quit command, the quit command takes precedence.
          */
-        if (plymouthd_transition_has_quit (state->transition)) {
+        if (plymouthd_transition_has_quit (daemon->transition)) {
                 if (!plymouthd_transition_should_retain_splash (
-                            state->transition)) {
+                            daemon->transition)) {
                         ply_trace ("hiding splash");
-                        plymouthd_hide_splash (state);
+                        plymouthd_hide_splash (daemon);
                 }
 
                 ply_trace ("quitting splash");
-                quit_splash (state);
+                quit_splash (daemon);
                 ply_trace ("quitting program");
-                quit_program (state);
-        } else if (plymouthd_transition_has_deactivate (state->transition)) {
+                quit_program (daemon);
+        } else if (plymouthd_transition_has_deactivate (daemon->transition)) {
                 ply_trace ("deactivating splash");
-                deactivate_splash (state);
+                deactivate_splash (daemon);
         }
 
-        plymouthd_transition_end_idle (state->transition);
+        plymouthd_transition_end_idle (daemon->transition);
 }
 
 void
-plymouthd_handle_deactivate (state_t       *state,
+plymouthd_handle_deactivate (plymouthd_t   *daemon,
                              ply_trigger_t *deactivate_trigger)
 {
-        if (state->is_inactive) {
-                deactivate_console (state);
+        if (daemon->is_inactive) {
+                deactivate_console (daemon);
                 ply_trigger_pull (deactivate_trigger, NULL);
                 return;
         }
 
-        if (!plymouthd_transition_queue_deactivate (state->transition,
+        if (!plymouthd_transition_queue_deactivate (daemon->transition,
                                                     deactivate_trigger)) {
                 return;
         }
 
         ply_trace ("deactivating");
-        plymouthd_cancel_pending_show (state);
+        plymouthd_cancel_pending_show (daemon);
 
-        plymouthd_pause_devices (state);
-        plymouthd_deactivate_keyboards (state);
+        plymouthd_pause_devices (daemon);
+        plymouthd_deactivate_keyboards (daemon);
 
-        if (state->boot_splash != NULL) {
-                if (plymouthd_transition_begin_idle (state->transition)) {
-                        ply_boot_splash_become_idle (state->boot_splash,
+        if (daemon->boot_splash != NULL) {
+                if (plymouthd_transition_begin_idle (daemon->transition)) {
+                        ply_boot_splash_become_idle (daemon->boot_splash,
                                                      (ply_boot_splash_on_idle_handler_t)
                                                      on_boot_splash_idle,
-                                                     state);
+                                                     daemon);
                 }
         } else {
                 ply_trace ("deactivating splash");
-                deactivate_splash (state);
+                deactivate_splash (daemon);
         }
 }
 
 void
-plymouthd_handle_reactivate (state_t *state)
+plymouthd_handle_reactivate (plymouthd_t *daemon)
 {
-        if (!state->is_inactive)
+        if (!daemon->is_inactive)
                 return;
 
-        plymouthd_reactivate_console (state);
+        plymouthd_reactivate_console (daemon);
 
-        if (plymouthd_session_has_terminal (state->session) &&
-            state->should_be_attached) {
+        if (plymouthd_session_has_terminal (daemon->session) &&
+            daemon->should_be_attached) {
                 ply_trace ("reactivating terminal session");
-                plymouthd_attach_session (state);
+                plymouthd_attach_session (daemon);
         }
 
-        plymouthd_activate_keyboards (state);
-        if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
-                plymouthd_activate_renderers (state);
+        plymouthd_activate_keyboards (daemon);
+        if (daemon->boot_splash && ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
+                plymouthd_activate_renderers (daemon);
 
-        plymouthd_unpause_devices (state);
+        plymouthd_unpause_devices (daemon);
 
-        state->is_inactive = false;
+        daemon->is_inactive = false;
 
-        plymouthd_update_display (state);
+        plymouthd_update_display (daemon);
 }
 
 void
-plymouthd_handle_quit (state_t       *state,
+plymouthd_handle_quit (plymouthd_t   *daemon,
                        bool           retain_splash,
                        ply_trigger_t *quit_trigger)
 {
         ply_trace ("quitting (retain splash: %s)", retain_splash ? "true" : "false");
 
-        if (!plymouthd_transition_queue_quit (state->transition,
+        if (!plymouthd_transition_queue_quit (daemon->transition,
                                               retain_splash,
                                               quit_trigger)) {
                 ply_trace ("quit trigger already pending, so chaining to it");
                 return;
         }
 
-        if (plymouthd_logging_is_initialized (state->logging)) {
+        if (plymouthd_logging_is_initialized (daemon->logging)) {
                 ply_trace ("system initialized so saving boot-duration file");
-                plymouthd_progress_save_cache (state->progress);
+                plymouthd_progress_save_cache (daemon->progress);
         } else {
                 ply_trace ("system not initialized so skipping saving boot-duration file");
         }
         ply_trace ("closing log");
-        plymouthd_session_close_log (state->session);
+        plymouthd_session_close_log (daemon->session);
 
-        plymouthd_deactivate_keyboards (state);
+        plymouthd_deactivate_keyboards (daemon);
 
         ply_trace ("unloading splash");
-        if (state->is_inactive && !retain_splash) {
+        if (daemon->is_inactive && !retain_splash) {
                 /* We've been deactivated and X failed to start
                  */
-                dump_details_and_quit_splash (state);
-                quit_program (state);
-        } else if (state->boot_splash != NULL) {
-                if (plymouthd_transition_begin_idle (state->transition)) {
-                        ply_boot_splash_become_idle (state->boot_splash,
+                dump_details_and_quit_splash (daemon);
+                quit_program (daemon);
+        } else if (daemon->boot_splash != NULL) {
+                if (plymouthd_transition_begin_idle (daemon->transition)) {
+                        ply_boot_splash_become_idle (daemon->boot_splash,
                                                      (ply_boot_splash_on_idle_handler_t)
                                                      on_boot_splash_idle,
-                                                     state);
+                                                     daemon);
                 }
         } else {
                 if (!plymouthd_transition_should_retain_splash (
-                            state->transition)) {
-                        plymouthd_hide_splash (state);
+                            daemon->transition)) {
+                        plymouthd_hide_splash (daemon);
                 }
-                quit_splash (state);
-                quit_program (state);
+                quit_splash (daemon);
+                quit_program (daemon);
         }
 }
 
 static void
-detach_from_running_session (state_t *state)
+detach_from_running_session (plymouthd_t *daemon)
 {
-        plymouthd_session_detach (state->session);
+        plymouthd_session_detach (daemon->session);
 }
