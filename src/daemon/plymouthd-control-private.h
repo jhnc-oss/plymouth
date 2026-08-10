@@ -12,22 +12,11 @@
 #define PLYMOUTHD_CONTROL_PRIVATE_H
 
 #include <stdbool.h>
-#include <stddef.h>
 
-#include "ply-kmsg-reader.h"
 #include "ply-private.h"
 #include "ply-trigger.h"
 
 typedef struct _plymouthd plymouthd_t;
-
-PLY_PRIVATE void plymouthd_handle_session_output (plymouthd_t *daemon,
-                                                  const char  *output,
-                                                  size_t       size);
-PLY_PRIVATE void plymouthd_handle_session_hangup (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_handle_kmsg (plymouthd_t    *daemon,
-                                        kmsg_message_t *message);
-PLY_PRIVATE bool plymouthd_attach_session (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_handle_term_signal (plymouthd_t *daemon);
 
 PLY_PRIVATE void plymouthd_handle_show_splash (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_handle_hide_splash (plymouthd_t *daemon);

@@ -41,6 +41,7 @@
 #include "plymouthd-policy-private.h"
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
+#include "plymouthd-runtime-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
