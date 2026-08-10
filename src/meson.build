@@ -97,6 +97,19 @@ plymouthd_logging_dep = declare_dependency(
   link_with: plymouthd_logging,
 )
 
+plymouthd_session = static_library(
+  'plymouthd-session-private',
+  'plymouthd-session.c',
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_session_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_session,
+)
+
 ply_peer_credentials = static_library(
   'ply-peer-credentials-private',
   'ply-peer-credentials.c',
@@ -142,6 +155,7 @@ plymouthd_deps = [
   plymouthd_interaction_dep,
   plymouthd_messages_dep,
   plymouthd_logging_dep,
+  plymouthd_session_dep,
 ]
 
 plymouthd = executable('plymouthd',
