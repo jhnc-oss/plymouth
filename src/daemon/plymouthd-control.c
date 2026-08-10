@@ -134,8 +134,7 @@ static void
 quit_program (state_t *state)
 {
         ply_trace ("cleaning up devices");
-        ply_device_manager_free (state->device_manager);
-        state->device_manager = NULL;
+        plymouthd_free_devices (state);
 
         ply_trace ("exiting event loop");
         ply_event_loop_exit (state->loop, 0);
