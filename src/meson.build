@@ -150,6 +150,19 @@ plymouthd_transition_dep = declare_dependency(
   link_with: plymouthd_transition,
 )
 
+plymouthd_options = static_library(
+  'plymouthd-options-private',
+  'plymouthd-options.c',
+  dependencies: [libply_dep, plymouthd_policy_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_options_dep = declare_dependency(
+  dependencies: [libply_dep, plymouthd_policy_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_options,
+)
+
 ply_peer_credentials = static_library(
   'ply-peer-credentials-private',
   'ply-peer-credentials.c',
@@ -199,6 +212,7 @@ plymouthd_deps = [
   plymouthd_progress_dep,
   plymouthd_diagnostics_dep,
   plymouthd_transition_dep,
+  plymouthd_options_dep,
 ]
 
 plymouthd = executable('plymouthd',
