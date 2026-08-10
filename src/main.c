@@ -144,7 +144,6 @@ static void on_quit (state_t       *state,
                      ply_trigger_t *quit_trigger);
 static void on_new_kmsg_message (state_t        *state,
                                  kmsg_message_t *kmsg_message);
-static bool sh_is_init (state_t *state);
 static void cancel_pending_delayed_show (state_t *state);
 static void prepare_logging (state_t *state);
 static void dump_debug_buffer_to_file (void);
@@ -430,7 +429,7 @@ static void
 on_newroot (state_t    *state,
             const char *root_dir)
 {
-        if (sh_is_init (state)) {
+        if (plymouthd_shell_is_init ()) {
                 ply_trace ("new root mounted at \"%s\", exiting since init= a shell", root_dir);
                 on_quit (state, false, ply_trigger_new (NULL));
                 return;
@@ -636,24 +635,6 @@ plymouth_should_ignore_show_splash_calls (state_t *state)
         return false;
 }
 
-static bool
-sh_is_init (state_t *state)
-{
-        char *init_string = ply_kernel_command_line_get_key_value ("init=");
-        bool result = false;
-        size_t length;
-
-        if (init_string) {
-                length = strlen (init_string);
-                if (length > 2 && init_string[length - 2] == 's' &&
-                    init_string[length - 1] == 'h')
-                        result = true;
-
-                free (init_string);
-        }
-
-        return result;
-}
 
 static bool
 kernel_console_is_ttynull (void)
