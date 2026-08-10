@@ -98,16 +98,10 @@ quit_splash (state_t *state)
                 state->boot_splash = NULL;
         }
 
-        ply_device_manager_deactivate_keyboards (state->device_manager);
+        plymouthd_deactivate_keyboards (state);
 
-        if (state->local_console_terminal != NULL) {
-                if (!plymouthd_transition_should_retain_splash (
-                            state->transition)) {
-                        ply_trace ("Not retaining splash, so deallocating VT");
-                        ply_terminal_deactivate_vt (state->local_console_terminal);
-                        ply_terminal_close (state->local_console_terminal);
-                }
-        }
+        if (!plymouthd_transition_should_retain_splash (state->transition))
+                plymouthd_release_console (state);
 
         detach_from_running_session (state);
 }
