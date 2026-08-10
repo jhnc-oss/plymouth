@@ -15,7 +15,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "ply-buffer.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -28,10 +27,8 @@
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-runtime-private.h"
-#include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-state-private.h"
-#include "plymouthd-transition-private.h"
 
 plymouthd_t *
 plymouthd_new (plymouthd_options_t *options,
@@ -116,28 +113,14 @@ plymouthd_new (plymouthd_options_t *options,
                 goto failed;
         }
 
-        daemon->boot_buffer = ply_buffer_new ();
-        daemon->transition = plymouthd_transition_new ();
-        daemon->session = plymouthd_session_new (
-                daemon->loop,
-                (plymouthd_session_output_handler_t)
-                plymouthd_handle_session_output,
-                (plymouthd_session_hangup_handler_t)
-                plymouthd_handle_session_hangup,
-                (plymouthd_session_kmsg_handler_t)
-                plymouthd_handle_kmsg,
-                daemon);
-
-        if (plymouthd_options_should_attach_to_session (options)) {
-                daemon->should_be_attached = true;
-                if (!plymouthd_attach_session (daemon)) {
-                        ply_trace ("could not redirect console session: %m");
-                        if (daemon_handle != NULL)
-                                ply_detach_daemon (daemon_handle,
-                                                   EX_UNAVAILABLE);
-                        *exit_code = EX_UNAVAILABLE;
-                        goto failed;
-                }
+        if (!plymouthd_initialize_session (
+                    daemon,
+                    plymouthd_options_should_attach_to_session (options))) {
+                ply_trace ("could not redirect console session: %m");
+                if (daemon_handle != NULL)
+                        ply_detach_daemon (daemon_handle, EX_UNAVAILABLE);
+                *exit_code = EX_UNAVAILABLE;
+                goto failed;
         }
 
         daemon->progress = plymouthd_progress_new (daemon->mode);
