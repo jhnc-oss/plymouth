@@ -191,17 +191,12 @@ plymouthd_unpause_devices (plymouthd_t *daemon)
 void
 plymouthd_free_devices (plymouthd_t *daemon)
 {
-        if (daemon->devices == NULL) {
-                ply_device_manager_free (daemon->device_manager);
-                daemon->device_manager = NULL;
+        if (daemon->devices == NULL)
                 return;
-        }
 
         ply_device_manager_free (daemon->devices->device_manager);
         free (daemon->devices);
         daemon->devices = NULL;
-        daemon->device_manager = NULL;
-        daemon->local_console_terminal = NULL;
 }
 
 static void
@@ -367,9 +362,6 @@ load_devices (plymouthd_t               *daemon,
                                         daemon->settings.extra_esc_key);
         daemon->devices->local_console_terminal =
                 ply_device_manager_get_default_terminal (daemon->devices->device_manager);
-        daemon->device_manager = daemon->devices->device_manager;
-        daemon->local_console_terminal =
-                daemon->devices->local_console_terminal;
 
         ply_device_manager_watch_devices (
                 daemon->devices->device_manager,
