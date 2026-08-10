@@ -30,6 +30,25 @@ show_messages (plymouthd_t *daemon)
         plymouthd_messages_replay (daemon->messages, daemon->boot_splash);
 }
 
+static void
+attach_pixel_display_to_splash (ply_pixel_display_t *display,
+                                void                *user_data)
+{
+        ply_boot_splash_t *splash = user_data;
+
+        ply_boot_splash_add_pixel_display (splash, display);
+}
+
+void
+plymouthd_attach_pixel_displays_to_splash (plymouthd_t       *daemon,
+                                           ply_boot_splash_t *splash)
+{
+        plymouthd_for_each_pixel_display (
+                daemon,
+                attach_pixel_display_to_splash,
+                splash);
+}
+
 static ply_boot_splash_t *
 show_theme (plymouthd_t *daemon,
             const char  *theme_path)
