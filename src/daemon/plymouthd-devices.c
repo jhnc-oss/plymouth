@@ -28,6 +28,7 @@ struct _plymouthd_devices
         ply_device_manager_t              *device_manager;
         ply_terminal_t                    *local_console_terminal;
         plymouthd_devices_event_handlers_t event_handlers;
+        void                              *event_user_data;
 };
 
 bool
@@ -230,54 +231,60 @@ static void
 on_keyboard_added (void           *user_data,
                    ply_keyboard_t *keyboard)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.keyboard_added (daemon, keyboard);
+        devices->event_handlers.keyboard_added (devices->event_user_data,
+                                                keyboard);
 }
 
 static void
 on_keyboard_removed (void           *user_data,
                      ply_keyboard_t *keyboard)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.keyboard_removed (daemon, keyboard);
+        devices->event_handlers.keyboard_removed (devices->event_user_data,
+                                                  keyboard);
 }
 
 static void
 on_pixel_display_added (void                *user_data,
                         ply_pixel_display_t *display)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.pixel_display_added (daemon, display);
+        devices->event_handlers.pixel_display_added (devices->event_user_data,
+                                                     display);
 }
 
 static void
 on_pixel_display_removed (void                *user_data,
                           ply_pixel_display_t *display)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.pixel_display_removed (daemon, display);
+        devices->event_handlers.pixel_display_removed (devices->event_user_data,
+                                                       display);
 }
 
 static void
 on_text_display_added (void               *user_data,
                        ply_text_display_t *display)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.text_display_added (daemon, display);
+        devices->event_handlers.text_display_added (devices->event_user_data,
+                                                    display);
 }
 
 static void
 on_text_display_removed (void               *user_data,
                          ply_text_display_t *display)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.text_display_removed (daemon, display);
+        devices->event_handlers.text_display_removed (devices->event_user_data,
+                                                      display);
 }
 
 static void
@@ -287,6 +294,7 @@ load_devices (plymouthd_t                              *daemon,
 {
         daemon->devices = calloc (1, sizeof(plymouthd_devices_t));
         daemon->devices->event_handlers = *event_handlers;
+        daemon->devices->event_user_data = daemon;
         daemon->devices->device_manager =
                 ply_device_manager_new (daemon->default_tty,
                                         flags,
@@ -303,7 +311,7 @@ load_devices (plymouthd_t                              *daemon,
                 on_pixel_display_removed,
                 on_text_display_added,
                 on_text_display_removed,
-                daemon);
+                daemon->devices);
 
         if (ply_device_manager_has_serial_consoles (daemon->devices->device_manager))
                 daemon->should_force_details = true;

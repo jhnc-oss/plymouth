@@ -30,17 +30,17 @@ typedef void (*plymouthd_devices_text_display_handler_t)(ply_text_display_t *dis
 
 typedef struct
 {
-        void (*keyboard_added)(plymouthd_t    *daemon,
+        void (*keyboard_added)(void           *user_data,
                                ply_keyboard_t *keyboard);
-        void (*keyboard_removed)(plymouthd_t    *daemon,
+        void (*keyboard_removed)(void           *user_data,
                                  ply_keyboard_t *keyboard);
-        void (*pixel_display_added)(plymouthd_t         *daemon,
+        void (*pixel_display_added)(void                *user_data,
                                     ply_pixel_display_t *display);
-        void (*pixel_display_removed)(plymouthd_t         *daemon,
+        void (*pixel_display_removed)(void                *user_data,
                                       ply_pixel_display_t *display);
-        void (*text_display_added)(plymouthd_t        *daemon,
+        void (*text_display_added)(void               *user_data,
                                    ply_text_display_t *display);
-        void (*text_display_removed)(plymouthd_t        *daemon,
+        void (*text_display_removed)(void               *user_data,
                                      ply_text_display_t *display);
 } plymouthd_devices_event_handlers_t;
 

@@ -48,30 +48,62 @@ on_escape_pressed (plymouthd_t *daemon)
 }
 
 static void
-on_keyboard_added (plymouthd_t    *daemon,
+on_keyboard_added (void           *user_data,
                    ply_keyboard_t *keyboard)
 {
+        plymouthd_t *daemon = user_data;
+
         plymouthd_handle_keyboard_added (daemon,
                                          keyboard,
                                          on_escape_pressed);
 }
 
 static void
-on_keyboard_removed (plymouthd_t    *daemon,
+on_keyboard_removed (void           *user_data,
                      ply_keyboard_t *keyboard)
 {
+        plymouthd_t *daemon = user_data;
+
         plymouthd_handle_keyboard_removed (daemon,
                                            keyboard,
                                            on_escape_pressed);
 }
 
+static void
+on_pixel_display_added (void                *user_data,
+                        ply_pixel_display_t *display)
+{
+        plymouthd_handle_pixel_display_added (user_data, display);
+}
+
+static void
+on_pixel_display_removed (void                *user_data,
+                          ply_pixel_display_t *display)
+{
+        plymouthd_handle_pixel_display_removed (user_data, display);
+}
+
+static void
+on_text_display_added (void               *user_data,
+                       ply_text_display_t *display)
+{
+        plymouthd_handle_text_display_added (user_data, display);
+}
+
+static void
+on_text_display_removed (void               *user_data,
+                         ply_text_display_t *display)
+{
+        plymouthd_handle_text_display_removed (user_data, display);
+}
+
 static const plymouthd_devices_event_handlers_t device_event_handlers = {
         .keyboard_added        = on_keyboard_added,
         .keyboard_removed      = on_keyboard_removed,
-        .pixel_display_added   = plymouthd_handle_pixel_display_added,
-        .pixel_display_removed = plymouthd_handle_pixel_display_removed,
-        .text_display_added    = plymouthd_handle_text_display_added,
-        .text_display_removed  = plymouthd_handle_text_display_removed,
+        .pixel_display_added   = on_pixel_display_added,
+        .pixel_display_removed = on_pixel_display_removed,
+        .text_display_added    = on_text_display_added,
+        .text_display_removed  = on_text_display_removed,
 };
 
 plymouthd_t *
