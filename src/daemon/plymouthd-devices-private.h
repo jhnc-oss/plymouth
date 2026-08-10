@@ -13,6 +13,9 @@
 
 #include <stdbool.h>
 
+#include <xkbcommon/xkbcommon.h>
+
+#include "ply-device-manager.h"
 #include "ply-private.h"
 
 typedef struct _ply_keyboard ply_keyboard_t;
@@ -44,10 +47,17 @@ typedef struct
                                      ply_text_display_t *display);
 } plymouthd_devices_event_handlers_t;
 
+PLY_PRIVATE plymouthd_devices_t *plymouthd_devices_new (const char                               *default_tty,
+                                                        ply_device_manager_flags_t                flags,
+                                                        xkb_keysym_t                              extra_escape_key,
+                                                        double                                    device_timeout,
+                                                        const plymouthd_devices_event_handlers_t *event_handlers,
+                                                        void                                     *event_user_data);
 PLY_PRIVATE void plymouthd_initialize_devices (plymouthd_t                              *daemon,
                                                bool                                      should_ignore_serial_consoles,
                                                const plymouthd_devices_event_handlers_t *event_handlers);
 PLY_PRIVATE bool plymouthd_devices_has_displays (plymouthd_devices_t *devices);
+PLY_PRIVATE bool plymouthd_devices_has_serial_consoles (plymouthd_devices_t *devices);
 PLY_PRIVATE bool plymouthd_devices_has_active_vt (plymouthd_devices_t *devices);
 PLY_PRIVATE bool plymouthd_devices_has_vt_console (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_devices_for_each_keyboard (plymouthd_devices_t                 *devices,

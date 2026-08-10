@@ -38,6 +38,12 @@ plymouthd_devices_has_displays (plymouthd_devices_t *devices)
 }
 
 bool
+plymouthd_devices_has_serial_consoles (plymouthd_devices_t *devices)
+{
+        return ply_device_manager_has_serial_consoles (devices->device_manager);
+}
+
+bool
 plymouthd_devices_has_active_vt (plymouthd_devices_t *devices)
 {
         if (devices->local_console_terminal == NULL)
@@ -287,34 +293,37 @@ on_text_display_removed (void               *user_data,
                                                       display);
 }
 
-static void
-load_devices (plymouthd_t                              *daemon,
-              ply_device_manager_flags_t                flags,
-              const plymouthd_devices_event_handlers_t *event_handlers)
+plymouthd_devices_t *
+plymouthd_devices_new (const char                               *default_tty,
+                       ply_device_manager_flags_t                flags,
+                       xkb_keysym_t                              extra_escape_key,
+                       double                                    device_timeout,
+                       const plymouthd_devices_event_handlers_t *event_handlers,
+                       void                                     *event_user_data)
 {
-        daemon->devices = calloc (1, sizeof(plymouthd_devices_t));
-        daemon->devices->event_handlers = *event_handlers;
-        daemon->devices->event_user_data = daemon;
-        daemon->devices->device_manager =
-                ply_device_manager_new (daemon->default_tty,
-                                        flags,
-                                        daemon->settings->extra_esc_key);
-        daemon->devices->local_console_terminal =
-                ply_device_manager_get_default_terminal (daemon->devices->device_manager);
+        plymouthd_devices_t *devices;
+
+        devices = calloc (1, sizeof(plymouthd_devices_t));
+        devices->event_handlers = *event_handlers;
+        devices->event_user_data = event_user_data;
+        devices->device_manager = ply_device_manager_new (default_tty,
+                                                          flags,
+                                                          extra_escape_key);
+        devices->local_console_terminal =
+                ply_device_manager_get_default_terminal (devices->device_manager);
 
         ply_device_manager_watch_devices (
-                daemon->devices->device_manager,
-                daemon->settings->device_timeout,
+                devices->device_manager,
+                device_timeout,
                 on_keyboard_added,
                 on_keyboard_removed,
                 on_pixel_display_added,
                 on_pixel_display_removed,
                 on_text_display_added,
                 on_text_display_removed,
-                daemon->devices);
+                devices);
 
-        if (ply_device_manager_has_serial_consoles (daemon->devices->device_manager))
-                daemon->should_force_details = true;
+        return devices;
 }
 
 void
@@ -357,5 +366,15 @@ plymouthd_initialize_devices (
         flags = plymouthd_add_simpledrm_flags (
                 flags,
                 daemon->settings->use_simpledrm);
-        load_devices (daemon, flags, event_handlers);
+
+        daemon->devices = plymouthd_devices_new (
+                daemon->default_tty,
+                flags,
+                daemon->settings->extra_esc_key,
+                daemon->settings->device_timeout,
+                event_handlers,
+                daemon);
+
+        if (plymouthd_devices_has_serial_consoles (daemon->devices))
+                daemon->should_force_details = true;
 }
