@@ -24,6 +24,8 @@ PLY_PRIVATE void plymouthd_handle_escape (plymouthd_t *daemon,
                                           bool         has_vt_console);
 PLY_PRIVATE void plymouthd_handle_keyboard_added (plymouthd_t    *daemon,
                                                   ply_keyboard_t *keyboard);
+PLY_PRIVATE void plymouthd_handle_keyboard_removed (plymouthd_t    *daemon,
+                                                    ply_keyboard_t *keyboard);
 PLY_PRIVATE void plymouthd_handle_keyboard_added (plymouthd_t                     *daemon,
                                                   ply_keyboard_t                  *keyboard,
                                                   plymouthd_input_escape_handler_t escape_handler);

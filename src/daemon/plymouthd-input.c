@@ -145,3 +145,10 @@ plymouthd_handle_keyboard_removed (plymouthd_t                     *daemon,
         if (daemon->boot_splash != NULL)
                 ply_boot_splash_unset_keyboard (daemon->boot_splash);
 }
+
+void
+plymouthd_handle_keyboard_removed (plymouthd_t    *daemon,
+                                   ply_keyboard_t *keyboard)
+{
+        plymouthd_handle_keyboard_removed (daemon, keyboard, on_escape_pressed);
+}
