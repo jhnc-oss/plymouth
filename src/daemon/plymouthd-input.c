@@ -18,8 +18,6 @@
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-state-private.h"
 
-typedef void (*plymouthd_input_escape_handler_t)(plymouthd_t *daemon);
-
 static void
 attach_keyboard_to_splash (ply_keyboard_t *keyboard,
                            void           *user_data)
@@ -80,13 +78,6 @@ plymouthd_handle_escape (plymouthd_t *daemon)
 }
 
 static void
-on_escape_pressed (plymouthd_t *daemon)
-{
-        if (plymouthd_handle_escape (daemon))
-                plymouthd_toggle_details (daemon);
-}
-
-static void
 attach_keyboard (plymouthd_t                     *daemon,
                  ply_keyboard_t                  *keyboard,
                  plymouthd_input_escape_handler_t escape_handler)
@@ -127,10 +118,12 @@ keyboard_added (plymouthd_t                     *daemon,
 }
 
 void
-plymouthd_handle_keyboard_added (plymouthd_t    *daemon,
-                                 ply_keyboard_t *keyboard)
+plymouthd_handle_keyboard_added (
+        plymouthd_t                     *daemon,
+        ply_keyboard_t                  *keyboard,
+        plymouthd_input_escape_handler_t escape_handler)
 {
-        keyboard_added (daemon, keyboard, on_escape_pressed);
+        keyboard_added (daemon, keyboard, escape_handler);
 }
 
 static void
@@ -167,8 +160,10 @@ keyboard_removed (plymouthd_t                     *daemon,
 }
 
 void
-plymouthd_handle_keyboard_removed (plymouthd_t    *daemon,
-                                   ply_keyboard_t *keyboard)
+plymouthd_handle_keyboard_removed (
+        plymouthd_t                     *daemon,
+        ply_keyboard_t                  *keyboard,
+        plymouthd_input_escape_handler_t escape_handler)
 {
-        keyboard_removed (daemon, keyboard, on_escape_pressed);
+        keyboard_removed (daemon, keyboard, escape_handler);
 }
