@@ -10,8 +10,10 @@
 
 #include "plymouthd-session-private.h"
 
+#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "ply-logger.h"
 #include "ply-terminal-session.h"
@@ -177,6 +179,19 @@ bool
 plymouthd_session_has_terminal (plymouthd_session_t *session)
 {
         return session->terminal_session != NULL;
+}
+
+void
+plymouthd_session_request_details (plymouthd_session_t *session)
+{
+        if (!session->attached)
+                return;
+
+#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
+        ply_trace ("telling systemd to start printing details");
+        if (kill (1, SIGRTMIN + 20) < 0)
+                ply_trace ("could not tell systemd to print details: %m");
+#endif
 }
 
 bool
