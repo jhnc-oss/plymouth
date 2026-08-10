@@ -14,7 +14,6 @@
 #include "ply-keyboard.h"
 #include "ply-logger.h"
 #include "plymouthd-devices-private.h"
-#include "plymouthd-display-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-state-private.h"
 
