@@ -25,10 +25,8 @@
 #include <assert.h>
 
 #include "ply-boot-splash.h"
-#include "ply-device-manager.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
-#include "ply-terminal.h"
 #include "ply-trigger.h"
 #include "ply-utils.h"
 #include "plymouthd-devices-private.h"
@@ -280,7 +278,7 @@ plymouthd_handle_quit (state_t       *state,
         ply_trace ("closing log");
         plymouthd_session_close_log (state->session);
 
-        ply_device_manager_deactivate_keyboards (state->device_manager);
+        plymouthd_deactivate_keyboards (state);
 
         ply_trace ("unloading splash");
         if (state->is_inactive && !retain_splash) {
