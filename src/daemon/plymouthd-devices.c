@@ -205,15 +205,15 @@ plymouthd_devices_reactivate_console (plymouthd_devices_t *devices)
 }
 
 void
-plymouthd_pause_devices (plymouthd_t *daemon)
+plymouthd_devices_pause (plymouthd_devices_t *devices)
 {
-        ply_device_manager_pause (daemon->devices->device_manager);
+        ply_device_manager_pause (devices->device_manager);
 }
 
 void
-plymouthd_unpause_devices (plymouthd_t *daemon)
+plymouthd_devices_unpause (plymouthd_devices_t *devices)
 {
-        ply_device_manager_unpause (daemon->devices->device_manager);
+        ply_device_manager_unpause (devices->device_manager);
 }
 
 void

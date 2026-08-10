@@ -68,8 +68,8 @@ PLY_PRIVATE void plymouthd_devices_restore_text_console (plymouthd_devices_t *de
 PLY_PRIVATE void plymouthd_devices_release_console (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_devices_deactivate_console (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_devices_reactivate_console (plymouthd_devices_t *devices);
-PLY_PRIVATE void plymouthd_pause_devices (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_unpause_devices (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_devices_pause (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_unpause (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_free_devices (plymouthd_t *daemon);
 
 #endif /* PLYMOUTHD_DEVICES_PRIVATE_H */

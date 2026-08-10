@@ -212,7 +212,7 @@ plymouthd_handle_deactivate (plymouthd_t   *daemon,
         ply_trace ("deactivating");
         plymouthd_cancel_pending_show (daemon);
 
-        plymouthd_pause_devices (daemon);
+        plymouthd_devices_pause (daemon->devices);
         plymouthd_devices_deactivate_keyboards (daemon->devices);
 
         if (daemon->boot_splash != NULL) {
@@ -246,7 +246,7 @@ plymouthd_handle_reactivate (plymouthd_t *daemon)
         if (daemon->boot_splash && ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
                 plymouthd_devices_activate_renderers (daemon->devices);
 
-        plymouthd_unpause_devices (daemon);
+        plymouthd_devices_unpause (daemon->devices);
 
         daemon->is_inactive = false;
 
