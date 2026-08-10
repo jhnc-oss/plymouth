@@ -34,6 +34,7 @@
 #include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-state-private.h"
+#include "plymouthd-transition-private.h"
 
 static void
 on_escape_pressed (plymouthd_t *daemon)
@@ -210,5 +211,6 @@ plymouthd_free (plymouthd_t *daemon)
         plymouthd_free_devices (daemon);
         ply_trace ("freeing terminal session");
         plymouthd_session_free (daemon->session);
+        plymouthd_transition_free (daemon->transition);
         plymouthd_free_state (daemon);
 }

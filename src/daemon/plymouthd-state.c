@@ -21,7 +21,6 @@
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-settings-private.h"
-#include "plymouthd-transition-private.h"
 
 plymouthd_t *
 plymouthd_new_state (ply_boot_splash_mode_t mode)
@@ -43,7 +42,6 @@ plymouthd_free_state (plymouthd_t *state)
         if (state == NULL)
                 return;
 
-        plymouthd_transition_free (state->transition);
         ply_buffer_free (state->boot_buffer);
         plymouthd_progress_free (state->progress);
         plymouthd_interaction_free (state->interaction);
