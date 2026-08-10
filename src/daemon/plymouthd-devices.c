@@ -209,36 +209,6 @@ plymouthd_free_devices (plymouthd_t *daemon)
 }
 
 static void
-on_escape_pressed (plymouthd_t *daemon)
-{
-        bool has_vt_console = true;
-
-        if (daemon->devices->local_console_terminal == NULL ||
-            !ply_terminal_is_vt (daemon->devices->local_console_terminal))
-                has_vt_console = false;
-
-        plymouthd_handle_escape (daemon, has_vt_console);
-}
-
-static void
-on_keyboard_added (plymouthd_t    *daemon,
-                   ply_keyboard_t *keyboard)
-{
-        plymouthd_handle_keyboard_added (daemon,
-                                         keyboard,
-                                         on_escape_pressed);
-}
-
-static void
-on_keyboard_removed (plymouthd_t    *daemon,
-                     ply_keyboard_t *keyboard)
-{
-        plymouthd_handle_keyboard_removed (daemon,
-                                           keyboard,
-                                           on_escape_pressed);
-}
-
-static void
 load_devices (plymouthd_t               *daemon,
               ply_device_manager_flags_t flags)
 {
@@ -253,8 +223,10 @@ load_devices (plymouthd_t               *daemon,
         ply_device_manager_watch_devices (
                 daemon->devices->device_manager,
                 daemon->settings.device_timeout,
-                (ply_keyboard_added_handler_t) on_keyboard_added,
-                (ply_keyboard_removed_handler_t) on_keyboard_removed,
+                (ply_keyboard_added_handler_t)
+                plymouthd_handle_keyboard_added,
+                (ply_keyboard_removed_handler_t)
+                plymouthd_handle_keyboard_removed,
                 (ply_pixel_display_added_handler_t)
                 plymouthd_handle_pixel_display_added,
                 (ply_pixel_display_removed_handler_t)
