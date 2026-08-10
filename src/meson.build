@@ -43,8 +43,10 @@ ply_boot_server_dep = declare_dependency(
   link_with: ply_boot_server,
 )
 
+plymouthd_private_inc = include_directories('daemon')
+
 plymouthd_private_sources = files(
-  'plymouthd.c',
+  'daemon/plymouthd.c',
   'plymouthd-commands.c',
   'plymouthd-diagnostics.c',
   'plymouthd-display.c',
@@ -67,12 +69,12 @@ plymouthd_private = static_library(
   plymouthd_private_sources,
   c_args: plymouthd_cflags,
   dependencies: [libply_dep, libply_splash_core_dep, ply_boot_server_dep],
-  include_directories: config_h_inc,
+  include_directories: [config_h_inc, plymouthd_private_inc],
 )
 
 plymouthd_private_dep = declare_dependency(
   dependencies: [libply_dep, libply_splash_core_dep, ply_boot_server_dep],
-  include_directories: include_directories('.'),
+  include_directories: [include_directories('.'), plymouthd_private_inc],
   link_with: plymouthd_private,
 )
 
