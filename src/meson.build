@@ -191,6 +191,19 @@ ply_boot_server_dep = declare_dependency(
   link_with: ply_boot_server,
 )
 
+plymouthd_commands = static_library(
+  'plymouthd-commands-private',
+  'plymouthd-commands.c',
+  dependencies: [libply_dep, ply_boot_server_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_commands_dep = declare_dependency(
+  dependencies: [libply_dep, ply_boot_server_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_commands,
+)
+
 plymouthd_sources = files(
   'main.c',
   'plymouthd.c',
@@ -214,6 +227,7 @@ plymouthd_deps = [
   plymouthd_diagnostics_dep,
   plymouthd_transition_dep,
   plymouthd_options_dep,
+  plymouthd_commands_dep,
 ]
 
 plymouthd = executable('plymouthd',
