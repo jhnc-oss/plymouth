@@ -57,6 +57,7 @@
 #include "ply-kmsg-reader.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-settings-private.h"
+#include "plymouthd-splash-private.h"
 
 #define BOOT_DURATION_FILE     PLYMOUTH_TIME_DIRECTORY "/boot-duration"
 #define SHUTDOWN_DURATION_FILE PLYMOUTH_TIME_DIRECTORY "/shutdown-duration"
@@ -124,9 +125,6 @@ typedef struct
 } state_t;
 
 static void show_splash (state_t *state);
-static ply_boot_splash_t *load_built_in_theme (state_t *state);
-static ply_boot_splash_t *load_theme (state_t    *state,
-                                      const char *theme_path);
 static ply_boot_splash_t *show_theme (state_t    *state,
                                       const char *theme_path);
 
@@ -1663,77 +1661,16 @@ tell_systemd_to_stop_printing_details (state_t *state)
 #endif
 
 static ply_boot_splash_t *
-load_built_in_theme (state_t *state)
-{
-        ply_boot_splash_t *splash;
-        bool is_loaded;
-
-        ply_trace ("Loading built-in theme");
-
-        splash = ply_boot_splash_new ("",
-                                      PLYMOUTH_PLUGIN_PATH,
-                                      state->boot_buffer);
-
-        is_loaded = ply_boot_splash_load_built_in (splash);
-
-        if (!is_loaded) {
-                ply_save_errno ();
-                ply_boot_splash_free (splash);
-                ply_restore_errno ();
-                return NULL;
-        }
-
-        ply_trace ("attaching plugin to event loop");
-        ply_boot_splash_attach_to_event_loop (splash, state->loop);
-
-        ply_trace ("attaching progress to plugin");
-        ply_boot_splash_attach_progress (splash, state->progress);
-
-        return splash;
-}
-
-static ply_boot_splash_t *
-load_theme (state_t    *state,
-            const char *theme_path)
-{
-        ply_boot_splash_t *splash;
-        bool is_loaded;
-
-        ply_trace ("Loading boot splash theme '%s'",
-                   theme_path);
-
-        splash = ply_boot_splash_new (theme_path,
-                                      PLYMOUTH_PLUGIN_PATH,
-                                      state->boot_buffer);
-
-        is_loaded = ply_boot_splash_load (splash);
-
-        if (!is_loaded) {
-                ply_save_errno ();
-                ply_boot_splash_free (splash);
-                ply_restore_errno ();
-                return NULL;
-        }
-
-        ply_trace ("attaching plugin to event loop");
-        ply_boot_splash_attach_to_event_loop (splash, state->loop);
-
-        ply_trace ("attaching progress to plugin");
-        ply_boot_splash_attach_progress (splash, state->progress);
-
-        return splash;
-}
-
-static ply_boot_splash_t *
 show_theme (state_t    *state,
             const char *theme_path)
 {
         ply_boot_splash_t *splash;
 
-        if (theme_path != NULL)
-                splash = load_theme (state, theme_path);
-        else
-                splash = load_built_in_theme (state);
+        splash = plymouthd_load_splash (theme_path,
+                                        PLYMOUTH_PLUGIN_PATH,
+                                        state->boot_buffer,
+                                        state->loop,
+                                        state->progress);
 
         if (splash == NULL)
                 return NULL;
