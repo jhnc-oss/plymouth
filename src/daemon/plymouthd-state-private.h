@@ -15,7 +15,6 @@
 
 #include "ply-boot-splash-plugin.h"
 #include "ply-private.h"
-#include "plymouthd-settings-private.h"
 
 typedef struct _ply_boot_server ply_boot_server_t;
 typedef struct _ply_boot_splash ply_boot_splash_t;
@@ -28,6 +27,7 @@ typedef struct _plymouthd_messages plymouthd_messages_t;
 typedef struct _plymouthd_process plymouthd_process_t;
 typedef struct _plymouthd_progress plymouthd_progress_t;
 typedef struct _plymouthd_session plymouthd_session_t;
+typedef struct _plymouthd_settings plymouthd_settings_t;
 typedef struct _plymouthd_transition plymouthd_transition_t;
 typedef struct _plymouthd plymouthd_t;
 
@@ -48,7 +48,7 @@ struct _plymouthd
         ply_boot_splash_mode_t   mode;
 
         double                   start_time;
-        plymouthd_settings_t     settings;
+        plymouthd_settings_t    *settings;
 
         uint32_t                 showing_details : 1;
         uint32_t                 should_be_attached : 1;

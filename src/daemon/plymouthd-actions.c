@@ -254,7 +254,7 @@ plymouthd_handle_reload (state_t *state)
                 state->boot_splash = NULL;
         }
 
-        plymouthd_settings_reload_theme_paths (&state->settings);
+        plymouthd_settings_reload_theme_paths (state->settings);
 
         if (state->is_inactive) {
                 ply_trace ("reload while inactive");

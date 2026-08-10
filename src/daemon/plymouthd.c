@@ -87,7 +87,7 @@ plymouthd_new (plymouthd_options_t *options,
         daemon->start_time = ply_get_timestamp ();
         daemon->loop = ply_event_loop_get_default ();
         daemon->mode = plymouthd_options_get_mode (options);
-        plymouthd_settings_init (&daemon->settings);
+        daemon->settings = plymouthd_settings_new ();
 
         should_ignore_serial_consoles =
                 plymouthd_options_should_ignore_serial_consoles (options);
@@ -182,7 +182,7 @@ plymouthd_new (plymouthd_options_t *options,
                 goto failed;
         }
 
-        plymouthd_settings_load (&daemon->settings);
+        plymouthd_settings_load (daemon->settings);
         plymouthd_initialize_devices (daemon,
                                       should_ignore_serial_consoles,
                                       &device_event_handlers);
@@ -225,7 +225,7 @@ plymouthd_free (plymouthd_t *daemon)
         plymouthd_interaction_free (daemon->interaction);
         plymouthd_logging_free (daemon->logging);
         plymouthd_messages_free (daemon->messages);
-        plymouthd_settings_clear (&daemon->settings);
+        plymouthd_settings_free (daemon->settings);
         plymouthd_process_free (daemon->process);
         free (daemon);
 }
