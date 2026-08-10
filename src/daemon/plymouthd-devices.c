@@ -224,10 +224,9 @@ static void
 on_keyboard_removed (plymouthd_t    *daemon,
                      ply_keyboard_t *keyboard)
 {
-        plymouthd_detach_keyboard (keyboard, on_escape_pressed);
-
-        if (daemon->boot_splash != NULL)
-                ply_boot_splash_unset_keyboard (daemon->boot_splash);
+        plymouthd_handle_keyboard_removed (daemon,
+                                           keyboard,
+                                           on_escape_pressed);
 }
 
 static void
