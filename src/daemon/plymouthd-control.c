@@ -79,10 +79,7 @@ plymouthd_handle_system_initialized (state_t *state)
 {
         ply_trace ("system now initialized, opening log");
 
-#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-        if (plymouthd_session_is_attached (state->session))
-                tell_systemd_to_print_details (state);
-#endif
+        plymouthd_session_request_details (state->session);
 
         plymouthd_logging_system_initialized (state->logging, state->session);
 }
