@@ -12,6 +12,7 @@
 
 #include "ply-keyboard.h"
 #include "ply-logger.h"
+#include "plymouthd-display-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-state-private.h"
 
@@ -40,6 +41,19 @@ on_enter (plymouthd_t *daemon,
         plymouthd_interaction_handle_enter (daemon->interaction,
                                             daemon->boot_splash,
                                             line);
+}
+
+void
+plymouthd_handle_escape (plymouthd_t *daemon,
+                         bool         has_vt_console)
+{
+        ply_trace ("escape key pressed");
+
+        if (plymouthd_validate_prompt_input (daemon->boot_splash,
+                                             "",
+                                             "\e") &&
+            has_vt_console)
+                plymouthd_toggle_details (daemon);
 }
 
 void

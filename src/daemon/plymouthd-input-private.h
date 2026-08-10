@@ -11,6 +11,8 @@
 #ifndef PLYMOUTHD_INPUT_PRIVATE_H
 #define PLYMOUTHD_INPUT_PRIVATE_H
 
+#include <stdbool.h>
+
 #include "ply-private.h"
 
 typedef struct _ply_keyboard ply_keyboard_t;
@@ -18,6 +20,8 @@ typedef struct _plymouthd plymouthd_t;
 
 typedef void (*plymouthd_input_escape_handler_t)(plymouthd_t *daemon);
 
+PLY_PRIVATE void plymouthd_handle_escape (plymouthd_t *daemon,
+                                          bool         has_vt_console);
 PLY_PRIVATE void plymouthd_attach_keyboard (plymouthd_t                     *daemon,
                                             ply_keyboard_t                  *keyboard,
                                             plymouthd_input_escape_handler_t escape_handler);
