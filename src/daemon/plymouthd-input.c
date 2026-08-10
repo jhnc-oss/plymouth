@@ -13,6 +13,7 @@
 #include "ply-boot-splash.h"
 #include "ply-keyboard.h"
 #include "ply-logger.h"
+#include "plymouthd-devices-private.h"
 #include "plymouthd-display-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-state-private.h"
@@ -58,6 +59,14 @@ plymouthd_handle_escape (plymouthd_t *daemon,
 }
 
 static void
+on_escape_pressed (plymouthd_t *daemon)
+{
+        plymouthd_handle_escape (
+                daemon,
+                plymouthd_has_vt_console (daemon));
+}
+
+static void
 attach_keyboard (plymouthd_t                     *daemon,
                  ply_keyboard_t                  *keyboard,
                  plymouthd_input_escape_handler_t escape_handler)
@@ -95,6 +104,13 @@ plymouthd_handle_keyboard_added (plymouthd_t                     *daemon,
                 ply_trace ("keyboard set after splash loaded, so attaching to splash");
                 ply_boot_splash_set_keyboard (daemon->boot_splash, keyboard);
         }
+}
+
+void
+plymouthd_handle_keyboard_added (plymouthd_t    *daemon,
+                                 ply_keyboard_t *keyboard)
+{
+        plymouthd_handle_keyboard_added (daemon, keyboard, on_escape_pressed);
 }
 
 static void
