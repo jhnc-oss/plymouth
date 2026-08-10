@@ -56,6 +56,7 @@
 #include "ply-progress.h"
 #include "ply-kmsg-reader.h"
 #include "plymouthd-interaction-private.h"
+#include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-settings-private.h"
@@ -76,6 +77,7 @@ typedef struct
         ply_buffer_t            *boot_buffer;
         ply_progress_t          *progress;
         plymouthd_interaction_t *interaction;
+        plymouthd_logging_t     *logging;
         plymouthd_messages_t    *messages;
         ply_command_parser_t    *command_parser;
         ply_boot_splash_mode_t   mode;
@@ -89,9 +91,7 @@ typedef struct
         double                   start_time;
         plymouthd_settings_t     settings;
 
-        uint32_t                 no_boot_log : 1;
         uint32_t                 showing_details : 1;
-        uint32_t                 system_initialized : 1;
         uint32_t                 is_redirected : 1;
         uint32_t                 is_attached : 1;
         uint32_t                 should_be_attached : 1;
@@ -103,8 +103,6 @@ typedef struct
         uint32_t                 splash_is_becoming_idle : 1;
 
         const char              *default_tty;
-
-        int                      number_of_errors;
 } state_t;
 
 static void show_splash (state_t *state);
@@ -124,7 +122,6 @@ static void on_error_message (ply_buffer_t *debug_buffer,
                               size_t        number_of_bytes);
 static ply_buffer_t *debug_buffer;
 static char *debug_buffer_path = NULL;
-static char *boot_log_file = NULL;
 static char *pid_file = NULL;
 static void toggle_between_splash_and_details (state_t *state);
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
@@ -145,7 +142,6 @@ static void on_quit (state_t       *state,
 static void on_new_kmsg_message (state_t        *state,
                                  kmsg_message_t *kmsg_message);
 static void cancel_pending_delayed_show (state_t *state);
-static void prepare_logging (state_t *state);
 static void dump_debug_buffer_to_file (void);
 
 static void
@@ -189,9 +185,10 @@ on_change_mode (state_t    *state,
                 return;
 
         state->mode = new_mode;
+        plymouthd_logging_set_mode (state->logging, new_mode);
 
         if (state->session != NULL) {
-                prepare_logging (state);
+                plymouthd_logging_prepare (state->logging, state->session);
         }
 
         if (state->boot_splash == NULL) {
@@ -482,131 +479,17 @@ get_cache_file_for_mode (ply_boot_splash_mode_t mode)
         return filename;
 }
 
-static const char *
-get_log_file_for_state (state_t *state)
-{
-        const char *filename;
-
-        switch (state->mode) {
-        case PLY_BOOT_SPLASH_MODE_BOOT_UP:
-                if (state->no_boot_log) {
-                        filename = NULL;
-                } else {
-                        if (boot_log_file == NULL)
-                                filename = PLYMOUTH_LOG_DIRECTORY "/boot.log";
-                        else
-                                filename = boot_log_file;
-                }
-                break;
-        case PLY_BOOT_SPLASH_MODE_SHUTDOWN:
-        case PLY_BOOT_SPLASH_MODE_REBOOT:
-        case PLY_BOOT_SPLASH_MODE_UPDATES:
-        case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
-        case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
-        case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
-                filename = _PATH_DEVNULL;
-                break;
-        case PLY_BOOT_SPLASH_MODE_INVALID:
-        default:
-                ply_error ("Unhandled case in %s line %d\n", __FILE__, __LINE__);
-                abort ();
-                break;
-        }
-
-        ply_trace ("returning log file '%s'", filename);
-        return filename;
-}
-
-static const char *
-get_log_spool_file_for_mode (ply_boot_splash_mode_t mode)
-{
-        const char *filename;
-
-        switch (mode) {
-        case PLY_BOOT_SPLASH_MODE_BOOT_UP:
-                filename = PLYMOUTH_SPOOL_DIRECTORY "/boot.log";
-                break;
-        case PLY_BOOT_SPLASH_MODE_SHUTDOWN:
-        case PLY_BOOT_SPLASH_MODE_REBOOT:
-        case PLY_BOOT_SPLASH_MODE_UPDATES:
-        case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
-        case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
-        case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
-                filename = NULL;
-                break;
-        case PLY_BOOT_SPLASH_MODE_INVALID:
-        default:
-                ply_error ("Unhandled case in %s line %d\n", __FILE__, __LINE__);
-                abort ();
-                break;
-        }
-
-        ply_trace ("returning spool file '%s'", filename);
-        return filename;
-}
-
-static void
-spool_error (state_t *state)
-{
-        const char *logfile;
-        const char *logspool;
-
-        ply_trace ("spooling error for viewer");
-
-        logfile = get_log_file_for_state (state);
-        logspool = get_log_spool_file_for_mode (state->mode);
-
-        if (logfile != NULL && logspool != NULL) {
-                unlink (logspool);
-
-                ply_create_file_link (logfile, logspool);
-        }
-}
-
-static void
-prepare_logging (state_t *state)
-{
-        const char *logfile;
-
-        if (!state->system_initialized) {
-                ply_trace ("not preparing logging yet, system not initialized");
-                return;
-        }
-
-        if (state->session == NULL) {
-                ply_trace ("not preparing logging, no session");
-                return;
-        }
-
-        ply_terminal_session_close_log (state->session);
-
-        logfile = get_log_file_for_state (state);
-        if (logfile != NULL) {
-                bool log_opened;
-                ply_trace ("opening log '%s'", logfile);
-
-                log_opened = ply_terminal_session_open_log (state->session, logfile);
-
-                if (!log_opened)
-                        ply_trace ("failed to open log: %m");
-
-                if (state->number_of_errors > 0)
-                        spool_error (state);
-        }
-}
-
 static void
 on_system_initialized (state_t *state)
 {
         ply_trace ("system now initialized, opening log");
-        state->system_initialized = true;
 
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
         if (state->is_attached)
                 tell_systemd_to_print_details (state);
 #endif
 
-        prepare_logging (state);
+        plymouthd_logging_system_initialized (state->logging, state->session);
 }
 
 static void
@@ -614,12 +497,7 @@ on_error (state_t *state)
 {
         ply_trace ("encountered error during boot up");
 
-        if (state->system_initialized && state->number_of_errors == 0)
-                spool_error (state);
-        else
-                ply_trace ("not spooling because number of errors %d", state->number_of_errors);
-
-        state->number_of_errors++;
+        plymouthd_logging_record_error (state->logging);
 }
 
 static void
@@ -1109,7 +987,7 @@ on_quit (state_t       *state,
                 return;
         }
 
-        if (state->system_initialized) {
+        if (plymouthd_logging_is_initialized (state->logging)) {
                 ply_trace ("system initialized so saving boot-duration file");
                 ply_create_directory (PLYMOUTH_TIME_DIRECTORY);
                 ply_progress_save_cache (state->progress,
@@ -1395,7 +1273,7 @@ attach_to_running_session (state_t *state)
 
         flags = 0;
 
-        should_be_redirected = !state->no_boot_log;
+        should_be_redirected = plymouthd_logging_is_enabled (state->logging);
 
         if (should_be_redirected)
                 flags |= PLY_TERMINAL_SESSION_FLAGS_REDIRECT_CONSOLE;
@@ -1548,26 +1426,6 @@ check_verbosity (state_t *state)
         }
 }
 
-static void
-check_logging (state_t *state)
-{
-        bool kernel_no_log;
-
-        ply_trace ("checking if console messages should be redirected and logged");
-
-        if (!boot_log_file)
-                boot_log_file = ply_kernel_command_line_get_key_value ("plymouth.boot-log=");
-
-        kernel_no_log = ply_kernel_command_line_has_argument ("plymouth.nolog");
-        if (kernel_no_log)
-                state->no_boot_log = true;
-
-        if (state->no_boot_log)
-                ply_trace ("logging won't be enabled!");
-        else
-                ply_trace ("logging will be enabled!");
-}
-
 static bool
 redirect_standard_io_to_dev_null (void)
 {
@@ -1635,7 +1493,6 @@ initialize_environment (state_t *state)
         }
 
         check_verbosity (state);
-        check_logging (state);
 
         ply_trace ("source built on %s", __DATE__);
 
@@ -1856,6 +1713,7 @@ main (int    argc,
         bool ignore_serial_consoles = false;
         bool graphical_boot = false;
         bool attach_to_session;
+        char *boot_log_file = NULL;
         ply_daemon_handle_t *daemon_handle = NULL;
         char *mode_string = NULL;
         char *kernel_command_line = NULL;
@@ -1950,7 +1808,9 @@ main (int    argc,
                 return EX_OSERR;
         }
 
-        state.no_boot_log = no_boot_log;
+        state.logging = plymouthd_logging_new (state.mode,
+                                               boot_log_file,
+                                               no_boot_log);
 
         chdir ("/");
         signal (SIGPIPE, SIG_IGN);
@@ -2098,6 +1958,7 @@ main (int    argc,
         ply_buffer_free (state.boot_buffer);
         ply_progress_free (state.progress);
         plymouthd_interaction_free (state.interaction);
+        plymouthd_logging_free (state.logging);
         plymouthd_messages_free (state.messages);
 
         ply_trace ("exiting with code %d", exit_code);
