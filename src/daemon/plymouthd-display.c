@@ -49,6 +49,25 @@ plymouthd_attach_pixel_displays_to_splash (plymouthd_t       *daemon,
                 splash);
 }
 
+static void
+attach_text_display_to_splash (ply_text_display_t *display,
+                               void               *user_data)
+{
+        ply_boot_splash_t *splash = user_data;
+
+        ply_boot_splash_add_text_display (splash, display);
+}
+
+void
+plymouthd_attach_text_displays_to_splash (plymouthd_t       *daemon,
+                                          ply_boot_splash_t *splash)
+{
+        plymouthd_for_each_text_display (
+                daemon,
+                attach_text_display_to_splash,
+                splash);
+}
+
 static ply_boot_splash_t *
 show_theme (plymouthd_t *daemon,
             const char  *theme_path)
