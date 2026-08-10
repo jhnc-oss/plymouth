@@ -61,7 +61,7 @@ plymouthd_private_sources = files(
   'daemon/plymouthd-settings.c',
   'daemon/plymouthd-splash.c',
   'daemon/plymouthd-theme-resolver.c',
-  'plymouthd-transition.c',
+  'daemon/plymouthd-transition.c',
 )
 
 plymouthd_private = static_library(
