@@ -59,7 +59,4 @@ struct _plymouthd
         const char              *default_tty;
 };
 
-PLY_PRIVATE plymouthd_t *plymouthd_new_state (ply_boot_splash_mode_t mode);
-PLY_PRIVATE void plymouthd_free_state (plymouthd_t *state);
-
 #endif /* PLYMOUTHD_STATE_PRIVATE_H */
