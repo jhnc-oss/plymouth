@@ -38,7 +38,7 @@
 #include <unistd.h>
 
 #include "ply-boot-protocol.h"
-#include "ply-boot-server.h"
+#include "ply-boot-server-private.h"
 #include "ply-event-loop.h"
 #include "ply-test.h"
 #include "ply-trigger.h"
@@ -312,6 +312,10 @@ skip_all_test_cases (const char *reason)
 int
 main (void)
 {
+        const ply_boot_server_handlers_t handlers = {
+                .ask_for_password  = on_ask_for_password,
+                .connection_hangup = on_hangup,
+        };
         ply_boot_server_t *server;
         ply_event_loop_t *loop;
         char socket_path[64];
@@ -334,30 +338,7 @@ main (void)
         loop = ply_event_loop_new ();
         test_state.loop = loop;
 
-        server = ply_boot_server_new (
-                NULL,                  /* update */
-                NULL,                  /* change_mode */
-                NULL,                  /* system_update */
-                on_ask_for_password,   /* ask_for_password */
-                NULL,                  /* ask_question */
-                NULL,                  /* display_message */
-                NULL,                  /* hide_message */
-                NULL,                  /* watch_for_keystroke */
-                NULL,                  /* ignore_keystroke */
-                NULL,                  /* progress_pause */
-                NULL,                  /* progress_unpause */
-                NULL,                  /* show_splash */
-                NULL,                  /* hide_splash */
-                NULL,                  /* newroot */
-                NULL,                  /* system_initialized */
-                NULL,                  /* error */
-                NULL,                  /* deactivate */
-                NULL,                  /* reactivate */
-                NULL,                  /* quit */
-                NULL,                  /* has_active_vt */
-                NULL,                  /* reload */
-                on_hangup,             /* connection_hangup — the new callback */
-                &test_state);
+        server = ply_boot_server_new_with_handlers (&handlers, &test_state);
 
         if (!ply_boot_server_listen (server)) {
                 fprintf (stderr, "could not listen on '%s': %m\n", socket_path);
