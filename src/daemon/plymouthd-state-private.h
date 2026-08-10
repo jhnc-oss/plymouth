@@ -23,6 +23,7 @@ typedef struct _ply_buffer ply_buffer_t;
 typedef struct _ply_device_manager ply_device_manager_t;
 typedef struct _ply_event_loop ply_event_loop_t;
 typedef struct _ply_terminal ply_terminal_t;
+typedef struct _plymouthd_devices plymouthd_devices_t;
 typedef struct _plymouthd_interaction plymouthd_interaction_t;
 typedef struct _plymouthd_logging plymouthd_logging_t;
 typedef struct _plymouthd_messages plymouthd_messages_t;
@@ -38,6 +39,7 @@ struct _plymouthd
         ply_boot_server_t       *boot_server;
         ply_boot_splash_t       *boot_splash;
         ply_buffer_t            *boot_buffer;
+        plymouthd_devices_t     *devices;
         plymouthd_interaction_t *interaction;
         plymouthd_logging_t     *logging;
         plymouthd_messages_t    *messages;
