@@ -64,6 +64,7 @@
 #include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
+#include "plymouthd-transition-private.h"
 
 static plymouthd_diagnostics_t *diagnostics;
 
@@ -78,25 +79,20 @@ typedef struct
         plymouthd_messages_t    *messages;
         plymouthd_progress_t    *progress;
         plymouthd_session_t     *session;
+        plymouthd_transition_t  *transition;
         ply_boot_splash_mode_t   mode;
         ply_terminal_t          *local_console_terminal;
         ply_device_manager_t    *device_manager;
-
-        ply_trigger_t           *deactivate_trigger;
-        ply_trigger_t           *quit_trigger;
 
         double                   start_time;
         plymouthd_settings_t     settings;
 
         uint32_t                 showing_details : 1;
         uint32_t                 should_be_attached : 1;
-        uint32_t                 should_retain_splash : 1;
         uint32_t                 is_inactive : 1;
         uint32_t                 is_shown : 1;
         uint32_t                 should_force_details : 1;
         uint32_t                 should_force_default_splash : 1;
-        uint32_t                 splash_is_becoming_idle : 1;
-
         const char              *default_tty;
 } state_t;
 
@@ -509,7 +505,8 @@ on_show_splash (state_t *state)
 
         if (plymouthd_should_ignore_show_splash_calls (state->mode)) {
                 ply_trace ("show splash called while ignoring show splash calls");
-                state->should_retain_splash = true;
+                plymouthd_transition_set_retain_splash (state->transition,
+                                                        true);
                 dump_details_and_quit_splash (state);
                 return;
         }
@@ -728,7 +725,8 @@ quit_splash (state_t *state)
         ply_device_manager_deactivate_keyboards (state->device_manager);
 
         if (state->local_console_terminal != NULL) {
-                if (!state->should_retain_splash) {
+                if (!plymouthd_transition_should_retain_splash (
+                            state->transition)) {
                         ply_trace ("Not retaining splash, so deallocating VT");
                         ply_terminal_deactivate_vt (state->local_console_terminal);
                         ply_terminal_close (state->local_console_terminal);
@@ -777,7 +775,7 @@ on_hide_splash (state_t *state)
                 return;
 
         ply_trace ("hiding boot splash");
-        state->should_retain_splash = true;
+        plymouthd_transition_set_retain_splash (state->transition, true);
         dump_details_and_quit_splash (state);
 }
 
@@ -796,14 +794,7 @@ quit_program (state_t *state)
                 pid_file = NULL;
         }
 
-        if (state->deactivate_trigger != NULL) {
-                ply_trigger_pull (state->deactivate_trigger, NULL);
-                state->deactivate_trigger = NULL;
-        }
-        if (state->quit_trigger != NULL) {
-                ply_trigger_pull (state->quit_trigger, NULL);
-                state->quit_trigger = NULL;
-        }
+        plymouthd_transition_complete_all (state->transition);
 }
 
 static void
@@ -835,8 +826,7 @@ deactivate_splash (state_t *state)
 
         state->is_inactive = true;
 
-        ply_trigger_pull (state->deactivate_trigger, NULL);
-        state->deactivate_trigger = NULL;
+        plymouthd_transition_complete_deactivate (state->transition);
 }
 
 static void
@@ -847,8 +837,9 @@ on_boot_splash_idle (state_t *state)
         /* In the case where we've received both a deactivate command and a
          * quit command, the quit command takes precedence.
          */
-        if (state->quit_trigger != NULL) {
-                if (!state->should_retain_splash) {
+        if (plymouthd_transition_has_quit (state->transition)) {
+                if (!plymouthd_transition_should_retain_splash (
+                            state->transition)) {
                         ply_trace ("hiding splash");
                         hide_splash (state);
                 }
@@ -857,12 +848,12 @@ on_boot_splash_idle (state_t *state)
                 quit_splash (state);
                 ply_trace ("quitting program");
                 quit_program (state);
-        } else if (state->deactivate_trigger != NULL) {
+        } else if (plymouthd_transition_has_deactivate (state->transition)) {
                 ply_trace ("deactivating splash");
                 deactivate_splash (state);
         }
 
-        state->splash_is_becoming_idle = false;
+        plymouthd_transition_end_idle (state->transition);
 }
 
 static void
@@ -875,15 +866,10 @@ on_deactivate (state_t       *state,
                 return;
         }
 
-        if (state->deactivate_trigger != NULL) {
-                ply_trigger_add_handler (state->deactivate_trigger,
-                                         (ply_trigger_handler_t)
-                                         ply_trigger_pull,
-                                         deactivate_trigger);
+        if (!plymouthd_transition_queue_deactivate (state->transition,
+                                                    deactivate_trigger)) {
                 return;
         }
-
-        state->deactivate_trigger = deactivate_trigger;
 
         ply_trace ("deactivating");
         cancel_pending_delayed_show (state);
@@ -892,12 +878,11 @@ on_deactivate (state_t       *state,
         ply_device_manager_deactivate_keyboards (state->device_manager);
 
         if (state->boot_splash != NULL) {
-                if (!state->splash_is_becoming_idle) {
+                if (plymouthd_transition_begin_idle (state->transition)) {
                         ply_boot_splash_become_idle (state->boot_splash,
                                                      (ply_boot_splash_on_idle_handler_t)
                                                      on_boot_splash_idle,
                                                      state);
-                        state->splash_is_becoming_idle = true;
                 }
         } else {
                 ply_trace ("deactivating splash");
@@ -942,12 +927,10 @@ on_quit (state_t       *state,
 {
         ply_trace ("quitting (retain splash: %s)", retain_splash ? "true" : "false");
 
-        if (state->quit_trigger != NULL) {
+        if (!plymouthd_transition_queue_quit (state->transition,
+                                              retain_splash,
+                                              quit_trigger)) {
                 ply_trace ("quit trigger already pending, so chaining to it");
-                ply_trigger_add_handler (state->quit_trigger,
-                                         (ply_trigger_handler_t)
-                                         ply_trigger_pull,
-                                         quit_trigger);
                 return;
         }
 
@@ -957,9 +940,6 @@ on_quit (state_t       *state,
         } else {
                 ply_trace ("system not initialized so skipping saving boot-duration file");
         }
-        state->quit_trigger = quit_trigger;
-        state->should_retain_splash = retain_splash;
-
         ply_trace ("closing log");
         if (plymouthd_session_get_terminal_session (state->session) != NULL)
                 ply_terminal_session_close_log (
@@ -974,15 +954,15 @@ on_quit (state_t       *state,
                 dump_details_and_quit_splash (state);
                 quit_program (state);
         } else if (state->boot_splash != NULL) {
-                if (!state->splash_is_becoming_idle) {
+                if (plymouthd_transition_begin_idle (state->transition)) {
                         ply_boot_splash_become_idle (state->boot_splash,
                                                      (ply_boot_splash_on_idle_handler_t)
                                                      on_boot_splash_idle,
                                                      state);
-                        state->splash_is_becoming_idle = true;
                 }
         } else {
-                if (!state->should_retain_splash) {
+                if (!plymouthd_transition_should_retain_splash (
+                            state->transition)) {
                         hide_splash (state);
                 }
                 quit_splash (state);
@@ -1690,6 +1670,7 @@ main (int    argc,
         }
 
         state.boot_buffer = ply_buffer_new ();
+        state.transition = plymouthd_transition_new ();
         state.session = plymouthd_session_new (
                 state.loop,
                 (plymouthd_session_output_handler_t) on_session_output,
@@ -1770,6 +1751,7 @@ main (int    argc,
 
         ply_trace ("freeing terminal session");
         plymouthd_session_free (state.session);
+        plymouthd_transition_free (state.transition);
 
         ply_buffer_free (state.boot_buffer);
         plymouthd_progress_free (state.progress);
