@@ -63,6 +63,19 @@ plymouthd_interaction_dep = declare_dependency(
   link_with: plymouthd_interaction,
 )
 
+plymouthd_messages = static_library(
+  'plymouthd-messages-private',
+  'plymouthd-messages.c',
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_messages_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_messages,
+)
+
 ply_peer_credentials = static_library(
   'ply-peer-credentials-private',
   'ply-peer-credentials.c',
@@ -106,6 +119,7 @@ plymouthd_deps = [
   plymouthd_settings_dep,
   plymouthd_splash_dep,
   plymouthd_interaction_dep,
+  plymouthd_messages_dep,
 ]
 
 plymouthd_cflags = [
