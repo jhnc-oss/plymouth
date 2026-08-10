@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ply-logger.h"
 #include "ply-utils.h"
 ply_boot_splash_mode_t
 plymouthd_mode_from_string (const char *mode)
@@ -89,6 +90,18 @@ plymouthd_add_simpledrm_flags (ply_device_manager_flags_t flags,
 
         return flags;
 }
+
+bool
+plymouthd_should_ignore_show_splash_calls (ply_boot_splash_mode_t mode)
+{
+        ply_trace ("checking if plymouth should be running");
+        if (mode != PLY_BOOT_SPLASH_MODE_BOOT_UP ||
+            ply_kernel_command_line_has_argument ("plymouth.force-splash"))
+                return false;
+
+        return ply_kernel_command_line_has_argument ("plymouth.ignore-show-splash");
+}
+
 bool
 plymouthd_shell_is_init (void)
 {
