@@ -17,6 +17,7 @@
 #include "ply-logger.h"
 #include "ply-utils.h"
 #include "plymouthd-devices-private.h"
+#include "plymouthd-input-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-policy-private.h"
@@ -84,7 +85,9 @@ show_theme (plymouthd_t *daemon,
                 return NULL;
 
         plymouthd_progress_attach_to_splash (daemon->progress, splash);
-        plymouthd_attach_splash_to_devices (daemon, splash);
+        plymouthd_attach_keyboards_to_splash (daemon, splash);
+        plymouthd_attach_pixel_displays_to_splash (daemon, splash);
+        plymouthd_attach_text_displays_to_splash (daemon, splash);
         if (ply_boot_splash_uses_pixel_displays (splash))
                 plymouthd_activate_renderers (daemon);
 
