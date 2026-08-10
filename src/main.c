@@ -622,55 +622,6 @@ on_error (state_t *state)
         state->number_of_errors++;
 }
 
-static bool
-plymouth_should_show_default_splash (state_t *state)
-{
-        ply_trace ("checking if plymouth should show default splash");
-
-        const char * const strings[] = {
-                "single", "1", "s", "S", "-S", NULL
-        };
-        int i;
-
-        if (state->should_force_details)
-                return false;
-
-        for (i = 0; strings[i] != NULL; i++) {
-                if (ply_kernel_command_line_has_argument (strings[i])) {
-                        ply_trace ("no default splash because kernel command line has option \"%s\"", strings[i]);
-                        return false;
-                }
-        }
-
-        if (ply_kernel_command_line_has_argument ("splash=verbose")) {
-                ply_trace ("no default splash because kernel command line has option \"splash=verbose\"");
-                return false;
-        }
-
-        if (ply_kernel_command_line_has_argument ("rhgb")) {
-                ply_trace ("using default splash because kernel command line has option \"rhgb\"");
-                return true;
-        }
-
-        if (ply_kernel_command_line_has_argument ("splash")) {
-                ply_trace ("using default splash because kernel command line has option \"splash\"");
-                return true;
-        }
-
-        if (ply_kernel_command_line_has_argument ("splash=silent")) {
-                ply_trace ("using default splash because kernel command line has option \"splash=silent\"");
-                return true;
-        }
-
-        if (state->should_force_default_splash) {
-                ply_trace ("using default splash because forced by \"plymouth.graphical\" or no active kernel console");
-                return true;
-        }
-
-        ply_trace ("no default splash because kernel command line lacks \"splash\" or \"rhgb\"");
-        return false;
-}
-
 static void
 on_reload (state_t *state)
 {
@@ -776,7 +727,9 @@ show_splash (state_t *state)
                 }
         }
 
-        if (plymouth_should_show_default_splash (state)) {
+        if (plymouthd_should_show_default_splash (
+                    state->should_force_details,
+                    state->should_force_default_splash)) {
                 show_default_splash (state);
                 state->showing_details = false;
         } else {
@@ -2107,7 +2060,9 @@ main (int    argc,
             state.mode != PLY_BOOT_SPLASH_MODE_REBOOT)
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER;
 
-        if (!plymouth_should_show_default_splash (&state)) {
+        if (!plymouthd_should_show_default_splash (
+                    state.should_force_details,
+                    state.should_force_default_splash)) {
                 /* don't bother listening for udev events or setting up a graphical renderer
                  * if we're forcing details */
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
