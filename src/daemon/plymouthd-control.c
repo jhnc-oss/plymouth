@@ -94,7 +94,7 @@ quit_splash (plymouthd_t *daemon)
                 daemon->boot_splash = NULL;
         }
 
-        plymouthd_deactivate_keyboards (daemon);
+        plymouthd_devices_deactivate_keyboards (daemon->devices);
 
         if (!plymouthd_transition_should_retain_splash (daemon->transition))
                 plymouthd_release_console (daemon);
@@ -158,7 +158,7 @@ deactivate_splash (plymouthd_t *daemon)
         assert (!daemon->is_inactive);
 
         if (daemon->boot_splash && ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
-                plymouthd_deactivate_renderers (daemon);
+                plymouthd_devices_deactivate_renderers (daemon->devices);
 
         deactivate_console (daemon);
 
@@ -213,7 +213,7 @@ plymouthd_handle_deactivate (plymouthd_t   *daemon,
         plymouthd_cancel_pending_show (daemon);
 
         plymouthd_pause_devices (daemon);
-        plymouthd_deactivate_keyboards (daemon);
+        plymouthd_devices_deactivate_keyboards (daemon->devices);
 
         if (daemon->boot_splash != NULL) {
                 if (plymouthd_transition_begin_idle (daemon->transition)) {
@@ -242,9 +242,9 @@ plymouthd_handle_reactivate (plymouthd_t *daemon)
                 plymouthd_attach_session (daemon);
         }
 
-        plymouthd_activate_keyboards (daemon);
+        plymouthd_devices_activate_keyboards (daemon->devices);
         if (daemon->boot_splash && ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
-                plymouthd_activate_renderers (daemon);
+                plymouthd_devices_activate_renderers (daemon->devices);
 
         plymouthd_unpause_devices (daemon);
 
@@ -276,7 +276,7 @@ plymouthd_handle_quit (plymouthd_t   *daemon,
         ply_trace ("closing log");
         plymouthd_session_close_log (daemon->session);
 
-        plymouthd_deactivate_keyboards (daemon);
+        plymouthd_devices_deactivate_keyboards (daemon->devices);
 
         ply_trace ("unloading splash");
         if (daemon->is_inactive && !retain_splash) {

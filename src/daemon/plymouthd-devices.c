@@ -123,27 +123,27 @@ plymouthd_devices_for_each_text_display (
 }
 
 void
-plymouthd_activate_renderers (plymouthd_t *daemon)
+plymouthd_devices_activate_renderers (plymouthd_devices_t *devices)
 {
-        ply_device_manager_activate_renderers (daemon->devices->device_manager);
+        ply_device_manager_activate_renderers (devices->device_manager);
 }
 
 void
-plymouthd_deactivate_renderers (plymouthd_t *daemon)
+plymouthd_devices_deactivate_renderers (plymouthd_devices_t *devices)
 {
-        ply_device_manager_deactivate_renderers (daemon->devices->device_manager);
+        ply_device_manager_deactivate_renderers (devices->device_manager);
 }
 
 void
-plymouthd_activate_keyboards (plymouthd_t *daemon)
+plymouthd_devices_activate_keyboards (plymouthd_devices_t *devices)
 {
-        ply_device_manager_activate_keyboards (daemon->devices->device_manager);
+        ply_device_manager_activate_keyboards (devices->device_manager);
 }
 
 void
-plymouthd_deactivate_keyboards (plymouthd_t *daemon)
+plymouthd_devices_deactivate_keyboards (plymouthd_devices_t *devices)
 {
-        ply_device_manager_deactivate_keyboards (daemon->devices->device_manager);
+        ply_device_manager_deactivate_keyboards (devices->device_manager);
 }
 
 void
