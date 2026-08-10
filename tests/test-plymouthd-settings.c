@@ -66,20 +66,20 @@ create_theme (const char *base_directory,
 static bool
 test_settings_start_unset (void)
 {
-        plymouthd_settings_t settings;
+        plymouthd_settings_t *settings;
 
-        plymouthd_settings_init (&settings);
+        settings = plymouthd_settings_new ();
 
-        PLY_TEST_ASSERT (isnan (settings.splash_delay));
-        PLY_TEST_ASSERT (isnan (settings.device_timeout));
-        PLY_TEST_ASSERT (settings.device_scale == -1);
-        PLY_TEST_ASSERT (settings.extra_esc_key == XKB_KEY_NoSymbol);
-        PLY_TEST_ASSERT (settings.use_simpledrm == -1);
-        PLY_TEST_ASSERT (settings.override_splash_path == NULL);
-        PLY_TEST_ASSERT (settings.system_default_splash_path == NULL);
-        PLY_TEST_ASSERT (settings.distribution_default_splash_path == NULL);
+        PLY_TEST_ASSERT (isnan (settings->splash_delay));
+        PLY_TEST_ASSERT (isnan (settings->device_timeout));
+        PLY_TEST_ASSERT (settings->device_scale == -1);
+        PLY_TEST_ASSERT (settings->extra_esc_key == XKB_KEY_NoSymbol);
+        PLY_TEST_ASSERT (settings->use_simpledrm == -1);
+        PLY_TEST_ASSERT (settings->override_splash_path == NULL);
+        PLY_TEST_ASSERT (settings->system_default_splash_path == NULL);
+        PLY_TEST_ASSERT (settings->distribution_default_splash_path == NULL);
 
-        plymouthd_settings_clear (&settings);
+        plymouthd_settings_free (settings);
         return true;
 }
 
@@ -156,7 +156,7 @@ static bool
 test_first_config_source_keeps_scalar_precedence (void)
 {
         char temporary_directory[] = "/tmp/plymouth-settings-test-XXXXXX";
-        plymouthd_settings_t settings;
+        plymouthd_settings_t *settings;
         char *alpha_directory = NULL;
         char *beta_directory = NULL;
         char *alpha_theme_directory = NULL;
@@ -215,23 +215,23 @@ test_first_config_source_keeps_scalar_precedence (void)
         PLY_TEST_ASSERT (write_file (first_config_path, first_config));
         PLY_TEST_ASSERT (write_file (second_config_path, second_config));
 
-        plymouthd_settings_init (&settings);
+        settings = plymouthd_settings_new ();
         PLY_TEST_ASSERT (plymouthd_settings_apply_config_file (
-                                 &settings, first_config_path, &resolved_theme));
+                                 settings, first_config_path, &resolved_theme));
         PLY_TEST_ASSERT (strcmp (resolved_theme, alpha_theme_path) == 0);
         free (resolved_theme);
         resolved_theme = NULL;
 
         PLY_TEST_ASSERT (plymouthd_settings_apply_config_file (
-                                 &settings, second_config_path, &resolved_theme));
+                                 settings, second_config_path, &resolved_theme));
         PLY_TEST_ASSERT (strcmp (resolved_theme, beta_theme_path) == 0);
-        PLY_TEST_ASSERT (settings.splash_delay == 1.5);
-        PLY_TEST_ASSERT (settings.device_timeout == 8.0);
-        PLY_TEST_ASSERT (settings.device_scale == 2);
-        PLY_TEST_ASSERT (settings.extra_esc_key == 123);
-        PLY_TEST_ASSERT (settings.use_simpledrm == 1);
+        PLY_TEST_ASSERT (settings->splash_delay == 1.5);
+        PLY_TEST_ASSERT (settings->device_timeout == 8.0);
+        PLY_TEST_ASSERT (settings->device_scale == 2);
+        PLY_TEST_ASSERT (settings->extra_esc_key == 123);
+        PLY_TEST_ASSERT (settings->use_simpledrm == 1);
 
-        plymouthd_settings_clear (&settings);
+        plymouthd_settings_free (settings);
         unlink (first_config_path);
         unlink (second_config_path);
         unlink (alpha_theme_path);
@@ -258,22 +258,22 @@ test_first_config_source_keeps_scalar_precedence (void)
 static bool
 test_kernel_command_line_keeps_precedence (void)
 {
-        plymouthd_settings_t settings;
+        plymouthd_settings_t *settings;
 
         ply_kernel_command_line_override (
                 "plymouth.splash-delay=2.5 "
                 "plymouth.force-scale=3 "
                 "plymouth.use-simpledrm=0");
 
-        plymouthd_settings_init (&settings);
-        plymouthd_settings_apply_kernel_command_line (&settings);
+        settings = plymouthd_settings_new ();
+        plymouthd_settings_apply_kernel_command_line (settings);
 
-        PLY_TEST_ASSERT (settings.splash_delay == 2.5);
-        PLY_TEST_ASSERT (isnan (settings.device_timeout));
-        PLY_TEST_ASSERT (settings.device_scale == 3);
-        PLY_TEST_ASSERT (settings.use_simpledrm == 0);
+        PLY_TEST_ASSERT (settings->splash_delay == 2.5);
+        PLY_TEST_ASSERT (isnan (settings->device_timeout));
+        PLY_TEST_ASSERT (settings->device_scale == 3);
+        PLY_TEST_ASSERT (settings->use_simpledrm == 0);
 
-        plymouthd_settings_clear (&settings);
+        plymouthd_settings_free (settings);
         return true;
 }
 
