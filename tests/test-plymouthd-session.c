@@ -26,7 +26,9 @@ test_new_session_starts_detached (void)
         PLY_TEST_ASSERT (session != NULL);
         PLY_TEST_ASSERT (!plymouthd_session_is_attached (session));
         PLY_TEST_ASSERT (!plymouthd_session_is_redirected (session));
-        PLY_TEST_ASSERT (plymouthd_session_get_terminal_session (session) == NULL);
+        PLY_TEST_ASSERT (!plymouthd_session_has_terminal (session));
+        PLY_TEST_ASSERT (!plymouthd_session_open_log (session, "/dev/null"));
+        plymouthd_session_close_log (session);
 
         plymouthd_session_free (session);
         return true;
