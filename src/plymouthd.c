@@ -566,7 +566,7 @@ plymouthd_handle_reactivate (state_t *state)
                 ply_terminal_ignore_mode_changes (state->local_console_terminal, false);
         }
 
-        if (plymouthd_session_get_terminal_session (state->session) != NULL &&
+        if (plymouthd_session_has_terminal (state->session) &&
             state->should_be_attached) {
                 ply_trace ("reactivating terminal session");
                 attach_to_running_session (state);
