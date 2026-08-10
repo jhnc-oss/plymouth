@@ -19,6 +19,17 @@
 #include "plymouthd-policy-private.h"
 #include "plymouthd-theme-resolver-private.h"
 
+plymouthd_settings_t *
+plymouthd_settings_new (void)
+{
+        plymouthd_settings_t *settings;
+
+        settings = calloc (1, sizeof(plymouthd_settings_t));
+        plymouthd_settings_init (settings);
+
+        return settings;
+}
+
 void
 plymouthd_settings_init (plymouthd_settings_t *settings)
 {
@@ -46,7 +57,11 @@ plymouthd_settings_clear (plymouthd_settings_t *settings)
 void
 plymouthd_settings_free (plymouthd_settings_t *settings)
 {
+        if (settings == NULL)
+                return;
+
         plymouthd_settings_clear (settings);
+        free (settings);
 }
 
 bool

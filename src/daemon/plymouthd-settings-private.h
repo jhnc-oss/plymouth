@@ -30,6 +30,7 @@ typedef struct
         char        *distribution_default_splash_path;
 } plymouthd_settings_t;
 
+PLY_PRIVATE plymouthd_settings_t *plymouthd_settings_new (void);
 PLY_PRIVATE void plymouthd_settings_init (plymouthd_settings_t *settings);
 PLY_PRIVATE void plymouthd_settings_clear (plymouthd_settings_t *settings);
 PLY_PRIVATE void plymouthd_settings_free (plymouthd_settings_t *settings);
