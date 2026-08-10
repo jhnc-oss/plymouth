@@ -273,6 +273,15 @@ on_text_display_added (void               *user_data,
 }
 
 static void
+on_text_display_removed (void               *user_data,
+                         ply_text_display_t *display)
+{
+        plymouthd_t *daemon = user_data;
+
+        daemon->devices->event_handlers.text_display_removed (daemon, display);
+}
+
+static void
 load_devices (plymouthd_t                              *daemon,
               ply_device_manager_flags_t                flags,
               const plymouthd_devices_event_handlers_t *event_handlers)
@@ -294,8 +303,7 @@ load_devices (plymouthd_t                              *daemon,
                 on_pixel_display_added,
                 on_pixel_display_removed,
                 on_text_display_added,
-                (ply_text_display_removed_handler_t)
-                plymouthd_handle_text_display_removed,
+                on_text_display_removed,
                 daemon);
 
         if (ply_device_manager_has_serial_consoles (daemon->devices->device_manager))
