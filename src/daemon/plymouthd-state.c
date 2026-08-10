@@ -12,7 +12,6 @@
 
 #include <stdlib.h>
 
-#include "ply-buffer.h"
 #include "ply-event-loop.h"
 #include "ply-utils.h"
 #include "plymouthd-interaction-private.h"
@@ -42,7 +41,6 @@ plymouthd_free_state (plymouthd_t *state)
         if (state == NULL)
                 return;
 
-        ply_buffer_free (state->boot_buffer);
         plymouthd_progress_free (state->progress);
         plymouthd_interaction_free (state->interaction);
         plymouthd_logging_free (state->logging);

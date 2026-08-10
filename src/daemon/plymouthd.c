@@ -17,6 +17,7 @@
 
 #include "ply-boot-server.h"
 #include "ply-boot-splash.h"
+#include "ply-buffer.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -212,5 +213,6 @@ plymouthd_free (plymouthd_t *daemon)
         ply_trace ("freeing terminal session");
         plymouthd_session_free (daemon->session);
         plymouthd_transition_free (daemon->transition);
+        ply_buffer_free (daemon->boot_buffer);
         plymouthd_free_state (daemon);
 }
