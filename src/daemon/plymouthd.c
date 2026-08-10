@@ -28,6 +28,7 @@
 #include "plymouthd-input-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-logging-private.h"
+#include "plymouthd-messages-private.h"
 #include "plymouthd-options-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-process-private.h"
@@ -218,5 +219,6 @@ plymouthd_free (plymouthd_t *daemon)
         plymouthd_progress_free (daemon->progress);
         plymouthd_interaction_free (daemon->interaction);
         plymouthd_logging_free (daemon->logging);
+        plymouthd_messages_free (daemon->messages);
         plymouthd_free_state (daemon);
 }
