@@ -210,6 +210,23 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_progress_test_executable = executable(
+  'test-plymouthd-progress',
+  'test-plymouthd-progress.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_progress_dep,
+  include_directories: [config_h_inc, include_directories('.')],
+)
+
+test(
+  'plymouthd-progress',
+  plymouthd_progress_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 plymouthd_settings_test_executable = executable(
   'test-plymouthd-settings',
   'test-plymouthd-settings.c',
