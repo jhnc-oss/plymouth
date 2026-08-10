@@ -193,6 +193,23 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_session_test_executable = executable(
+  'test-plymouthd-session',
+  'test-plymouthd-session.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_session_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-session',
+  plymouthd_session_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 plymouthd_settings_test_executable = executable(
   'test-plymouthd-settings',
   'test-plymouthd-settings.c',
