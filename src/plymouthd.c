@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sysexits.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 #include <wchar.h>
 #include <paths.h>
@@ -37,7 +36,6 @@
 #include <values.h>
 #include <locale.h>
 
-#include <linux/kd.h>
 #include <linux/vt.h>
 
 #include "ply-buffer.h"
@@ -55,13 +53,13 @@
 #include "ply-progress.h"
 #include "ply-kmsg-reader.h"
 #include "plymouthd-interaction-private.h"
-#include "plymouthd-diagnostics-private.h"
 #include "plymouthd-commands-private.h"
 #include "plymouthd-display-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-options-private.h"
 #include "plymouthd-policy-private.h"
+#include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-state-private.h"
@@ -70,15 +68,12 @@
 #include "plymouthd-transition-private.h"
 #include "plymouthd-private.h"
 
-static plymouthd_diagnostics_t *diagnostics;
-
 typedef plymouthd_t state_t;
 
 static bool attach_to_running_session (state_t *state);
 static void detach_from_running_session (state_t *state);
 static void dump_details_and_quit_splash (state_t *state);
 
-static char *pid_file = NULL;
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
 static void tell_systemd_to_print_details (state_t *state);
 static void tell_systemd_to_stop_printing_details (state_t *state);
@@ -281,9 +276,9 @@ plymouthd_handle_newroot (state_t    *state,
         ply_trace ("new root mounted at \"%s\", switching to it", root_dir);
 
         if (!strcmp (root_dir, "/run/initramfs") &&
-            plymouthd_diagnostics_has_buffer (diagnostics)) {
+            plymouthd_process_has_diagnostics (state->process)) {
                 ply_trace ("switching back to initramfs, dumping debug-buffer now");
-                plymouthd_diagnostics_dump (diagnostics);
+                plymouthd_process_dump_diagnostics (state->process);
         }
 
         chdir (root_dir);
@@ -451,11 +446,7 @@ quit_program (state_t *state)
         ply_trace ("exiting event loop");
         ply_event_loop_exit (state->loop, 0);
 
-        if (pid_file != NULL) {
-                unlink (pid_file);
-                free (pid_file);
-                pid_file = NULL;
-        }
+        plymouthd_process_remove_pid_file (state->process);
 
         plymouthd_transition_complete_all (state->transition);
 }
@@ -745,7 +736,8 @@ find_fallback_tty (state_t *state)
 static bool
 initialize_environment (state_t    *state,
                         const char *debug_path,
-                        bool        capture_debug)
+                        bool        capture_debug,
+                        char       *pid_file)
 {
         ply_trace ("initializing minimal work environment");
 
@@ -771,10 +763,12 @@ initialize_environment (state_t    *state,
                 }
         }
 
-        diagnostics = plymouthd_diagnostics_new (state->mode,
-                                                 state->default_tty,
-                                                 debug_path,
-                                                 capture_debug);
+        state->process = plymouthd_process_new (state->mode,
+                                                state->default_tty,
+                                                debug_path,
+                                                capture_debug,
+                                                pid_file);
+        plymouthd_process_install_crash_handlers (state->process);
 
         ply_trace ("source built on %s", __DATE__);
 
@@ -790,118 +784,6 @@ initialize_environment (state_t    *state,
 
         ply_trace ("initialized minimal work environment");
         return true;
-}
-
-#include <termios.h>
-#include <unistd.h>
-#include <execinfo.h>
-
-#define BACKTRACE_SIZE 1024
-#define MAPS_SIZE 8192
-#define BACKTRACE_FRAMES_TO_SKIP 2 /* write_backtrace and on_crash themselves */
-
-static void
-write_maps (int output_fd)
-{
-        char maps_buffer[MAPS_SIZE];
-        ssize_t bytes_read;
-        ssize_t line_start = 0, buffer_end = 0;
-        int fd;
-
-        write (output_fd, "maps:\n", strlen ("maps:\n"));
-        fd = open ("/proc/self/maps", O_RDONLY);
-
-        if (fd < 0)
-                return;
-
-        while ((bytes_read = read (fd, maps_buffer + buffer_end, MAPS_SIZE - buffer_end)) > 0) {
-                bytes_read += buffer_end;
-                buffer_end = 0;
-
-                for (ssize_t i = line_start; i < bytes_read; ++i) {
-                        if (maps_buffer[i] == '\n') {
-                                write (output_fd, maps_buffer + line_start, i - line_start + 1);
-                                line_start = i + 1;
-                        }
-                }
-
-                if (line_start < bytes_read) {
-                        memmove (maps_buffer, maps_buffer + line_start, bytes_read - line_start);
-                        buffer_end = bytes_read - line_start;
-                        line_start = 0;
-                } else {
-                        line_start = 0;
-                }
-        }
-
-        if (buffer_end > 0) {
-                write (output_fd, maps_buffer, buffer_end);
-        }
-
-        close (fd);
-}
-
-static void
-write_backtrace (int output_fd)
-{
-        void *addresses[BACKTRACE_SIZE];
-        int number_of_addresses;
-
-        write (output_fd, "backtrace:\n", strlen ("backtrace:\n"));
-        number_of_addresses = backtrace (addresses, BACKTRACE_SIZE);
-
-        if (number_of_addresses <= BACKTRACE_FRAMES_TO_SKIP)
-                return;
-
-        backtrace_symbols_fd (addresses + BACKTRACE_FRAMES_TO_SKIP,
-                              number_of_addresses - BACKTRACE_FRAMES_TO_SKIP,
-                              output_fd);
-}
-
-static void
-on_crash (int signum)
-{
-        struct termios term_attributes;
-        int fd;
-        static const char *show_cursor_sequence = "\033[?25h";
-
-        if (plymouthd_diagnostics_get_crash_fd (diagnostics) != -1) {
-                fd = plymouthd_diagnostics_get_crash_fd (diagnostics);
-        } else {
-                fd = open ("/dev/tty1", O_RDWR | O_NOCTTY);
-                if (fd < 0) fd = open ("/dev/hvc0", O_RDWR | O_NOCTTY);
-        }
-
-        if (fd >= 0) {
-                ioctl (fd, KDSETMODE, KD_TEXT);
-
-                write (fd, show_cursor_sequence, sizeof(show_cursor_sequence) - 1);
-
-                tcgetattr (fd, &term_attributes);
-
-                term_attributes.c_iflag |= BRKINT | IGNPAR | ICRNL | IXON;
-                term_attributes.c_oflag |= OPOST;
-                term_attributes.c_lflag |= ECHO | ICANON | ISIG | IEXTEN;
-
-                tcsetattr (fd, TCSAFLUSH, &term_attributes);
-
-                write_maps (fd);
-                write_backtrace (fd);
-        }
-
-        if (plymouthd_diagnostics_has_buffer (diagnostics)) {
-                plymouthd_diagnostics_dump (diagnostics);
-                sleep (30);
-        }
-
-        if (pid_file != NULL) {
-                unlink (pid_file);
-                free (pid_file);
-                pid_file = NULL;
-        }
-
-        signal (signum, SIG_DFL);
-        raise (signum);
 }
 
 static void
@@ -943,20 +825,6 @@ on_term_signal (state_t *state)
                                ply_trigger_new (NULL));
 }
 
-static void
-write_pid_file (const char *filename)
-{
-        FILE *fp;
-
-        fp = fopen (filename, "w");
-        if (fp == NULL) {
-                ply_error ("could not write pid file %s: %m", filename);
-        } else {
-                fprintf (fp, "%d\n", (int) getpid ());
-                fclose (fp);
-        }
-}
-
 plymouthd_t *
 plymouthd_new (plymouthd_options_t *options,
                char                *program_name,
@@ -979,7 +847,6 @@ plymouthd_new (plymouthd_options_t *options,
         if (plymouthd_options_get_tty (options) != NULL)
                 daemon->default_tty = plymouthd_options_get_tty (options);
 
-        pid_file = plymouthd_options_take_pid_file (options);
         daemon->logging = plymouthd_logging_new (
                 daemon->mode,
                 plymouthd_options_get_boot_log_path (options),
@@ -998,10 +865,6 @@ plymouthd_new (plymouthd_options_t *options,
                 }
         }
 
-        signal (SIGABRT, on_crash);
-        signal (SIGSEGV, on_crash);
-        signal (SIGFPE, on_crash);
-
         if (plymouthd_options_should_use_graphical_boot (options) ||
             ply_kernel_command_line_has_argument ("plymouth.graphical") ||
             plymouthd_kernel_console_is_ttynull ()) {
@@ -1012,7 +875,8 @@ plymouthd_new (plymouthd_options_t *options,
         if (!initialize_environment (
                     daemon,
                     plymouthd_options_get_debug_path (options),
-                    plymouthd_options_should_debug (options))) {
+                    plymouthd_options_should_debug (options),
+                    plymouthd_options_take_pid_file (options))) {
                 if (errno == 0) {
                         *exit_code = EX_OK;
                 } else {
@@ -1073,8 +937,7 @@ plymouthd_new (plymouthd_options_t *options,
         daemon->progress = plymouthd_progress_new (daemon->mode);
         plymouthd_progress_load_cache (daemon->progress);
 
-        if (pid_file != NULL)
-                write_pid_file (pid_file);
+        plymouthd_process_write_pid_file (daemon->process);
 
         if (daemon_handle != NULL && !ply_detach_daemon (daemon_handle, 0)) {
                 ply_error ("plymouthd: could not tell parent to exit: %m");
@@ -1154,16 +1017,7 @@ plymouthd_free (plymouthd_t *daemon)
         plymouthd_messages_free (daemon->messages);
         plymouthd_settings_free (&daemon->settings);
 
-        plymouthd_diagnostics_dump (diagnostics);
-        ply_free_error_log ();
-        plymouthd_diagnostics_free (diagnostics);
-        diagnostics = NULL;
-
-        if (pid_file != NULL) {
-                unlink (pid_file);
-                free (pid_file);
-                pid_file = NULL;
-        }
+        plymouthd_process_free (daemon->process);
 
         free (daemon);
 }

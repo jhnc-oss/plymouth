@@ -22,6 +22,7 @@
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
+#include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
@@ -36,6 +37,7 @@ struct _plymouthd
         plymouthd_interaction_t *interaction;
         plymouthd_logging_t     *logging;
         plymouthd_messages_t    *messages;
+        plymouthd_process_t     *process;
         plymouthd_progress_t    *progress;
         plymouthd_session_t     *session;
         plymouthd_transition_t  *transition;
