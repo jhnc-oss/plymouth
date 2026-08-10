@@ -15,7 +15,6 @@
 
 #include "ply-private.h"
 
-typedef struct _ply_boot_splash ply_boot_splash_t;
 typedef struct _ply_keyboard ply_keyboard_t;
 typedef struct _ply_pixel_display ply_pixel_display_t;
 typedef struct _ply_text_display ply_text_display_t;
@@ -42,8 +41,6 @@ PLY_PRIVATE void plymouthd_for_each_pixel_display (plymouthd_t                  
 PLY_PRIVATE void plymouthd_for_each_text_display (plymouthd_t                             *daemon,
                                                   plymouthd_devices_text_display_handler_t handler,
                                                   void                                    *user_data);
-PLY_PRIVATE void plymouthd_attach_splash_to_devices (plymouthd_t       *daemon,
-                                                     ply_boot_splash_t *splash);
 PLY_PRIVATE void plymouthd_activate_renderers (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_deactivate_renderers (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_activate_keyboards (plymouthd_t *daemon);
