@@ -36,7 +36,6 @@
 #include "ply-terminal.h"
 #include "ply-trigger.h"
 #include "ply-utils.h"
-#include "plymouthd-actions-private.h"
 #include "plymouthd-display-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-policy-private.h"
@@ -66,16 +65,6 @@ void
 plymouthd_handle_session_hangup (state_t *state)
 {
         ply_trace ("got hang up on terminal session fd");
-}
-
-void
-plymouthd_handle_system_initialized (state_t *state)
-{
-        ply_trace ("system now initialized, opening log");
-
-        plymouthd_session_request_details (state->session);
-
-        plymouthd_logging_system_initialized (state->logging, state->session);
 }
 
 void

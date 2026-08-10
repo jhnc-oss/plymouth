@@ -27,6 +27,7 @@
 #include "plymouthd-policy-private.h"
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
+#include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-state-private.h"
 
@@ -224,6 +225,16 @@ plymouthd_handle_newroot (state_t    *state,
         plymouthd_progress_load_cache (state->progress);
         if (state->boot_splash != NULL)
                 ply_boot_splash_root_mounted (state->boot_splash);
+}
+
+void
+plymouthd_handle_system_initialized (state_t *state)
+{
+        ply_trace ("system now initialized, opening log");
+
+        plymouthd_session_request_details (state->session);
+
+        plymouthd_logging_system_initialized (state->logging, state->session);
 }
 
 void
