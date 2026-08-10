@@ -30,9 +30,9 @@ void
 plymouthd_attach_keyboards_to_splash (plymouthd_t       *daemon,
                                       ply_boot_splash_t *splash)
 {
-        plymouthd_for_each_keyboard (daemon,
-                                     attach_keyboard_to_splash,
-                                     splash);
+        plymouthd_devices_for_each_keyboard (daemon->devices,
+                                             attach_keyboard_to_splash,
+                                             splash);
 }
 
 static void

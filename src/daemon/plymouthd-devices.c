@@ -55,15 +55,15 @@ plymouthd_devices_has_vt_console (plymouthd_devices_t *devices)
 }
 
 void
-plymouthd_for_each_keyboard (
-        plymouthd_t                         *daemon,
+plymouthd_devices_for_each_keyboard (
+        plymouthd_devices_t                 *devices,
         plymouthd_devices_keyboard_handler_t handler,
         void                                *user_data)
 {
         ply_list_t *keyboards;
         ply_list_node_t *node;
 
-        keyboards = ply_device_manager_get_keyboards (daemon->devices->device_manager);
+        keyboards = ply_device_manager_get_keyboards (devices->device_manager);
         node = ply_list_get_first_node (keyboards);
         while (node != NULL) {
                 ply_keyboard_t *keyboard;
@@ -77,8 +77,8 @@ plymouthd_for_each_keyboard (
 }
 
 void
-plymouthd_for_each_pixel_display (
-        plymouthd_t                              *daemon,
+plymouthd_devices_for_each_pixel_display (
+        plymouthd_devices_t                      *devices,
         plymouthd_devices_pixel_display_handler_t handler,
         void                                     *user_data)
 {
@@ -86,7 +86,7 @@ plymouthd_for_each_pixel_display (
         ply_list_node_t *node;
 
         pixel_displays =
-                ply_device_manager_get_pixel_displays (daemon->devices->device_manager);
+                ply_device_manager_get_pixel_displays (devices->device_manager);
         node = ply_list_get_first_node (pixel_displays);
         while (node != NULL) {
                 ply_pixel_display_t *pixel_display;
@@ -100,8 +100,8 @@ plymouthd_for_each_pixel_display (
 }
 
 void
-plymouthd_for_each_text_display (
-        plymouthd_t                             *daemon,
+plymouthd_devices_for_each_text_display (
+        plymouthd_devices_t                     *devices,
         plymouthd_devices_text_display_handler_t handler,
         void                                    *user_data)
 {
@@ -109,7 +109,7 @@ plymouthd_for_each_text_display (
         ply_list_node_t *node;
 
         text_displays =
-                ply_device_manager_get_text_displays (daemon->devices->device_manager);
+                ply_device_manager_get_text_displays (devices->device_manager);
         node = ply_list_get_first_node (text_displays);
         while (node != NULL) {
                 ply_text_display_t *text_display;

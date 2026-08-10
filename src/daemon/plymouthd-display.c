@@ -45,8 +45,8 @@ static void
 attach_pixel_displays_to_splash (plymouthd_t       *daemon,
                                  ply_boot_splash_t *splash)
 {
-        plymouthd_for_each_pixel_display (
-                daemon,
+        plymouthd_devices_for_each_pixel_display (
+                daemon->devices,
                 attach_pixel_display_to_splash,
                 splash);
 }
@@ -64,8 +64,8 @@ static void
 attach_text_displays_to_splash (plymouthd_t       *daemon,
                                 ply_boot_splash_t *splash)
 {
-        plymouthd_for_each_text_display (
-                daemon,
+        plymouthd_devices_for_each_text_display (
+                daemon->devices,
                 attach_text_display_to_splash,
                 splash);
 }
