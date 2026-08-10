@@ -56,6 +56,7 @@
 #include "ply-progress.h"
 #include "ply-kmsg-reader.h"
 #include "plymouthd-interaction-private.h"
+#include "plymouthd-diagnostics-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-policy-private.h"
@@ -64,7 +65,7 @@
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
 
-static int crash_fd = -1;
+static plymouthd_diagnostics_t *diagnostics;
 
 typedef struct
 {
@@ -112,11 +113,6 @@ static void on_escape_pressed (state_t *state);
 static void dump_details_and_quit_splash (state_t *state);
 static void update_display (state_t *state);
 
-static void on_error_message (ply_buffer_t *debug_buffer,
-                              const void   *bytes,
-                              size_t        number_of_bytes);
-static ply_buffer_t *debug_buffer;
-static char *debug_buffer_path = NULL;
 static char *pid_file = NULL;
 static void toggle_between_splash_and_details (state_t *state);
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
@@ -136,8 +132,6 @@ static void on_quit (state_t       *state,
 static void on_new_kmsg_message (state_t        *state,
                                  kmsg_message_t *kmsg_message);
 static void cancel_pending_delayed_show (state_t *state);
-static void dump_debug_buffer_to_file (void);
-
 static void
 on_session_output (state_t    *state,
                    const char *output,
@@ -430,9 +424,10 @@ on_newroot (state_t    *state,
 
         ply_trace ("new root mounted at \"%s\", switching to it", root_dir);
 
-        if (!strcmp (root_dir, "/run/initramfs") && debug_buffer != NULL) {
+        if (!strcmp (root_dir, "/run/initramfs") &&
+            plymouthd_diagnostics_has_buffer (diagnostics)) {
                 ply_trace ("switching back to initramfs, dumping debug-buffer now");
-                dump_debug_buffer_to_file ();
+                plymouthd_diagnostics_dump (diagnostics);
         }
 
         chdir (root_dir);
@@ -1266,82 +1261,6 @@ detach_from_running_session (state_t *state)
         plymouthd_session_detach (state->session);
 }
 
-static void
-check_verbosity (state_t *state)
-{
-        char *stream;
-
-        ply_trace ("checking if tracing should be enabled");
-
-        if (!debug_buffer_path)
-                debug_buffer_path = ply_kernel_command_line_get_key_value ("plymouth.debug=file:");
-
-        stream = ply_kernel_command_line_get_key_value ("plymouth.debug=stream:");
-        if (stream != NULL || debug_buffer_path != NULL ||
-            ply_kernel_command_line_has_argument ("plymouth.debug")) {
-                int fd;
-
-                ply_trace ("tracing should be enabled!");
-                if (!ply_is_tracing ())
-                        ply_toggle_tracing ();
-
-                if (debug_buffer == NULL)
-                        debug_buffer = ply_buffer_new ();
-
-                if (stream != NULL) {
-                        ply_trace ("streaming debug output to %s instead of screen", stream);
-                        fd = open (stream, O_RDWR | O_NOCTTY | O_CREAT, 0600);
-
-                        if (fd < 0) {
-                                ply_trace ("could not stream output to %s: %m", stream);
-                        } else {
-                                ply_logger_set_output_fd (ply_logger_get_error_default (), fd);
-                                crash_fd = fd;
-                        }
-
-                        free (stream);
-                } else {
-                        const char *device;
-                        char *file;
-
-                        device = state->default_tty;
-
-                        ply_trace ("redirecting debug output to %s", device);
-
-                        if (strncmp (device, "/dev/", strlen ("/dev/")) == 0)
-                                file = strdup (device);
-                        else
-                                asprintf (&file, "/dev/%s", device);
-
-                        fd = open (file, O_RDWR | O_APPEND);
-
-                        if (fd < 0)
-                                ply_trace ("could not redirected debug output to %s: %m", device);
-                        else
-                                ply_logger_set_output_fd (ply_logger_get_error_default (), fd);
-
-                        free (file);
-                }
-        } else {
-                ply_trace ("tracing shouldn't be enabled!");
-        }
-
-        if (debug_buffer != NULL) {
-                if (debug_buffer_path == NULL) {
-                        if (state->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
-                            state->mode == PLY_BOOT_SPLASH_MODE_REBOOT)
-                                debug_buffer_path = strdup (PLYMOUTH_LOG_DIRECTORY "/plymouth-shutdown-debug.log");
-                        else
-                                debug_buffer_path = strdup (PLYMOUTH_LOG_DIRECTORY "/plymouth-debug.log");
-                }
-
-                ply_logger_add_filter (ply_logger_get_error_default (),
-                                       (ply_logger_filter_handler_t)
-                                       on_error_message,
-                                       debug_buffer);
-        }
-}
-
 static bool
 redirect_standard_io_to_dev_null (void)
 {
@@ -1382,7 +1301,9 @@ find_fallback_tty (state_t *state)
 }
 
 static bool
-initialize_environment (state_t *state)
+initialize_environment (state_t    *state,
+                        const char *debug_path,
+                        bool        capture_debug)
 {
         ply_trace ("initializing minimal work environment");
 
@@ -1408,7 +1329,10 @@ initialize_environment (state_t *state)
                 }
         }
 
-        check_verbosity (state);
+        diagnostics = plymouthd_diagnostics_new (state->mode,
+                                                 state->default_tty,
+                                                 debug_path,
+                                                 capture_debug);
 
         ply_trace ("source built on %s", __DATE__);
 
@@ -1424,33 +1348,6 @@ initialize_environment (state_t *state)
 
         ply_trace ("initialized minimal work environment");
         return true;
-}
-
-static void
-on_error_message (ply_buffer_t *debug_buffer,
-                  const void   *bytes,
-                  size_t        number_of_bytes)
-{
-        ply_buffer_append_bytes (debug_buffer, bytes, number_of_bytes);
-}
-
-static void
-dump_debug_buffer_to_file (void)
-{
-        int fd;
-        const char *bytes;
-        size_t size;
-
-        fd = open (debug_buffer_path,
-                   O_WRONLY | O_CREAT | O_TRUNC, 0600);
-
-        if (fd < 0)
-                return;
-
-        size = ply_buffer_get_size (debug_buffer);
-        bytes = ply_buffer_get_bytes (debug_buffer);
-        ply_write (fd, bytes, size);
-        close (fd);
 }
 
 #include <termios.h>
@@ -1526,8 +1423,8 @@ on_crash (int signum)
         int fd;
         static const char *show_cursor_sequence = "\033[?25h";
 
-        if (crash_fd != -1) {
-                fd = crash_fd;
+        if (plymouthd_diagnostics_get_crash_fd (diagnostics) != -1) {
+                fd = plymouthd_diagnostics_get_crash_fd (diagnostics);
         } else {
                 fd = open ("/dev/tty1", O_RDWR | O_NOCTTY);
                 if (fd < 0) fd = open ("/dev/hvc0", O_RDWR | O_NOCTTY);
@@ -1550,8 +1447,8 @@ on_crash (int signum)
                 write_backtrace (fd);
         }
 
-        if (debug_buffer != NULL) {
-                dump_debug_buffer_to_file ();
+        if (plymouthd_diagnostics_has_buffer (diagnostics)) {
+                plymouthd_diagnostics_dump (diagnostics);
                 sleep (30);
         }
 
@@ -1630,6 +1527,7 @@ main (int    argc,
         bool graphical_boot = false;
         bool attach_to_session;
         char *boot_log_file = NULL;
+        char *debug_path = NULL;
         ply_daemon_handle_t *daemon_handle = NULL;
         char *mode_string = NULL;
         char *kernel_command_line = NULL;
@@ -1681,7 +1579,7 @@ main (int    argc,
                                         "debug", &debug,
                                         "ignore-serial-consoles", &ignore_serial_consoles,
                                         "graphical-boot", &graphical_boot,
-                                        "debug-file", &debug_buffer_path,
+                                        "debug-file", &debug_path,
                                         "boot-log", &boot_log_file,
                                         "pid-file", &pid_file,
                                         "tty", &tty,
@@ -1740,9 +1638,6 @@ main (int    argc,
                 }
         }
 
-        if (debug)
-                debug_buffer = ply_buffer_new ();
-
         signal (SIGABRT, on_crash);
         signal (SIGSEGV, on_crash);
         signal (SIGFPE, on_crash);
@@ -1757,7 +1652,7 @@ main (int    argc,
         /* before do anything we need to make sure we have a working
          * environment.
          */
-        if (!initialize_environment (&state)) {
+        if (!initialize_environment (&state, debug_path, debug)) {
                 if (errno == 0) {
                         if (daemon_handle != NULL)
                                 ply_detach_daemon (daemon_handle, 0);
@@ -1884,12 +1779,10 @@ main (int    argc,
 
         ply_trace ("exiting with code %d", exit_code);
 
-        if (debug_buffer != NULL) {
-                dump_debug_buffer_to_file ();
-                ply_buffer_free (debug_buffer);
-        }
+        plymouthd_diagnostics_dump (diagnostics);
 
         ply_free_error_log ();
+        plymouthd_diagnostics_free (diagnostics);
 
         plymouthd_settings_free (&state.settings);
 
