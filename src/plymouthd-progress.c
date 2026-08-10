@@ -90,6 +90,13 @@ plymouthd_progress_get_core (plymouthd_progress_t *progress)
 }
 
 void
+plymouthd_progress_attach_to_splash (plymouthd_progress_t *progress,
+                                     ply_boot_splash_t    *splash)
+{
+        ply_boot_splash_attach_progress (splash, progress->core);
+}
+
+void
 plymouthd_progress_status_update (plymouthd_progress_t *progress,
                                   const char           *status)
 {

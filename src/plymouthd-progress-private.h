@@ -11,6 +11,7 @@
 #ifndef PLYMOUTHD_PROGRESS_PRIVATE_H
 #define PLYMOUTHD_PROGRESS_PRIVATE_H
 
+#include "ply-boot-splash.h"
 #include "ply-boot-splash-plugin.h"
 #include "ply-private.h"
 #include "ply-progress.h"
@@ -23,6 +24,8 @@ PLY_PRIVATE void plymouthd_progress_set_mode (plymouthd_progress_t  *progress,
                                               ply_boot_splash_mode_t mode);
 PLY_PRIVATE const char *plymouthd_progress_get_cache_file (plymouthd_progress_t *progress);
 PLY_PRIVATE ply_progress_t *plymouthd_progress_get_core (plymouthd_progress_t *progress);
+PLY_PRIVATE void plymouthd_progress_attach_to_splash (plymouthd_progress_t *progress,
+                                                      ply_boot_splash_t    *splash);
 PLY_PRIVATE void plymouthd_progress_status_update (plymouthd_progress_t *progress,
                                                    const char           *status);
 PLY_PRIVATE void plymouthd_progress_pause (plymouthd_progress_t *progress);
