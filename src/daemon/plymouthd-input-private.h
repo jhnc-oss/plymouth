@@ -22,6 +22,9 @@ typedef void (*plymouthd_input_escape_handler_t)(plymouthd_t *daemon);
 
 PLY_PRIVATE void plymouthd_handle_escape (plymouthd_t *daemon,
                                           bool         has_vt_console);
+PLY_PRIVATE void plymouthd_handle_keyboard_added (plymouthd_t                     *daemon,
+                                                  ply_keyboard_t                  *keyboard,
+                                                  plymouthd_input_escape_handler_t escape_handler);
 PLY_PRIVATE void plymouthd_attach_keyboard (plymouthd_t                     *daemon,
                                             ply_keyboard_t                  *keyboard,
                                             plymouthd_input_escape_handler_t escape_handler);
