@@ -206,5 +206,6 @@ plymouthd_free (plymouthd_t *daemon)
 
         ply_boot_splash_free (daemon->boot_splash);
         ply_boot_server_free (daemon->boot_server);
+        plymouthd_free_devices (daemon);
         plymouthd_free_state (daemon);
 }

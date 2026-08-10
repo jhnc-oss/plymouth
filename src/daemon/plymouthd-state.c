@@ -16,7 +16,6 @@
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
-#include "plymouthd-devices-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
@@ -45,8 +44,6 @@ plymouthd_free_state (plymouthd_t *state)
 {
         if (state == NULL)
                 return;
-
-        plymouthd_free_devices (state);
 
         ply_trace ("freeing terminal session");
         plymouthd_session_free (state->session);
