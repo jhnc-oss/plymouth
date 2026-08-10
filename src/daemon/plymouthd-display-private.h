@@ -15,6 +15,7 @@
 
 typedef struct _plymouthd plymouthd_t;
 typedef struct _ply_pixel_display ply_pixel_display_t;
+typedef struct _ply_text_display ply_text_display_t;
 
 PLY_PRIVATE void plymouthd_show_detailed_splash (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_show_default_splash (plymouthd_t *daemon);
@@ -25,6 +26,10 @@ PLY_PRIVATE void plymouthd_handle_pixel_display_added (plymouthd_t         *daem
                                                        ply_pixel_display_t *display);
 PLY_PRIVATE void plymouthd_handle_pixel_display_removed (plymouthd_t         *daemon,
                                                          ply_pixel_display_t *display);
+PLY_PRIVATE void plymouthd_handle_text_display_added (plymouthd_t        *daemon,
+                                                      ply_text_display_t *display);
+PLY_PRIVATE void plymouthd_handle_text_display_removed (plymouthd_t        *daemon,
+                                                        ply_text_display_t *display);
 PLY_PRIVATE void plymouthd_toggle_details (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_hide_splash (plymouthd_t *daemon);
 
