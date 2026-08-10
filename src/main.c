@@ -622,20 +622,6 @@ on_error (state_t *state)
         state->number_of_errors++;
 }
 
-
-static bool
-kernel_console_is_ttynull (void)
-{
-        char *kernel_console = ply_get_primary_kernel_console_type ();
-
-        /* If the primary console is ttynull, the kernel console is virtual.
-         */
-        if (strcmp (kernel_console, "ttynull") == 0)
-                return true;
-
-        return false;
-}
-
 static bool
 plymouth_should_show_default_splash (state_t *state)
 {
@@ -2032,7 +2018,9 @@ main (int    argc,
         signal (SIGSEGV, on_crash);
         signal (SIGFPE, on_crash);
 
-        if (graphical_boot || ply_kernel_command_line_has_argument ("plymouth.graphical") || kernel_console_is_ttynull ()) {
+        if (graphical_boot ||
+            ply_kernel_command_line_has_argument ("plymouth.graphical") ||
+            plymouthd_kernel_console_is_ttynull ()) {
                 state.should_force_default_splash = true;
                 ignore_serial_consoles = true;
         }
