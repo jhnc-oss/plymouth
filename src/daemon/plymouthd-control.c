@@ -162,7 +162,7 @@ deactivate_splash (state_t *state)
         assert (!state->is_inactive);
 
         if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
-                ply_device_manager_deactivate_renderers (state->device_manager);
+                plymouthd_deactivate_renderers (state);
 
         deactivate_console (state);
 
