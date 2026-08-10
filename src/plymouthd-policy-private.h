@@ -33,5 +33,7 @@ PLY_PRIVATE bool plymouthd_should_ignore_show_splash_calls (ply_boot_splash_mode
 PLY_PRIVATE bool plymouthd_shell_is_init (void);
 PLY_PRIVATE bool plymouthd_console_type_is_virtual (const char *console_type);
 PLY_PRIVATE bool plymouthd_kernel_console_is_ttynull (void);
+PLY_PRIVATE bool plymouthd_should_show_default_splash (bool force_details,
+                                                       bool force_default_splash);
 
 #endif /* PLYMOUTHD_POLICY_PRIVATE_H */

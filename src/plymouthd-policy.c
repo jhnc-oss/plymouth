@@ -139,3 +139,54 @@ plymouthd_kernel_console_is_ttynull (void)
         /* If the primary console is ttynull, the kernel console is virtual. */
         return plymouthd_console_type_is_virtual (kernel_console);
 }
+
+bool
+plymouthd_should_show_default_splash (bool force_details,
+                                      bool force_default_splash)
+{
+        static const char * const detail_arguments[] = {
+                "single", "1", "s", "S", "-S", NULL
+        };
+        int i;
+
+        ply_trace ("checking if plymouth should show default splash");
+
+        if (force_details)
+                return false;
+
+        for (i = 0; detail_arguments[i] != NULL; i++) {
+                if (ply_kernel_command_line_has_argument (detail_arguments[i])) {
+                        ply_trace ("no default splash because kernel command line has option \"%s\"",
+                                   detail_arguments[i]);
+                        return false;
+                }
+        }
+
+        if (ply_kernel_command_line_has_argument ("splash=verbose")) {
+                ply_trace ("no default splash because kernel command line has option \"splash=verbose\"");
+                return false;
+        }
+
+        if (ply_kernel_command_line_has_argument ("rhgb")) {
+                ply_trace ("using default splash because kernel command line has option \"rhgb\"");
+                return true;
+        }
+
+        if (ply_kernel_command_line_has_argument ("splash")) {
+                ply_trace ("using default splash because kernel command line has option \"splash\"");
+                return true;
+        }
+
+        if (ply_kernel_command_line_has_argument ("splash=silent")) {
+                ply_trace ("using default splash because kernel command line has option \"splash=silent\"");
+                return true;
+        }
+
+        if (force_default_splash) {
+                ply_trace ("using default splash because forced by \"plymouth.graphical\" or no active kernel console");
+                return true;
+        }
+
+        ply_trace ("no default splash because kernel command line lacks \"splash\" or \"rhgb\"");
+        return false;
+}
