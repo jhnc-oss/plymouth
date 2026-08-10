@@ -176,6 +176,23 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_settings_test_executable = executable(
+  'test-plymouthd-settings',
+  'test-plymouthd-settings.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_settings_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-settings',
+  plymouthd_settings_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 script_source_dir = meson.project_source_root() / 'src/plugins/splash/script'
 
 script_scan_test_executable = executable(
