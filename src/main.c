@@ -78,7 +78,6 @@ typedef struct
         plymouthd_messages_t    *messages;
         plymouthd_progress_t    *progress;
         plymouthd_session_t     *session;
-        ply_command_parser_t    *command_parser;
         ply_boot_splash_mode_t   mode;
         ply_terminal_t          *local_console_terminal;
         ply_device_manager_t    *device_manager;
@@ -1529,13 +1528,14 @@ main (int    argc,
         char *boot_log_file = NULL;
         char *debug_path = NULL;
         ply_daemon_handle_t *daemon_handle = NULL;
+        ply_command_parser_t *command_parser;
         char *mode_string = NULL;
         char *kernel_command_line = NULL;
         char *tty = NULL;
         ply_device_manager_flags_t device_manager_flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
 
         state.start_time = ply_get_timestamp ();
-        state.command_parser = ply_command_parser_new ("plymouthd", "Splash server");
+        command_parser = ply_command_parser_new ("plymouthd", "Splash server");
 
         state.loop = ply_event_loop_get_default ();
 
@@ -1543,7 +1543,7 @@ main (int    argc,
         if (ply_file_exists (PLYMOUTH_LOCALE_DIRECTORY "/nl/LC_MESSAGES/plymouth.mo"))
                 setlocale (LC_ALL, "");
 
-        ply_command_parser_add_options (state.command_parser,
+        ply_command_parser_add_options (command_parser,
                                         "help", "This help message", PLY_COMMAND_OPTION_TYPE_FLAG,
                                         "attach-to-session", "Redirect console messages from screen to log", PLY_COMMAND_OPTION_TYPE_FLAG,
                                         "no-daemon", "Do not daemonize", PLY_COMMAND_OPTION_TYPE_FLAG,
@@ -1559,10 +1559,10 @@ main (int    argc,
                                         "graphical-boot", "Use graphical splashes even if the kernel console is not a VT", PLY_COMMAND_OPTION_TYPE_FLAG,
                                         NULL);
 
-        if (!ply_command_parser_parse_arguments (state.command_parser, state.loop, argv, argc)) {
+        if (!ply_command_parser_parse_arguments (command_parser, state.loop, argv, argc)) {
                 char *help_string;
 
-                help_string = ply_command_parser_get_help_string (state.command_parser);
+                help_string = ply_command_parser_get_help_string (command_parser);
 
                 ply_error_without_new_line ("%s", help_string);
 
@@ -1570,7 +1570,7 @@ main (int    argc,
                 return EX_USAGE;
         }
 
-        ply_command_parser_get_options (state.command_parser,
+        ply_command_parser_get_options (command_parser,
                                         "help", &should_help,
                                         "attach-to-session", &attach_to_session,
                                         "mode", &mode_string,
@@ -1589,7 +1589,7 @@ main (int    argc,
         if (should_help) {
                 char *help_string;
 
-                help_string = ply_command_parser_get_help_string (state.command_parser);
+                help_string = ply_command_parser_get_help_string (command_parser);
 
                 if (argc < 2)
                         fprintf (stderr, "%s", help_string);
@@ -1763,7 +1763,7 @@ main (int    argc,
         ply_boot_splash_free (state.boot_splash);
         state.boot_splash = NULL;
 
-        ply_command_parser_free (state.command_parser);
+        ply_command_parser_free (command_parser);
 
         ply_boot_server_free (state.boot_server);
         state.boot_server = NULL;
