@@ -15,11 +15,11 @@
 #include <unistd.h>
 
 #include "ply-boot-splash.h"
-#include "ply-device-manager.h"
 #include "ply-logger.h"
 #include "ply-terminal.h"
 #include "ply-trigger.h"
 #include "plymouthd-control-private.h"
+#include "plymouthd-devices-private.h"
 #include "plymouthd-display-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-logging-private.h"
@@ -103,7 +103,7 @@ plymouthd_handle_ask_for_password (state_t               *state,
 
                         plymouthd_cancel_pending_show (state);
 
-                        has_displays = ply_device_manager_has_displays (state->device_manager);
+                        has_displays = plymouthd_has_displays (state);
 
                         if (has_displays) {
                                 ply_trace ("displays available now, showing splash immediately");
