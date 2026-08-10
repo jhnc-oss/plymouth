@@ -19,6 +19,7 @@ typedef struct _ply_keyboard ply_keyboard_t;
 typedef struct _ply_pixel_display ply_pixel_display_t;
 typedef struct _ply_text_display ply_text_display_t;
 typedef struct _plymouthd plymouthd_t;
+typedef struct _plymouthd_devices plymouthd_devices_t;
 
 typedef void (*plymouthd_devices_keyboard_handler_t)(ply_keyboard_t *keyboard,
                                                      void           *user_data);
@@ -46,9 +47,9 @@ typedef struct
 PLY_PRIVATE void plymouthd_initialize_devices (plymouthd_t                              *daemon,
                                                bool                                      should_ignore_serial_consoles,
                                                const plymouthd_devices_event_handlers_t *event_handlers);
-PLY_PRIVATE bool plymouthd_has_displays (plymouthd_t *daemon);
-PLY_PRIVATE bool plymouthd_has_active_vt (plymouthd_t *daemon);
-PLY_PRIVATE bool plymouthd_has_vt_console (plymouthd_t *daemon);
+PLY_PRIVATE bool plymouthd_devices_has_displays (plymouthd_devices_t *devices);
+PLY_PRIVATE bool plymouthd_devices_has_active_vt (plymouthd_devices_t *devices);
+PLY_PRIVATE bool plymouthd_devices_has_vt_console (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_for_each_keyboard (plymouthd_t                         *daemon,
                                               plymouthd_devices_keyboard_handler_t handler,
                                               void                                *user_data);

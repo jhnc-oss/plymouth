@@ -100,7 +100,7 @@ plymouthd_handle_ask_for_password (plymouthd_t           *daemon,
 
                         plymouthd_cancel_pending_show (daemon);
 
-                        has_displays = plymouthd_has_displays (daemon);
+                        has_displays = plymouthd_devices_has_displays (daemon->devices);
 
                         if (has_displays) {
                                 ply_trace ("displays available now, showing splash immediately");
@@ -275,5 +275,5 @@ plymouthd_handle_reload (plymouthd_t *daemon)
 bool
 plymouthd_handle_has_active_vt (plymouthd_t *daemon)
 {
-        return plymouthd_has_active_vt (daemon);
+        return plymouthd_devices_has_active_vt (daemon->devices);
 }

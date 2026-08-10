@@ -31,27 +31,27 @@ struct _plymouthd_devices
 };
 
 bool
-plymouthd_has_displays (plymouthd_t *daemon)
+plymouthd_devices_has_displays (plymouthd_devices_t *devices)
 {
-        return ply_device_manager_has_displays (daemon->devices->device_manager);
+        return ply_device_manager_has_displays (devices->device_manager);
 }
 
 bool
-plymouthd_has_active_vt (plymouthd_t *daemon)
+plymouthd_devices_has_active_vt (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return false;
 
-        return ply_terminal_is_active (daemon->devices->local_console_terminal);
+        return ply_terminal_is_active (devices->local_console_terminal);
 }
 
 bool
-plymouthd_has_vt_console (plymouthd_t *daemon)
+plymouthd_devices_has_vt_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return false;
 
-        return ply_terminal_is_vt (daemon->devices->local_console_terminal);
+        return ply_terminal_is_vt (devices->local_console_terminal);
 }
 
 void

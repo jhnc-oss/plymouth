@@ -66,7 +66,7 @@ plymouthd_handle_show_splash (plymouthd_t *daemon)
         }
 
         daemon->is_shown = true;
-        has_displays = plymouthd_has_displays (daemon);
+        has_displays = plymouthd_devices_has_displays (daemon->devices);
 
         if (!plymouthd_session_is_attached (daemon->session) &&
             daemon->should_be_attached && has_displays)

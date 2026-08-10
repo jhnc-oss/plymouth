@@ -68,7 +68,7 @@ plymouthd_handle_escape (plymouthd_t *daemon)
         bool has_vt_console;
 
         ply_trace ("escape key pressed");
-        has_vt_console = plymouthd_has_vt_console (daemon);
+        has_vt_console = plymouthd_devices_has_vt_console (daemon->devices);
 
         return plymouthd_validate_prompt_input (daemon->boot_splash,
                                                 "",
