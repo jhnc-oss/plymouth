@@ -72,7 +72,7 @@ plymouthd_handle_show_splash (plymouthd_t *daemon)
             daemon->should_be_attached && has_displays)
                 plymouthd_attach_session (daemon);
 
-        plymouthd_prepare_console (daemon);
+        plymouthd_devices_prepare_console (daemon->devices);
 
         plymouthd_session_request_details (daemon->session);
 
@@ -97,7 +97,7 @@ quit_splash (plymouthd_t *daemon)
         plymouthd_devices_deactivate_keyboards (daemon->devices);
 
         if (!plymouthd_transition_should_retain_splash (daemon->transition))
-                plymouthd_release_console (daemon);
+                plymouthd_devices_release_console (daemon->devices);
 
         detach_from_running_session (daemon);
 }
@@ -145,7 +145,7 @@ deactivate_console (plymouthd_t *daemon)
 {
         detach_from_running_session (daemon);
 
-        plymouthd_deactivate_console (daemon);
+        plymouthd_devices_deactivate_console (daemon->devices);
 
         /* do not let any tty opened where we could write after deactivate */
         if (ply_kernel_command_line_has_argument ("plymouth.debug"))
@@ -234,7 +234,7 @@ plymouthd_handle_reactivate (plymouthd_t *daemon)
         if (!daemon->is_inactive)
                 return;
 
-        plymouthd_reactivate_console (daemon);
+        plymouthd_devices_reactivate_console (daemon->devices);
 
         if (plymouthd_session_has_terminal (daemon->session) &&
             daemon->should_be_attached) {

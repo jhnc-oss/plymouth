@@ -147,60 +147,60 @@ plymouthd_devices_deactivate_keyboards (plymouthd_devices_t *devices)
 }
 
 void
-plymouthd_prepare_console (plymouthd_t *daemon)
+plymouthd_devices_prepare_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
-        ply_terminal_set_mode (daemon->devices->local_console_terminal,
+        ply_terminal_set_mode (devices->local_console_terminal,
                                PLY_TERMINAL_MODE_GRAPHICS);
 }
 
 void
-plymouthd_restore_text_console (plymouthd_t *daemon)
+plymouthd_devices_restore_text_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
-        ply_terminal_set_mode (daemon->devices->local_console_terminal,
+        ply_terminal_set_mode (devices->local_console_terminal,
                                PLY_TERMINAL_MODE_TEXT);
-        ply_terminal_set_buffered_input (daemon->devices->local_console_terminal);
+        ply_terminal_set_buffered_input (devices->local_console_terminal);
 }
 
 void
-plymouthd_release_console (plymouthd_t *daemon)
+plymouthd_devices_release_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
         ply_trace ("Not retaining splash, so deallocating VT");
-        ply_terminal_deactivate_vt (daemon->devices->local_console_terminal);
-        ply_terminal_close (daemon->devices->local_console_terminal);
+        ply_terminal_deactivate_vt (devices->local_console_terminal);
+        ply_terminal_close (devices->local_console_terminal);
 }
 
 void
-plymouthd_deactivate_console (plymouthd_t *daemon)
+plymouthd_devices_deactivate_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
         ply_trace ("deactivating terminal");
         ply_terminal_stop_watching_for_vt_changes (
-                daemon->devices->local_console_terminal);
-        ply_terminal_set_buffered_input (daemon->devices->local_console_terminal);
-        ply_terminal_close (daemon->devices->local_console_terminal);
+                devices->local_console_terminal);
+        ply_terminal_set_buffered_input (devices->local_console_terminal);
+        ply_terminal_close (devices->local_console_terminal);
 }
 
 void
-plymouthd_reactivate_console (plymouthd_t *daemon)
+plymouthd_devices_reactivate_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
-        ply_terminal_open (daemon->devices->local_console_terminal);
-        ply_terminal_watch_for_vt_changes (daemon->devices->local_console_terminal);
-        ply_terminal_set_unbuffered_input (daemon->devices->local_console_terminal);
-        ply_terminal_ignore_mode_changes (daemon->devices->local_console_terminal,
+        ply_terminal_open (devices->local_console_terminal);
+        ply_terminal_watch_for_vt_changes (devices->local_console_terminal);
+        ply_terminal_set_unbuffered_input (devices->local_console_terminal);
+        ply_terminal_ignore_mode_changes (devices->local_console_terminal,
                                           false);
 }
 

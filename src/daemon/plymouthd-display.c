@@ -316,7 +316,7 @@ plymouthd_hide_splash (plymouthd_t *daemon)
         if (daemon->boot_splash != NULL)
                 ply_boot_splash_hide (daemon->boot_splash);
 
-        plymouthd_restore_text_console (daemon);
+        plymouthd_devices_restore_text_console (daemon->devices);
 }
 
 void

@@ -63,11 +63,11 @@ PLY_PRIVATE void plymouthd_devices_activate_renderers (plymouthd_devices_t *devi
 PLY_PRIVATE void plymouthd_devices_deactivate_renderers (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_devices_activate_keyboards (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_devices_deactivate_keyboards (plymouthd_devices_t *devices);
-PLY_PRIVATE void plymouthd_prepare_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_restore_text_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_release_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_deactivate_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_reactivate_console (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_devices_prepare_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_restore_text_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_release_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_deactivate_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_reactivate_console (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_pause_devices (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_unpause_devices (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_free_devices (plymouthd_t *daemon);
