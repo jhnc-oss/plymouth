@@ -42,7 +42,7 @@
 
 #include "ply-buffer.h"
 #include "ply-command-parser.h"
-#include "ply-boot-server.h"
+#include "ply-boot-server-private.h"
 #include "ply-boot-splash.h"
 #include "ply-device-manager.h"
 #include "ply-event-loop.h"
@@ -1378,31 +1378,33 @@ on_has_active_vt (state_t *state)
 static ply_boot_server_t *
 start_boot_server (state_t *state)
 {
+        const ply_boot_server_handlers_t handlers = {
+                .update              = (ply_boot_server_update_handler_t) on_update,
+                .change_mode         = (ply_boot_server_change_mode_handler_t) on_change_mode,
+                .system_update       = (ply_boot_server_system_update_handler_t) on_system_update,
+                .ask_for_password    = (ply_boot_server_ask_for_password_handler_t) on_ask_for_password,
+                .ask_question        = (ply_boot_server_ask_question_handler_t) on_ask_question,
+                .display_message     = (ply_boot_server_display_message_handler_t) on_display_message,
+                .hide_message        = (ply_boot_server_hide_message_handler_t) on_hide_message,
+                .watch_for_keystroke = (ply_boot_server_watch_for_keystroke_handler_t) on_watch_for_keystroke,
+                .ignore_keystroke    = (ply_boot_server_ignore_keystroke_handler_t) on_ignore_keystroke,
+                .progress_pause      = (ply_boot_server_progress_pause_handler_t) on_progress_pause,
+                .progress_unpause    = (ply_boot_server_progress_unpause_handler_t) on_progress_unpause,
+                .show_splash         = (ply_boot_server_show_splash_handler_t) on_show_splash,
+                .hide_splash         = (ply_boot_server_hide_splash_handler_t) on_hide_splash,
+                .newroot             = (ply_boot_server_newroot_handler_t) on_newroot,
+                .system_initialized  = (ply_boot_server_system_initialized_handler_t) on_system_initialized,
+                .error               = (ply_boot_server_error_handler_t) on_error,
+                .deactivate          = (ply_boot_server_deactivate_handler_t) on_deactivate,
+                .reactivate          = (ply_boot_server_reactivate_handler_t) on_reactivate,
+                .quit                = (ply_boot_server_quit_handler_t) on_quit,
+                .has_active_vt       = (ply_boot_server_has_active_vt_handler_t) on_has_active_vt,
+                .reload              = (ply_boot_server_reload_handler_t) on_reload,
+                .connection_hangup   = (ply_boot_server_connection_hangup_handler_t) on_connection_hangup,
+        };
         ply_boot_server_t *server;
 
-        server = ply_boot_server_new ((ply_boot_server_update_handler_t) on_update,
-                                      (ply_boot_server_change_mode_handler_t) on_change_mode,
-                                      (ply_boot_server_system_update_handler_t) on_system_update,
-                                      (ply_boot_server_ask_for_password_handler_t) on_ask_for_password,
-                                      (ply_boot_server_ask_question_handler_t) on_ask_question,
-                                      (ply_boot_server_display_message_handler_t) on_display_message,
-                                      (ply_boot_server_hide_message_handler_t) on_hide_message,
-                                      (ply_boot_server_watch_for_keystroke_handler_t) on_watch_for_keystroke,
-                                      (ply_boot_server_ignore_keystroke_handler_t) on_ignore_keystroke,
-                                      (ply_boot_server_progress_pause_handler_t) on_progress_pause,
-                                      (ply_boot_server_progress_unpause_handler_t) on_progress_unpause,
-                                      (ply_boot_server_show_splash_handler_t) on_show_splash,
-                                      (ply_boot_server_hide_splash_handler_t) on_hide_splash,
-                                      (ply_boot_server_newroot_handler_t) on_newroot,
-                                      (ply_boot_server_system_initialized_handler_t) on_system_initialized,
-                                      (ply_boot_server_error_handler_t) on_error,
-                                      (ply_boot_server_deactivate_handler_t) on_deactivate,
-                                      (ply_boot_server_reactivate_handler_t) on_reactivate,
-                                      (ply_boot_server_quit_handler_t) on_quit,
-                                      (ply_boot_server_has_active_vt_handler_t) on_has_active_vt,
-                                      (ply_boot_server_reload_handler_t) on_reload,
-                                      (ply_boot_server_connection_hangup_handler_t) on_connection_hangup,
-                                      state);
+        server = ply_boot_server_new_with_handlers (&handlers, state);
 
         if (!ply_boot_server_listen (server)) {
                 ply_save_errno ();
