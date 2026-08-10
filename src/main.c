@@ -56,6 +56,7 @@
 #include "ply-progress.h"
 #include "ply-kmsg-reader.h"
 #include "plymouthd-interaction-private.h"
+#include "plymouthd-messages-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
@@ -75,7 +76,7 @@ typedef struct
         ply_buffer_t            *boot_buffer;
         ply_progress_t          *progress;
         plymouthd_interaction_t *interaction;
-        ply_list_t              *messages;
+        plymouthd_messages_t    *messages;
         ply_command_parser_t    *command_parser;
         ply_boot_splash_mode_t   mode;
         ply_terminal_t          *local_console_terminal;
@@ -224,22 +225,7 @@ on_system_update (state_t *state,
 static void
 show_messages (state_t *state)
 {
-        if (state->boot_splash == NULL) {
-                ply_trace ("not displaying messages, since no boot splash");
-                return;
-        }
-
-        ply_list_node_t *node = ply_list_get_first_node (state->messages);
-        while (node != NULL) {
-                ply_list_node_t *next_node;
-                char *message = ply_list_node_get_data (node);
-
-                ply_trace ("displaying messages");
-
-                ply_boot_splash_display_message (state->boot_splash, message);
-                next_node = ply_list_get_next_node (state->messages, node);
-                node = next_node;
-        }
+        plymouthd_messages_replay (state->messages, state->boot_splash);
 }
 
 static void
@@ -384,40 +370,18 @@ static void
 on_display_message (state_t    *state,
                     const char *message)
 {
-        if (state->boot_splash != NULL) {
-                ply_trace ("displaying message %s", message);
-                ply_boot_splash_display_message (state->boot_splash, message);
-        } else {
-                ply_trace ("not displaying message %s as no splash", message);
-        }
-        ply_list_append_data (state->messages, strdup (message));
+        plymouthd_messages_display (state->messages,
+                                    state->boot_splash,
+                                    message);
 }
 
 static void
 on_hide_message (state_t    *state,
                  const char *message)
 {
-        ply_list_node_t *node;
-
-        ply_trace ("hiding message %s", message);
-
-        node = ply_list_get_first_node (state->messages);
-        while (node != NULL) {
-                ply_list_node_t *next_node;
-                char *list_message;
-
-                list_message = ply_list_node_get_data (node);
-                next_node = ply_list_get_next_node (state->messages, node);
-
-                if (strcmp (list_message, message) == 0) {
-                        free (list_message);
-                        ply_list_remove_node (state->messages, node);
-                        if (state->boot_splash != NULL) {
-                                ply_boot_splash_hide_message (state->boot_splash, message);
-                        }
-                }
-                node = next_node;
-        }
+        plymouthd_messages_hide (state->messages,
+                                 state->boot_splash,
+                                 message);
 }
 
 static void
@@ -1769,7 +1733,7 @@ initialize_environment (state_t *state)
         ply_trace ("source built on %s", __DATE__);
 
         state->interaction = plymouthd_interaction_new ();
-        state->messages = ply_list_new ();
+        state->messages = plymouthd_messages_new ();
 
         if (!ply_is_tracing_to_terminal ())
                 redirect_standard_io_to_dev_null ();
@@ -2223,6 +2187,7 @@ main (int    argc,
         ply_buffer_free (state.boot_buffer);
         ply_progress_free (state.progress);
         plymouthd_interaction_free (state.interaction);
+        plymouthd_messages_free (state.messages);
 
         ply_trace ("exiting with code %d", exit_code);
 
