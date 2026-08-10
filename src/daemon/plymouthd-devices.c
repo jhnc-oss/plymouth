@@ -25,6 +25,12 @@
 #include "plymouthd-policy-private.h"
 #include "plymouthd-state-private.h"
 
+bool
+plymouthd_has_displays (plymouthd_t *daemon)
+{
+        return ply_device_manager_has_displays (daemon->device_manager);
+}
+
 void
 plymouthd_attach_splash_to_devices (plymouthd_t       *daemon,
                                     ply_boot_splash_t *splash)
