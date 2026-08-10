@@ -555,6 +555,27 @@ boot_splash_test_c_args = test_c_args + [
   ),
 ]
 
+plymouthd_interaction_test_executable = executable(
+  'test-plymouthd-interaction',
+  'test-plymouthd-interaction.c',
+  c_args: boot_splash_test_c_args,
+  dependencies: [libply_dep, libply_splash_core_dep, plymouthd_interaction_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'plymouthd-interaction',
+  plymouthd_interaction_test_executable,
+  depends: fake_splash_plugin,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 boot_splash_test_executable = executable(
   'test-boot-splash',
   'test-boot-splash.c',
