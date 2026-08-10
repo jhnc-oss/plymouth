@@ -15,6 +15,7 @@
 
 #include "ply-logger.h"
 #include "ply-utils.h"
+
 ply_boot_splash_mode_t
 plymouthd_mode_from_string (const char *mode)
 {
@@ -120,4 +121,21 @@ plymouthd_shell_is_init (void)
         }
 
         return result;
+}
+
+bool
+plymouthd_console_type_is_virtual (const char *console_type)
+{
+        return strcmp (console_type, "ttynull") == 0;
+}
+
+bool
+plymouthd_kernel_console_is_ttynull (void)
+{
+        char *kernel_console;
+
+        kernel_console = ply_get_primary_kernel_console_type ();
+
+        /* If the primary console is ttynull, the kernel console is virtual. */
+        return plymouthd_console_type_is_virtual (kernel_console);
 }
