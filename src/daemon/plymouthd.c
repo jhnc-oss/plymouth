@@ -216,7 +216,7 @@ plymouthd_free (plymouthd_t *daemon)
 
         ply_boot_splash_free (daemon->boot_splash);
         ply_boot_server_free (daemon->boot_server);
-        plymouthd_free_devices (daemon);
+        plymouthd_devices_free (daemon->devices);
         ply_trace ("freeing terminal session");
         plymouthd_session_free (daemon->session);
         plymouthd_transition_free (daemon->transition);

@@ -130,7 +130,8 @@ static void
 quit_program (plymouthd_t *daemon)
 {
         ply_trace ("cleaning up devices");
-        plymouthd_free_devices (daemon);
+        plymouthd_devices_free (daemon->devices);
+        daemon->devices = NULL;
 
         ply_trace ("exiting event loop");
         ply_event_loop_exit (daemon->loop, 0);

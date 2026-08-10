@@ -70,6 +70,6 @@ PLY_PRIVATE void plymouthd_devices_deactivate_console (plymouthd_devices_t *devi
 PLY_PRIVATE void plymouthd_devices_reactivate_console (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_devices_pause (plymouthd_devices_t *devices);
 PLY_PRIVATE void plymouthd_devices_unpause (plymouthd_devices_t *devices);
-PLY_PRIVATE void plymouthd_free_devices (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_devices_free (plymouthd_devices_t *devices);
 
 #endif /* PLYMOUTHD_DEVICES_PRIVATE_H */

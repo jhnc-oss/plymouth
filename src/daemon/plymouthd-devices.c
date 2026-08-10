@@ -217,14 +217,13 @@ plymouthd_devices_unpause (plymouthd_devices_t *devices)
 }
 
 void
-plymouthd_free_devices (plymouthd_t *daemon)
+plymouthd_devices_free (plymouthd_devices_t *devices)
 {
-        if (daemon->devices == NULL)
+        if (devices == NULL)
                 return;
 
-        ply_device_manager_free (daemon->devices->device_manager);
-        free (daemon->devices);
-        daemon->devices = NULL;
+        ply_device_manager_free (devices->device_manager);
+        free (devices);
 }
 
 static void
