@@ -79,7 +79,7 @@ test_settings_start_unset (void)
         PLY_TEST_ASSERT (settings.system_default_splash_path == NULL);
         PLY_TEST_ASSERT (settings.distribution_default_splash_path == NULL);
 
-        plymouthd_settings_free (&settings);
+        plymouthd_settings_clear (&settings);
         return true;
 }
 
@@ -231,7 +231,7 @@ test_first_config_source_keeps_scalar_precedence (void)
         PLY_TEST_ASSERT (settings.extra_esc_key == 123);
         PLY_TEST_ASSERT (settings.use_simpledrm == 1);
 
-        plymouthd_settings_free (&settings);
+        plymouthd_settings_clear (&settings);
         unlink (first_config_path);
         unlink (second_config_path);
         unlink (alpha_theme_path);
@@ -273,7 +273,7 @@ test_kernel_command_line_keeps_precedence (void)
         PLY_TEST_ASSERT (settings.device_scale == 3);
         PLY_TEST_ASSERT (settings.use_simpledrm == 0);
 
-        plymouthd_settings_free (&settings);
+        plymouthd_settings_clear (&settings);
         return true;
 }
 
