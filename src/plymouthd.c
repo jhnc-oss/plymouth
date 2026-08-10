@@ -69,7 +69,7 @@
 
 static plymouthd_diagnostics_t *diagnostics;
 
-typedef struct
+struct _plymouthd
 {
         ply_event_loop_t        *loop;
         ply_boot_server_t       *boot_server;
@@ -95,7 +95,9 @@ typedef struct
         uint32_t                 should_force_details : 1;
         uint32_t                 should_force_default_splash : 1;
         const char              *default_tty;
-} state_t;
+};
+
+typedef plymouthd_t state_t;
 
 static void show_splash (state_t *state);
 static ply_boot_splash_t *show_theme (state_t    *state,
@@ -785,6 +787,7 @@ quit_program (state_t *state)
 {
         ply_trace ("cleaning up devices");
         ply_device_manager_free (state->device_manager);
+        state->device_manager = NULL;
 
         ply_trace ("exiting event loop");
         ply_event_loop_exit (state->loop, 0);
@@ -1493,77 +1496,33 @@ write_pid_file (const char *filename)
         }
 }
 
-int
-plymouthd_run (int    argc,
-               char **argv)
+plymouthd_t *
+plymouthd_new (plymouthd_options_t *options,
+               char                *program_name,
+               int                 *exit_code)
 {
-        state_t state = { 0 };
-        int exit_code;
-        bool should_ignore_serial_consoles;
+        plymouthd_t *daemon;
         ply_daemon_handle_t *daemon_handle = NULL;
-        plymouthd_options_t *options;
         ply_device_manager_flags_t device_manager_flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
+        bool should_ignore_serial_consoles;
 
-        state.start_time = ply_get_timestamp ();
-        options = plymouthd_options_new ();
+        daemon = calloc (1, sizeof(plymouthd_t));
+        daemon->start_time = ply_get_timestamp ();
+        daemon->loop = ply_event_loop_get_default ();
+        daemon->mode = plymouthd_options_get_mode (options);
+        plymouthd_settings_init (&daemon->settings);
 
-        state.loop = ply_event_loop_get_default ();
-
-        /* Initialize the translations if they are available (!initrd) */
-        if (ply_file_exists (PLYMOUTH_LOCALE_DIRECTORY "/nl/LC_MESSAGES/plymouth.mo"))
-                setlocale (LC_ALL, "");
-
-        if (!plymouthd_options_parse (options, state.loop, argv, argc)) {
-                char *help_string;
-
-                help_string = plymouthd_options_get_help_string (options);
-
-                ply_error_without_new_line ("%s", help_string);
-
-                free (help_string);
-                plymouthd_options_free (options);
-                return EX_USAGE;
-        }
-
-        if (plymouthd_options_should_help (options)) {
-                char *help_string;
-
-                help_string = plymouthd_options_get_help_string (options);
-
-                if (argc < 2)
-                        fprintf (stderr, "%s", help_string);
-                else
-                        printf ("%s", help_string);
-
-                free (help_string);
-                plymouthd_options_free (options);
-                return 0;
-        }
-
-        if (plymouthd_options_should_debug (options) && !ply_is_tracing ())
-                ply_toggle_tracing ();
-
-        state.mode = plymouthd_options_get_mode (options);
         should_ignore_serial_consoles =
                 plymouthd_options_should_ignore_serial_consoles (options);
 
         if (plymouthd_options_get_tty (options) != NULL)
-                state.default_tty = plymouthd_options_get_tty (options);
-
-        if (plymouthd_options_get_kernel_command_line (options) != NULL)
-                ply_kernel_command_line_override (
-                        plymouthd_options_get_kernel_command_line (options));
+                daemon->default_tty = plymouthd_options_get_tty (options);
 
         pid_file = plymouthd_options_take_pid_file (options);
-
-        if (geteuid () != 0) {
-                ply_error ("plymouthd must be run as root user");
-                return EX_OSERR;
-        }
-
-        state.logging = plymouthd_logging_new (state.mode,
-                                               plymouthd_options_get_boot_log_path (options),
-                                               !plymouthd_options_should_log_boot (options));
+        daemon->logging = plymouthd_logging_new (
+                daemon->mode,
+                plymouthd_options_get_boot_log_path (options),
+                !plymouthd_options_should_log_boot (options));
 
         chdir ("/");
         signal (SIGPIPE, SIG_IGN);
@@ -1573,7 +1532,8 @@ plymouthd_run (int    argc,
 
                 if (daemon_handle == NULL) {
                         ply_error ("plymouthd: cannot daemonize: %m");
-                        return EX_UNAVAILABLE;
+                        *exit_code = EX_UNAVAILABLE;
+                        goto failed;
                 }
         }
 
@@ -1584,27 +1544,24 @@ plymouthd_run (int    argc,
         if (plymouthd_options_should_use_graphical_boot (options) ||
             ply_kernel_command_line_has_argument ("plymouth.graphical") ||
             plymouthd_kernel_console_is_ttynull ()) {
-                state.should_force_default_splash = true;
+                daemon->should_force_default_splash = true;
                 should_ignore_serial_consoles = true;
         }
 
-        /* before do anything we need to make sure we have a working
-         * environment.
-         */
         if (!initialize_environment (
-                    &state,
+                    daemon,
                     plymouthd_options_get_debug_path (options),
                     plymouthd_options_should_debug (options))) {
                 if (errno == 0) {
-                        if (daemon_handle != NULL)
-                                ply_detach_daemon (daemon_handle, 0);
-                        return 0;
+                        *exit_code = EX_OK;
+                } else {
+                        ply_error ("plymouthd: could not setup basic operating environment: %m");
+                        *exit_code = EX_OSERR;
                 }
 
-                ply_error ("plymouthd: could not setup basic operating environment: %m");
                 if (daemon_handle != NULL)
-                        ply_detach_daemon (daemon_handle, EX_OSERR);
-                return EX_OSERR;
+                        ply_detach_daemon (daemon_handle, *exit_code);
+                goto failed;
         }
 
         /* Make the first byte in argv be '@' so that we can survive systemd's killing
@@ -1613,121 +1570,139 @@ plymouthd_run (int    argc,
          * Note ply_file_exists () does not work here because /etc/initrd-release
          * is a symlink when using a dracut generated initrd.
          */
-        if (state.mode == PLY_BOOT_SPLASH_MODE_BOOT_UP &&
+        if (daemon->mode == PLY_BOOT_SPLASH_MODE_BOOT_UP &&
             access ("/etc/initrd-release", F_OK) >= 0)
-                argv[0][0] = '@';
+                program_name[0] = '@';
 
-        /* Catch SIGTERM for clean shutdown on poweroff/reboot */
-        ply_event_loop_watch_signal (state.loop, SIGTERM,
-                                     (ply_event_handler_t) on_term_signal, &state);
+        ply_event_loop_watch_signal (daemon->loop,
+                                     SIGTERM,
+                                     (ply_event_handler_t) on_term_signal,
+                                     daemon);
 
-        state.boot_server = start_boot_server (&state);
-
-        if (state.boot_server == NULL) {
+        daemon->boot_server = start_boot_server (daemon);
+        if (daemon->boot_server == NULL) {
                 ply_trace ("plymouthd is already running");
-
                 if (daemon_handle != NULL)
                         ply_detach_daemon (daemon_handle, EX_OK);
-                return EX_OK;
+                *exit_code = EX_OK;
+                goto failed;
         }
 
-        state.boot_buffer = ply_buffer_new ();
-        state.transition = plymouthd_transition_new ();
-        state.session = plymouthd_session_new (
-                state.loop,
+        daemon->boot_buffer = ply_buffer_new ();
+        daemon->transition = plymouthd_transition_new ();
+        daemon->session = plymouthd_session_new (
+                daemon->loop,
                 (plymouthd_session_output_handler_t) on_session_output,
                 (plymouthd_session_hangup_handler_t) on_session_hangup,
                 (plymouthd_session_kmsg_handler_t) on_new_kmsg_message,
-                &state);
+                daemon);
 
         if (plymouthd_options_should_attach_to_session (options)) {
-                state.should_be_attached = true;
-                if (!attach_to_running_session (&state)) {
+                daemon->should_be_attached = true;
+                if (!attach_to_running_session (daemon)) {
                         ply_trace ("could not redirect console session: %m");
-                        if (plymouthd_options_should_daemonize (options))
-                                ply_detach_daemon (daemon_handle, EX_UNAVAILABLE);
-                        return EX_UNAVAILABLE;
+                        if (daemon_handle != NULL)
+                                ply_detach_daemon (daemon_handle,
+                                                   EX_UNAVAILABLE);
+                        *exit_code = EX_UNAVAILABLE;
+                        goto failed;
                 }
         }
 
-        state.progress = plymouthd_progress_new (state.mode);
-        plymouthd_settings_init (&state.settings);
-
-        plymouthd_progress_load_cache (state.progress);
+        daemon->progress = plymouthd_progress_new (daemon->mode);
+        plymouthd_progress_load_cache (daemon->progress);
 
         if (pid_file != NULL)
                 write_pid_file (pid_file);
 
-        if (daemon_handle != NULL
-            && !ply_detach_daemon (daemon_handle, 0)) {
+        if (daemon_handle != NULL && !ply_detach_daemon (daemon_handle, 0)) {
                 ply_error ("plymouthd: could not tell parent to exit: %m");
-                return EX_UNAVAILABLE;
+                *exit_code = EX_UNAVAILABLE;
+                goto failed;
         }
 
-        plymouthd_settings_load (&state.settings);
+        plymouthd_settings_load (&daemon->settings);
 
         if (ply_kernel_command_line_has_argument ("plymouth.ignore-serial-consoles") ||
             should_ignore_serial_consoles)
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_SERIAL_CONSOLES;
 
         if (ply_kernel_command_line_has_argument ("plymouth.ignore-udev") ||
-            (getenv ("DISPLAY") != NULL))
+            getenv ("DISPLAY") != NULL)
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
 
-        if ((ply_kernel_command_line_has_argument ("plymouth.force-frame-buffer-on-boot")) &&
-            state.mode != PLY_BOOT_SPLASH_MODE_SHUTDOWN &&
-            state.mode != PLY_BOOT_SPLASH_MODE_REBOOT)
+        if (ply_kernel_command_line_has_argument ("plymouth.force-frame-buffer-on-boot") &&
+            daemon->mode != PLY_BOOT_SPLASH_MODE_SHUTDOWN &&
+            daemon->mode != PLY_BOOT_SPLASH_MODE_REBOOT)
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER;
 
         if (!plymouthd_should_show_default_splash (
-                    state.should_force_details,
-                    state.should_force_default_splash)) {
-                /* don't bother listening for udev events or setting up a graphical renderer
-                 * if we're forcing details */
+                    daemon->should_force_details,
+                    daemon->should_force_default_splash)) {
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
-
-                /* don't ever delay showing the detailed splash */
-                state.settings.splash_delay = NAN;
+                daemon->settings.splash_delay = NAN;
         }
 
-        if (state.settings.device_scale != -1)
-                ply_set_device_scale (state.settings.device_scale);
+        if (daemon->settings.device_scale != -1)
+                ply_set_device_scale (daemon->settings.device_scale);
 
-        device_manager_flags = plymouthd_add_simpledrm_flags (device_manager_flags,
-                                                              state.settings.use_simpledrm);
+        device_manager_flags = plymouthd_add_simpledrm_flags (
+                device_manager_flags,
+                daemon->settings.use_simpledrm);
+        load_devices (daemon, device_manager_flags);
 
-        load_devices (&state, device_manager_flags);
+        *exit_code = EX_OK;
+        return daemon;
+
+failed:
+        plymouthd_free (daemon);
+        return NULL;
+}
+
+int
+plymouthd_run (plymouthd_t *daemon)
+{
+        int exit_code;
 
         ply_trace ("entering event loop");
-        exit_code = ply_event_loop_run (state.loop);
+        exit_code = ply_event_loop_run (daemon->loop);
         ply_trace ("exited event loop");
-
-        ply_boot_splash_free (state.boot_splash);
-        state.boot_splash = NULL;
-
-        ply_boot_server_free (state.boot_server);
-        state.boot_server = NULL;
-
-        ply_trace ("freeing terminal session");
-        plymouthd_session_free (state.session);
-        plymouthd_transition_free (state.transition);
-
-        ply_buffer_free (state.boot_buffer);
-        plymouthd_progress_free (state.progress);
-        plymouthd_interaction_free (state.interaction);
-        plymouthd_logging_free (state.logging);
-        plymouthd_messages_free (state.messages);
-
         ply_trace ("exiting with code %d", exit_code);
 
-        plymouthd_diagnostics_dump (diagnostics);
+        return exit_code;
+}
 
+void
+plymouthd_free (plymouthd_t *daemon)
+{
+        if (daemon == NULL)
+                return;
+
+        ply_boot_splash_free (daemon->boot_splash);
+        ply_boot_server_free (daemon->boot_server);
+        ply_device_manager_free (daemon->device_manager);
+
+        ply_trace ("freeing terminal session");
+        plymouthd_session_free (daemon->session);
+        plymouthd_transition_free (daemon->transition);
+        ply_buffer_free (daemon->boot_buffer);
+        plymouthd_progress_free (daemon->progress);
+        plymouthd_interaction_free (daemon->interaction);
+        plymouthd_logging_free (daemon->logging);
+        plymouthd_messages_free (daemon->messages);
+        plymouthd_settings_free (&daemon->settings);
+
+        plymouthd_diagnostics_dump (diagnostics);
         ply_free_error_log ();
         plymouthd_diagnostics_free (diagnostics);
+        diagnostics = NULL;
 
-        plymouthd_settings_free (&state.settings);
-        plymouthd_options_free (options);
+        if (pid_file != NULL) {
+                unlink (pid_file);
+                free (pid_file);
+                pid_file = NULL;
+        }
 
-        return exit_code;
+        free (daemon);
 }

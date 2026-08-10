@@ -12,8 +12,14 @@
 #define PLYMOUTHD_PRIVATE_H
 
 #include "ply-private.h"
+#include "plymouthd-options-private.h"
 
-PLY_PRIVATE int plymouthd_run (int    argc,
-                               char **argv);
+typedef struct _plymouthd plymouthd_t;
+
+PLY_PRIVATE plymouthd_t *plymouthd_new (plymouthd_options_t *options,
+                                        char                *program_name,
+                                        int                 *exit_code);
+PLY_PRIVATE int plymouthd_run (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_free (plymouthd_t *daemon);
 
 #endif /* PLYMOUTHD_PRIVATE_H */
