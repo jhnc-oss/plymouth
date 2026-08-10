@@ -215,14 +215,9 @@ static void
 on_keyboard_added (plymouthd_t    *daemon,
                    ply_keyboard_t *keyboard)
 {
-        plymouthd_attach_keyboard (daemon,
-                                   keyboard,
-                                   on_escape_pressed);
-
-        if (daemon->boot_splash != NULL) {
-                ply_trace ("keyboard set after splash loaded, so attaching to splash");
-                ply_boot_splash_set_keyboard (daemon->boot_splash, keyboard);
-        }
+        plymouthd_handle_keyboard_added (daemon,
+                                         keyboard,
+                                         on_escape_pressed);
 }
 
 static void
