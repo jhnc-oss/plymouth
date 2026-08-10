@@ -12,6 +12,7 @@
 
 #include <errno.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
@@ -82,7 +83,10 @@ plymouthd_new (plymouthd_options_t *options,
         ply_daemon_handle_t *daemon_handle = NULL;
         bool should_ignore_serial_consoles;
 
-        daemon = plymouthd_new_state (plymouthd_options_get_mode (options));
+        daemon = calloc (1, sizeof(plymouthd_t));
+        daemon->start_time = ply_get_timestamp ();
+        daemon->loop = ply_event_loop_get_default ();
+        daemon->mode = plymouthd_options_get_mode (options);
         plymouthd_settings_init (&daemon->settings);
 
         should_ignore_serial_consoles =
@@ -223,5 +227,5 @@ plymouthd_free (plymouthd_t *daemon)
         plymouthd_messages_free (daemon->messages);
         plymouthd_settings_free (&daemon->settings);
         plymouthd_process_free (daemon->process);
-        plymouthd_free_state (daemon);
+        free (daemon);
 }
