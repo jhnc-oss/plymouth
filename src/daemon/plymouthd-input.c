@@ -47,9 +47,9 @@ on_enter (plymouthd_t *daemon,
                                             line);
 }
 
-void
-plymouthd_handle_escape (plymouthd_t *daemon,
-                         bool         has_vt_console)
+static void
+handle_escape (plymouthd_t *daemon,
+               bool         has_vt_console)
 {
         ply_trace ("escape key pressed");
 
@@ -63,7 +63,7 @@ plymouthd_handle_escape (plymouthd_t *daemon,
 static void
 on_escape_pressed (plymouthd_t *daemon)
 {
-        plymouthd_handle_escape (
+        handle_escape (
                 daemon,
                 plymouthd_has_vt_console (daemon));
 }
