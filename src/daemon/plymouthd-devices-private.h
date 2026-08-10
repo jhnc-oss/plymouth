@@ -27,8 +27,25 @@ typedef void (*plymouthd_devices_pixel_display_handler_t)(ply_pixel_display_t *d
 typedef void (*plymouthd_devices_text_display_handler_t)(ply_text_display_t *display,
                                                          void               *user_data);
 
-PLY_PRIVATE void plymouthd_initialize_devices (plymouthd_t *daemon,
-                                               bool         should_ignore_serial_consoles);
+typedef struct
+{
+        void (*keyboard_added)(plymouthd_t    *daemon,
+                               ply_keyboard_t *keyboard);
+        void (*keyboard_removed)(plymouthd_t    *daemon,
+                                 ply_keyboard_t *keyboard);
+        void (*pixel_display_added)(plymouthd_t         *daemon,
+                                    ply_pixel_display_t *display);
+        void (*pixel_display_removed)(plymouthd_t         *daemon,
+                                      ply_pixel_display_t *display);
+        void (*text_display_added)(plymouthd_t        *daemon,
+                                   ply_text_display_t *display);
+        void (*text_display_removed)(plymouthd_t        *daemon,
+                                     ply_text_display_t *display);
+} plymouthd_devices_event_handlers_t;
+
+PLY_PRIVATE void plymouthd_initialize_devices (plymouthd_t                              *daemon,
+                                               bool                                      should_ignore_serial_consoles,
+                                               const plymouthd_devices_event_handlers_t *event_handlers);
 PLY_PRIVATE bool plymouthd_has_displays (plymouthd_t *daemon);
 PLY_PRIVATE bool plymouthd_has_active_vt (plymouthd_t *daemon);
 PLY_PRIVATE bool plymouthd_has_vt_console (plymouthd_t *daemon);

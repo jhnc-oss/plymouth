@@ -26,8 +26,9 @@
 
 struct _plymouthd_devices
 {
-        ply_device_manager_t *device_manager;
-        ply_terminal_t       *local_console_terminal;
+        ply_device_manager_t              *device_manager;
+        ply_terminal_t                    *local_console_terminal;
+        plymouthd_devices_event_handlers_t event_handlers;
 };
 
 bool
@@ -228,10 +229,12 @@ plymouthd_free_devices (plymouthd_t *daemon)
 }
 
 static void
-load_devices (plymouthd_t               *daemon,
-              ply_device_manager_flags_t flags)
+load_devices (plymouthd_t                              *daemon,
+              ply_device_manager_flags_t                flags,
+              const plymouthd_devices_event_handlers_t *event_handlers)
 {
         daemon->devices = calloc (1, sizeof(plymouthd_devices_t));
+        daemon->devices->event_handlers = *event_handlers;
         daemon->devices->device_manager =
                 ply_device_manager_new (daemon->default_tty,
                                         flags,
@@ -261,8 +264,10 @@ load_devices (plymouthd_t               *daemon,
 }
 
 void
-plymouthd_initialize_devices (plymouthd_t *daemon,
-                              bool         should_ignore_serial_consoles)
+plymouthd_initialize_devices (
+        plymouthd_t                              *daemon,
+        bool                                      should_ignore_serial_consoles,
+        const plymouthd_devices_event_handlers_t *event_handlers)
 {
         ply_device_manager_flags_t flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
 
@@ -298,5 +303,5 @@ plymouthd_initialize_devices (plymouthd_t *daemon,
         flags = plymouthd_add_simpledrm_flags (
                 flags,
                 daemon->settings.use_simpledrm);
-        load_devices (daemon, flags);
+        load_devices (daemon, flags, event_handlers);
 }
