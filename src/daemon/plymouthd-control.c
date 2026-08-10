@@ -76,8 +76,7 @@ plymouthd_handle_show_splash (state_t *state)
             state->should_be_attached && has_displays)
                 plymouthd_attach_session (state);
 
-        if (state->local_console_terminal != NULL)
-                ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_GRAPHICS);
+        plymouthd_prepare_console (state);
 
         plymouthd_session_request_details (state->session);
 
