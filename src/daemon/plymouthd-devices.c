@@ -21,6 +21,7 @@
 #include "ply-terminal.h"
 #include "ply-utils.h"
 #include "plymouthd-display-private.h"
+#include "plymouthd-input-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-state-private.h"
@@ -217,56 +218,12 @@ on_escape_pressed (plymouthd_t *daemon)
 }
 
 static void
-on_keyboard_input (plymouthd_t *daemon,
-                   const char  *keyboard_input,
-                   size_t       character_size)
-{
-        plymouthd_interaction_handle_input (daemon->interaction,
-                                            daemon->boot_splash,
-                                            keyboard_input,
-                                            character_size);
-}
-
-static void
-on_backspace (plymouthd_t *daemon)
-{
-        plymouthd_interaction_handle_backspace (daemon->interaction,
-                                                daemon->boot_splash);
-}
-
-static void
-on_enter (plymouthd_t *daemon,
-          const char  *line)
-{
-        plymouthd_interaction_handle_enter (daemon->interaction,
-                                            daemon->boot_splash,
-                                            line);
-}
-
-static void
 on_keyboard_added (plymouthd_t    *daemon,
                    ply_keyboard_t *keyboard)
 {
-        ply_trace ("listening for keystrokes");
-        ply_keyboard_add_input_handler (
-                keyboard,
-                (ply_keyboard_input_handler_t) on_keyboard_input,
-                daemon);
-        ply_trace ("listening for escape");
-        ply_keyboard_add_escape_handler (
-                keyboard,
-                (ply_keyboard_escape_handler_t) on_escape_pressed,
-                daemon);
-        ply_trace ("listening for backspace");
-        ply_keyboard_add_backspace_handler (
-                keyboard,
-                (ply_keyboard_backspace_handler_t) on_backspace,
-                daemon);
-        ply_trace ("listening for enter");
-        ply_keyboard_add_enter_handler (
-                keyboard,
-                (ply_keyboard_enter_handler_t) on_enter,
-                daemon);
+        plymouthd_attach_keyboard (daemon,
+                                   keyboard,
+                                   on_escape_pressed);
 
         if (daemon->boot_splash != NULL) {
                 ply_trace ("keyboard set after splash loaded, so attaching to splash");
@@ -278,22 +235,7 @@ static void
 on_keyboard_removed (plymouthd_t    *daemon,
                      ply_keyboard_t *keyboard)
 {
-        ply_trace ("no longer listening for keystrokes");
-        ply_keyboard_remove_input_handler (
-                keyboard,
-                (ply_keyboard_input_handler_t) on_keyboard_input);
-        ply_trace ("no longer listening for escape");
-        ply_keyboard_remove_escape_handler (
-                keyboard,
-                (ply_keyboard_escape_handler_t) on_escape_pressed);
-        ply_trace ("no longer listening for backspace");
-        ply_keyboard_remove_backspace_handler (
-                keyboard,
-                (ply_keyboard_backspace_handler_t) on_backspace);
-        ply_trace ("no longer listening for enter");
-        ply_keyboard_remove_enter_handler (
-                keyboard,
-                (ply_keyboard_enter_handler_t) on_enter);
+        plymouthd_detach_keyboard (keyboard, on_escape_pressed);
 
         if (daemon->boot_splash != NULL)
                 ply_boot_splash_unset_keyboard (daemon->boot_splash);
