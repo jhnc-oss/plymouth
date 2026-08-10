@@ -1,0 +1,1733 @@
+/* main.c - boot messages monitor
+ *
+ * Copyright (C) 2007 Red Hat, Inc
+ *
+ * This file is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published
+ * by the Free Software Foundation; either version 2 of the License,
+ * or (at your option) any later version.
+ *
+ * This file is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this; see the file COPYING.  If not, write to the Free
+ * Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ * Written by: Ray Strode <rstrode@redhat.com>
+ */
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <math.h>
+#include <limits.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sysexits.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <wchar.h>
+#include <paths.h>
+#include <assert.h>
+#include <values.h>
+#include <locale.h>
+
+#include <linux/kd.h>
+#include <linux/vt.h>
+
+#include "ply-buffer.h"
+#include "ply-boot-server-private.h"
+#include "ply-boot-splash.h"
+#include "ply-device-manager.h"
+#include "ply-event-loop.h"
+#include "ply-hashtable.h"
+#include "ply-list.h"
+#include "ply-logger.h"
+#include "ply-renderer.h"
+#include "ply-terminal-session.h"
+#include "ply-trigger.h"
+#include "ply-utils.h"
+#include "ply-progress.h"
+#include "ply-kmsg-reader.h"
+#include "plymouthd-interaction-private.h"
+#include "plymouthd-diagnostics-private.h"
+#include "plymouthd-logging-private.h"
+#include "plymouthd-messages-private.h"
+#include "plymouthd-options-private.h"
+#include "plymouthd-policy-private.h"
+#include "plymouthd-progress-private.h"
+#include "plymouthd-session-private.h"
+#include "plymouthd-settings-private.h"
+#include "plymouthd-splash-private.h"
+#include "plymouthd-transition-private.h"
+#include "plymouthd-private.h"
+
+static plymouthd_diagnostics_t *diagnostics;
+
+typedef struct
+{
+        ply_event_loop_t        *loop;
+        ply_boot_server_t       *boot_server;
+        ply_boot_splash_t       *boot_splash;
+        ply_buffer_t            *boot_buffer;
+        plymouthd_interaction_t *interaction;
+        plymouthd_logging_t     *logging;
+        plymouthd_messages_t    *messages;
+        plymouthd_progress_t    *progress;
+        plymouthd_session_t     *session;
+        plymouthd_transition_t  *transition;
+        ply_boot_splash_mode_t   mode;
+        ply_terminal_t          *local_console_terminal;
+        ply_device_manager_t    *device_manager;
+
+        double                   start_time;
+        plymouthd_settings_t     settings;
+
+        uint32_t                 showing_details : 1;
+        uint32_t                 should_be_attached : 1;
+        uint32_t                 is_inactive : 1;
+        uint32_t                 is_shown : 1;
+        uint32_t                 should_force_details : 1;
+        uint32_t                 should_force_default_splash : 1;
+        const char              *default_tty;
+} state_t;
+
+static void show_splash (state_t *state);
+static ply_boot_splash_t *show_theme (state_t    *state,
+                                      const char *theme_path);
+
+static void attach_splash_to_devices (state_t           *state,
+                                      ply_boot_splash_t *splash);
+static bool attach_to_running_session (state_t *state);
+static void detach_from_running_session (state_t *state);
+static void on_escape_pressed (state_t *state);
+static void dump_details_and_quit_splash (state_t *state);
+static void update_display (state_t *state);
+
+static char *pid_file = NULL;
+static void toggle_between_splash_and_details (state_t *state);
+#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
+static void tell_systemd_to_print_details (state_t *state);
+static void tell_systemd_to_stop_printing_details (state_t *state);
+#endif
+static void on_escape_pressed (state_t *state);
+static void on_enter (state_t    *state,
+                      const char *line);
+static void on_keyboard_input (state_t    *state,
+                               const char *keyboard_input,
+                               size_t      character_size);
+static void on_backspace (state_t *state);
+static void on_quit (state_t       *state,
+                     bool           retain_splash,
+                     ply_trigger_t *quit_trigger);
+static void on_new_kmsg_message (state_t        *state,
+                                 kmsg_message_t *kmsg_message);
+static void cancel_pending_delayed_show (state_t *state);
+static void
+on_session_output (state_t    *state,
+                   const char *output,
+                   size_t      size)
+{
+        ply_buffer_append_bytes (state->boot_buffer, output, size);
+        if (state->boot_splash != NULL)
+                ply_boot_splash_update_output (state->boot_splash,
+                                               output, size);
+}
+
+static void
+on_session_hangup (state_t *state)
+{
+        ply_trace ("got hang up on terminal session fd");
+}
+
+static void
+on_update (state_t    *state,
+           const char *status)
+{
+        ply_trace ("updating status to '%s'", status);
+        plymouthd_progress_status_update (state->progress, status);
+        if (state->boot_splash != NULL)
+                ply_boot_splash_update_status (state->boot_splash,
+                                               status);
+}
+
+static void
+on_change_mode (state_t    *state,
+                const char *mode)
+{
+        ply_boot_splash_mode_t new_mode;
+
+        ply_trace ("updating mode to '%s'", mode);
+        new_mode = plymouthd_mode_from_string (mode);
+        if (new_mode == PLY_BOOT_SPLASH_MODE_INVALID)
+                return;
+
+        state->mode = new_mode;
+        plymouthd_logging_set_mode (state->logging, new_mode);
+        plymouthd_progress_set_mode (state->progress, new_mode);
+
+        if (plymouthd_session_get_terminal_session (state->session) != NULL) {
+                plymouthd_logging_prepare (
+                        state->logging,
+                        plymouthd_session_get_terminal_session (state->session));
+        }
+
+        if (state->boot_splash == NULL) {
+                ply_trace ("no splash set");
+                return;
+        }
+
+        if (!ply_boot_splash_show (state->boot_splash, state->mode)) {
+                ply_trace ("failed to update splash");
+                return;
+        }
+}
+
+static void
+on_system_update (state_t *state,
+                  int      progress)
+{
+        if (state->boot_splash == NULL) {
+                ply_trace ("no splash set");
+                return;
+        }
+
+        ply_trace ("setting system update to '%i'", progress);
+        if (!ply_boot_splash_system_update (state->boot_splash, progress)) {
+                ply_trace ("failed to update splash");
+                return;
+        }
+}
+
+static void
+show_messages (state_t *state)
+{
+        plymouthd_messages_replay (state->messages, state->boot_splash);
+}
+
+static void
+show_detailed_splash (state_t *state)
+{
+        ply_boot_splash_t *splash;
+
+        cancel_pending_delayed_show (state);
+
+        if (state->boot_splash != NULL)
+                return;
+
+        ply_trace ("Showing detailed splash screen");
+        splash = show_theme (state, NULL);
+
+        if (splash == NULL) {
+                ply_trace ("Could not start detailed splash screen, this could be a problem.");
+                return;
+        }
+
+        state->boot_splash = splash;
+
+        show_messages (state);
+        update_display (state);
+}
+
+static void
+show_default_splash (state_t *state)
+{
+        if (state->boot_splash != NULL)
+                return;
+
+        ply_trace ("Showing splash screen");
+        if (state->settings.override_splash_path != NULL) {
+                ply_trace ("Trying override splash at '%s'", state->settings.override_splash_path);
+                state->boot_splash = show_theme (state, state->settings.override_splash_path);
+        }
+
+        if (state->boot_splash == NULL &&
+            state->settings.system_default_splash_path != NULL) {
+                ply_trace ("Trying system default splash");
+                state->boot_splash = show_theme (state, state->settings.system_default_splash_path);
+        }
+
+        if (state->boot_splash == NULL &&
+            state->settings.distribution_default_splash_path != NULL) {
+                ply_trace ("Trying distribution default splash");
+                state->boot_splash = show_theme (state, state->settings.distribution_default_splash_path);
+        }
+
+        if (state->boot_splash == NULL) {
+                ply_trace ("Trying old scheme for default splash");
+                state->boot_splash = show_theme (state, PLYMOUTH_THEME_PATH "default.plymouth");
+        }
+
+        if (state->boot_splash == NULL) {
+                ply_trace ("Could not start default splash screen,"
+                           "showing text splash screen");
+                state->boot_splash = show_theme (state, PLYMOUTH_THEME_PATH "text/text.plymouth");
+        }
+
+        if (state->boot_splash == NULL) {
+                ply_trace ("Could not start text splash screen,"
+                           "showing built-in splash screen");
+                state->boot_splash = show_theme (state, NULL);
+        }
+
+        if (state->boot_splash == NULL) {
+                ply_error ("plymouthd: could not start boot splash: %m");
+                return;
+        }
+
+        show_messages (state);
+        update_display (state);
+}
+
+static void
+cancel_pending_delayed_show (state_t *state)
+{
+        if (isnan (state->settings.splash_delay))
+                return;
+
+        ply_event_loop_stop_watching_for_timeout (state->loop,
+                                                  (ply_event_loop_timeout_handler_t)
+                                                  show_splash,
+                                                  state);
+        state->settings.splash_delay = NAN;
+}
+
+static void
+on_ask_for_password (state_t               *state,
+                     const char            *prompt,
+                     ply_trigger_t         *answer,
+                     ply_boot_connection_t *connection)
+{
+        if (state->boot_splash == NULL) {
+                /* Waiting to be shown, boot splash will
+                 * arrive shortly so just sit tight
+                 */
+                if (state->is_shown) {
+                        bool has_displays;
+
+                        cancel_pending_delayed_show (state);
+
+                        has_displays = ply_device_manager_has_displays (state->device_manager);
+
+                        if (has_displays) {
+                                ply_trace ("displays available now, showing splash immediately");
+                                show_splash (state);
+                        } else {
+                                ply_trace ("splash still coming up, waiting a bit");
+                        }
+                } else {
+                        /* No splash, client will have to get password */
+                        ply_trace ("no splash loaded, replying immediately with no password");
+                        ply_trigger_pull (answer, NULL);
+                        return;
+                }
+        }
+
+        plymouthd_interaction_queue_password (state->interaction,
+                                              state->boot_splash,
+                                              prompt,
+                                              answer,
+                                              connection);
+}
+
+static void
+on_ask_question (state_t               *state,
+                 const char            *prompt,
+                 ply_trigger_t         *answer,
+                 ply_boot_connection_t *connection)
+{
+        plymouthd_interaction_queue_question (state->interaction,
+                                              state->boot_splash,
+                                              prompt,
+                                              answer,
+                                              connection);
+}
+
+static void
+on_display_message (state_t    *state,
+                    const char *message)
+{
+        plymouthd_messages_display (state->messages,
+                                    state->boot_splash,
+                                    message);
+}
+
+static void
+on_hide_message (state_t    *state,
+                 const char *message)
+{
+        plymouthd_messages_hide (state->messages,
+                                 state->boot_splash,
+                                 message);
+}
+
+static void
+on_watch_for_keystroke (state_t               *state,
+                        const char            *keys,
+                        ply_trigger_t         *trigger,
+                        ply_boot_connection_t *connection)
+{
+        plymouthd_interaction_watch_keystroke (state->interaction,
+                                               keys,
+                                               trigger,
+                                               connection);
+}
+
+static void
+on_connection_hangup (state_t               *state,
+                      ply_boot_connection_t *connection)
+{
+        plymouthd_interaction_cancel_connection (state->interaction,
+                                                 state->boot_splash,
+                                                 connection);
+}
+
+static void
+on_ignore_keystroke (state_t    *state,
+                     const char *keys)
+{
+        plymouthd_interaction_ignore_keystroke (state->interaction, keys);
+}
+
+static void
+on_progress_pause (state_t *state)
+{
+        ply_trace ("pausing progress");
+        plymouthd_progress_pause (state->progress);
+}
+
+static void
+on_progress_unpause (state_t *state)
+{
+        ply_trace ("unpausing progress");
+        plymouthd_progress_unpause (state->progress);
+}
+
+static void
+on_newroot (state_t    *state,
+            const char *root_dir)
+{
+        if (plymouthd_shell_is_init ()) {
+                ply_trace ("new root mounted at \"%s\", exiting since init= a shell", root_dir);
+                on_quit (state, false, ply_trigger_new (NULL));
+                return;
+        }
+
+        ply_trace ("new root mounted at \"%s\", switching to it", root_dir);
+
+        if (!strcmp (root_dir, "/run/initramfs") &&
+            plymouthd_diagnostics_has_buffer (diagnostics)) {
+                ply_trace ("switching back to initramfs, dumping debug-buffer now");
+                plymouthd_diagnostics_dump (diagnostics);
+        }
+
+        chdir (root_dir);
+        chroot (".");
+        chdir ("/");
+        /* Update local now that we have /usr/share/locale available */
+        setlocale (LC_ALL, "");
+        plymouthd_progress_load_cache (state->progress);
+        if (state->boot_splash != NULL)
+                ply_boot_splash_root_mounted (state->boot_splash);
+}
+
+static void
+on_system_initialized (state_t *state)
+{
+        ply_trace ("system now initialized, opening log");
+
+#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
+        if (plymouthd_session_is_attached (state->session))
+                tell_systemd_to_print_details (state);
+#endif
+
+        plymouthd_logging_system_initialized (
+                state->logging,
+                plymouthd_session_get_terminal_session (state->session));
+}
+
+static void
+on_error (state_t *state)
+{
+        ply_trace ("encountered error during boot up");
+
+        plymouthd_logging_record_error (state->logging);
+}
+
+static void
+on_reload (state_t *state)
+{
+        ply_trace ("reloading");
+        if (state->boot_splash != NULL) {
+                ply_boot_splash_hide (state->boot_splash);
+                ply_boot_splash_free (state->boot_splash);
+                state->boot_splash = NULL;
+        }
+
+        plymouthd_settings_reload_theme_paths (&state->settings);
+
+        if (state->is_inactive) {
+                ply_trace ("reload while inactive");
+                return;
+        }
+
+        if (!state->is_shown) {
+                ply_trace ("reload while not shown");
+                return;
+        }
+
+        if (state->showing_details) {
+                show_detailed_splash (state);
+        } else {
+                show_default_splash (state);
+        }
+}
+
+
+static void
+on_show_splash (state_t *state)
+{
+        bool has_displays;
+
+        if (state->is_shown) {
+                ply_trace ("show splash called while already shown");
+                return;
+        }
+
+        if (state->is_inactive) {
+                ply_trace ("show splash called while inactive");
+                return;
+        }
+
+        if (plymouthd_should_ignore_show_splash_calls (state->mode)) {
+                ply_trace ("show splash called while ignoring show splash calls");
+                plymouthd_transition_set_retain_splash (state->transition,
+                                                        true);
+                dump_details_and_quit_splash (state);
+                return;
+        }
+
+        state->is_shown = true;
+        has_displays = ply_device_manager_has_displays (state->device_manager);
+
+        if (!plymouthd_session_is_attached (state->session) &&
+            state->should_be_attached && has_displays)
+                attach_to_running_session (state);
+
+        if (state->local_console_terminal != NULL)
+                ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_GRAPHICS);
+
+#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
+        if (plymouthd_session_is_attached (state->session))
+                tell_systemd_to_print_details (state);
+#endif
+
+        if (has_displays) {
+                ply_trace ("at least one display already available, so loading splash");
+                show_splash (state);
+        } else {
+                ply_trace ("no displays available to show splash on, waiting...");
+        }
+}
+
+static void
+show_splash (state_t *state)
+{
+        if (state->boot_splash != NULL)
+                return;
+
+        if (!isnan (state->settings.splash_delay)) {
+                double now, running_time;
+
+                now = ply_get_timestamp ();
+                running_time = now - state->start_time;
+                if (state->settings.splash_delay > running_time) {
+                        double time_left = state->settings.splash_delay - running_time;
+
+                        ply_trace ("delaying show splash for %lf seconds",
+                                   time_left);
+                        ply_event_loop_stop_watching_for_timeout (state->loop,
+                                                                  (ply_event_loop_timeout_handler_t)
+                                                                  show_splash,
+                                                                  state);
+                        ply_event_loop_watch_for_timeout (state->loop,
+                                                          time_left,
+                                                          (ply_event_loop_timeout_handler_t)
+                                                          show_splash,
+                                                          state);
+                        /* Listen for ESC to show details */
+                        ply_device_manager_activate_keyboards (state->device_manager);
+                        return;
+                }
+        }
+
+        if (plymouthd_should_show_default_splash (
+                    state->should_force_details,
+                    state->should_force_default_splash)) {
+                show_default_splash (state);
+                state->showing_details = false;
+        } else {
+                show_detailed_splash (state);
+                state->showing_details = true;
+        }
+}
+
+static void
+on_keyboard_added (state_t        *state,
+                   ply_keyboard_t *keyboard)
+{
+        ply_trace ("listening for keystrokes");
+        ply_keyboard_add_input_handler (keyboard,
+                                        (ply_keyboard_input_handler_t)
+                                        on_keyboard_input, state);
+        ply_trace ("listening for escape");
+        ply_keyboard_add_escape_handler (keyboard,
+                                         (ply_keyboard_escape_handler_t)
+                                         on_escape_pressed, state);
+        ply_trace ("listening for backspace");
+        ply_keyboard_add_backspace_handler (keyboard,
+                                            (ply_keyboard_backspace_handler_t)
+                                            on_backspace, state);
+        ply_trace ("listening for enter");
+        ply_keyboard_add_enter_handler (keyboard,
+                                        (ply_keyboard_enter_handler_t)
+                                        on_enter, state);
+
+        if (state->boot_splash != NULL) {
+                ply_trace ("keyboard set after splash loaded, so attaching to splash");
+                ply_boot_splash_set_keyboard (state->boot_splash, keyboard);
+        }
+}
+
+static void
+on_keyboard_removed (state_t        *state,
+                     ply_keyboard_t *keyboard)
+{
+        ply_trace ("no longer listening for keystrokes");
+        ply_keyboard_remove_input_handler (keyboard,
+                                           (ply_keyboard_input_handler_t)
+                                           on_keyboard_input);
+        ply_trace ("no longer listening for escape");
+        ply_keyboard_remove_escape_handler (keyboard,
+                                            (ply_keyboard_escape_handler_t)
+                                            on_escape_pressed);
+        ply_trace ("no longer listening for backspace");
+        ply_keyboard_remove_backspace_handler (keyboard,
+                                               (ply_keyboard_backspace_handler_t)
+                                               on_backspace);
+        ply_trace ("no longer listening for enter");
+        ply_keyboard_remove_enter_handler (keyboard,
+                                           (ply_keyboard_enter_handler_t)
+                                           on_enter);
+
+        if (state->boot_splash != NULL)
+                ply_boot_splash_unset_keyboard (state->boot_splash);
+}
+
+static void
+on_pixel_display_added (state_t             *state,
+                        ply_pixel_display_t *display)
+{
+        if (state->is_shown) {
+                if (state->boot_splash == NULL) {
+                        ply_trace ("pixel display added before splash loaded, so loading splash now");
+                        show_splash (state);
+                } else {
+                        ply_trace ("pixel display added after splash loaded, so attaching to splash");
+                        ply_boot_splash_add_pixel_display (state->boot_splash, display);
+
+                        update_display (state);
+                }
+        }
+}
+
+static void
+on_pixel_display_removed (state_t             *state,
+                          ply_pixel_display_t *display)
+{
+        if (state->boot_splash == NULL)
+                return;
+
+        ply_boot_splash_remove_pixel_display (state->boot_splash, display);
+}
+
+static void
+on_text_display_added (state_t            *state,
+                       ply_text_display_t *display)
+{
+        if (state->is_shown) {
+                if (state->boot_splash == NULL) {
+                        ply_trace ("text display added before splash loaded, so loading splash now");
+                        show_splash (state);
+                } else {
+                        ply_trace ("text display added after splash loaded, so attaching to splash");
+                        ply_boot_splash_add_text_display (state->boot_splash, display);
+
+                        update_display (state);
+                }
+        }
+}
+
+static void
+on_text_display_removed (state_t            *state,
+                         ply_text_display_t *display)
+{
+        if (state->boot_splash == NULL)
+                return;
+
+        ply_boot_splash_remove_text_display (state->boot_splash, display);
+}
+
+static void
+load_devices (state_t                   *state,
+              ply_device_manager_flags_t flags)
+{
+        state->device_manager = ply_device_manager_new (state->default_tty,
+                                                        flags,
+                                                        state->settings.extra_esc_key);
+        state->local_console_terminal = ply_device_manager_get_default_terminal (state->device_manager);
+
+        ply_device_manager_watch_devices (state->device_manager,
+                                          state->settings.device_timeout,
+                                          (ply_keyboard_added_handler_t)
+                                          on_keyboard_added,
+                                          (ply_keyboard_removed_handler_t)
+                                          on_keyboard_removed,
+                                          (ply_pixel_display_added_handler_t)
+                                          on_pixel_display_added,
+                                          (ply_pixel_display_removed_handler_t)
+                                          on_pixel_display_removed,
+                                          (ply_text_display_added_handler_t)
+                                          on_text_display_added,
+                                          (ply_text_display_removed_handler_t)
+                                          on_text_display_removed,
+                                          state);
+
+        if (ply_device_manager_has_serial_consoles (state->device_manager)) {
+                state->should_force_details = true;
+        }
+}
+
+static void
+quit_splash (state_t *state)
+{
+        ply_trace ("quitting splash");
+        if (state->boot_splash != NULL) {
+                ply_trace ("freeing splash");
+                ply_boot_splash_free (state->boot_splash);
+                state->boot_splash = NULL;
+        }
+
+        ply_device_manager_deactivate_keyboards (state->device_manager);
+
+        if (state->local_console_terminal != NULL) {
+                if (!plymouthd_transition_should_retain_splash (
+                            state->transition)) {
+                        ply_trace ("Not retaining splash, so deallocating VT");
+                        ply_terminal_deactivate_vt (state->local_console_terminal);
+                        ply_terminal_close (state->local_console_terminal);
+                }
+        }
+
+        detach_from_running_session (state);
+}
+
+static void
+hide_splash (state_t *state)
+{
+        if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
+                ply_device_manager_deactivate_renderers (state->device_manager);
+
+        state->is_shown = false;
+
+        cancel_pending_delayed_show (state);
+
+        if (state->boot_splash != NULL)
+                ply_boot_splash_hide (state->boot_splash);
+
+        if (state->local_console_terminal != NULL) {
+                ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_TEXT);
+                ply_terminal_set_buffered_input (state->local_console_terminal);
+        }
+}
+
+static void
+dump_details_and_quit_splash (state_t *state)
+{
+        state->showing_details = false;
+        toggle_between_splash_and_details (state);
+
+        hide_splash (state);
+        quit_splash (state);
+}
+
+static void
+on_hide_splash (state_t *state)
+{
+        if (state->is_inactive)
+                return;
+
+        if (state->boot_splash == NULL)
+                return;
+
+        ply_trace ("hiding boot splash");
+        plymouthd_transition_set_retain_splash (state->transition, true);
+        dump_details_and_quit_splash (state);
+}
+
+static void
+quit_program (state_t *state)
+{
+        ply_trace ("cleaning up devices");
+        ply_device_manager_free (state->device_manager);
+
+        ply_trace ("exiting event loop");
+        ply_event_loop_exit (state->loop, 0);
+
+        if (pid_file != NULL) {
+                unlink (pid_file);
+                free (pid_file);
+                pid_file = NULL;
+        }
+
+        plymouthd_transition_complete_all (state->transition);
+}
+
+static void
+deactivate_console (state_t *state)
+{
+        detach_from_running_session (state);
+
+        if (state->local_console_terminal != NULL) {
+                ply_trace ("deactivating terminal");
+                ply_terminal_stop_watching_for_vt_changes (state->local_console_terminal);
+                ply_terminal_set_buffered_input (state->local_console_terminal);
+                ply_terminal_close (state->local_console_terminal);
+        }
+
+        /* do not let any tty opened where we could write after deactivate */
+        if (ply_kernel_command_line_has_argument ("plymouth.debug"))
+                ply_logger_close_file (ply_logger_get_error_default ());
+}
+
+static void
+deactivate_splash (state_t *state)
+{
+        assert (!state->is_inactive);
+
+        if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
+                ply_device_manager_deactivate_renderers (state->device_manager);
+
+        deactivate_console (state);
+
+        state->is_inactive = true;
+
+        plymouthd_transition_complete_deactivate (state->transition);
+}
+
+static void
+on_boot_splash_idle (state_t *state)
+{
+        ply_trace ("boot splash idle");
+
+        /* In the case where we've received both a deactivate command and a
+         * quit command, the quit command takes precedence.
+         */
+        if (plymouthd_transition_has_quit (state->transition)) {
+                if (!plymouthd_transition_should_retain_splash (
+                            state->transition)) {
+                        ply_trace ("hiding splash");
+                        hide_splash (state);
+                }
+
+                ply_trace ("quitting splash");
+                quit_splash (state);
+                ply_trace ("quitting program");
+                quit_program (state);
+        } else if (plymouthd_transition_has_deactivate (state->transition)) {
+                ply_trace ("deactivating splash");
+                deactivate_splash (state);
+        }
+
+        plymouthd_transition_end_idle (state->transition);
+}
+
+static void
+on_deactivate (state_t       *state,
+               ply_trigger_t *deactivate_trigger)
+{
+        if (state->is_inactive) {
+                deactivate_console (state);
+                ply_trigger_pull (deactivate_trigger, NULL);
+                return;
+        }
+
+        if (!plymouthd_transition_queue_deactivate (state->transition,
+                                                    deactivate_trigger)) {
+                return;
+        }
+
+        ply_trace ("deactivating");
+        cancel_pending_delayed_show (state);
+
+        ply_device_manager_pause (state->device_manager);
+        ply_device_manager_deactivate_keyboards (state->device_manager);
+
+        if (state->boot_splash != NULL) {
+                if (plymouthd_transition_begin_idle (state->transition)) {
+                        ply_boot_splash_become_idle (state->boot_splash,
+                                                     (ply_boot_splash_on_idle_handler_t)
+                                                     on_boot_splash_idle,
+                                                     state);
+                }
+        } else {
+                ply_trace ("deactivating splash");
+                deactivate_splash (state);
+        }
+}
+
+static void
+on_reactivate (state_t *state)
+{
+        if (!state->is_inactive)
+                return;
+
+        if (state->local_console_terminal != NULL) {
+                ply_terminal_open (state->local_console_terminal);
+                ply_terminal_watch_for_vt_changes (state->local_console_terminal);
+                ply_terminal_set_unbuffered_input (state->local_console_terminal);
+                ply_terminal_ignore_mode_changes (state->local_console_terminal, false);
+        }
+
+        if (plymouthd_session_get_terminal_session (state->session) != NULL &&
+            state->should_be_attached) {
+                ply_trace ("reactivating terminal session");
+                attach_to_running_session (state);
+        }
+
+        ply_device_manager_activate_keyboards (state->device_manager);
+        if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
+                ply_device_manager_activate_renderers (state->device_manager);
+
+        ply_device_manager_unpause (state->device_manager);
+
+        state->is_inactive = false;
+
+        update_display (state);
+}
+
+static void
+on_quit (state_t       *state,
+         bool           retain_splash,
+         ply_trigger_t *quit_trigger)
+{
+        ply_trace ("quitting (retain splash: %s)", retain_splash ? "true" : "false");
+
+        if (!plymouthd_transition_queue_quit (state->transition,
+                                              retain_splash,
+                                              quit_trigger)) {
+                ply_trace ("quit trigger already pending, so chaining to it");
+                return;
+        }
+
+        if (plymouthd_logging_is_initialized (state->logging)) {
+                ply_trace ("system initialized so saving boot-duration file");
+                plymouthd_progress_save_cache (state->progress);
+        } else {
+                ply_trace ("system not initialized so skipping saving boot-duration file");
+        }
+        ply_trace ("closing log");
+        if (plymouthd_session_get_terminal_session (state->session) != NULL)
+                ply_terminal_session_close_log (
+                        plymouthd_session_get_terminal_session (state->session));
+
+        ply_device_manager_deactivate_keyboards (state->device_manager);
+
+        ply_trace ("unloading splash");
+        if (state->is_inactive && !retain_splash) {
+                /* We've been deactivated and X failed to start
+                 */
+                dump_details_and_quit_splash (state);
+                quit_program (state);
+        } else if (state->boot_splash != NULL) {
+                if (plymouthd_transition_begin_idle (state->transition)) {
+                        ply_boot_splash_become_idle (state->boot_splash,
+                                                     (ply_boot_splash_on_idle_handler_t)
+                                                     on_boot_splash_idle,
+                                                     state);
+                }
+        } else {
+                if (!plymouthd_transition_should_retain_splash (
+                            state->transition)) {
+                        hide_splash (state);
+                }
+                quit_splash (state);
+                quit_program (state);
+        }
+}
+
+void
+on_new_kmsg_message (state_t        *state,
+                     kmsg_message_t *kmsg_message)
+{
+        ply_buffer_append (state->boot_buffer, "%s\n", kmsg_message->message);
+
+        if (state->boot_splash != NULL) {
+                ply_boot_splash_update_output (state->boot_splash, kmsg_message->message, strlen (kmsg_message->message));
+                ply_boot_splash_update_output (state->boot_splash, "\n", 1);
+        }
+}
+
+static bool
+on_has_active_vt (state_t *state)
+{
+        if (state->local_console_terminal != NULL)
+                return ply_terminal_is_active (state->local_console_terminal);
+        else
+                return false;
+}
+
+static ply_boot_server_t *
+start_boot_server (state_t *state)
+{
+        const ply_boot_server_handlers_t handlers = {
+                .update              = (ply_boot_server_update_handler_t) on_update,
+                .change_mode         = (ply_boot_server_change_mode_handler_t) on_change_mode,
+                .system_update       = (ply_boot_server_system_update_handler_t) on_system_update,
+                .ask_for_password    = (ply_boot_server_ask_for_password_handler_t) on_ask_for_password,
+                .ask_question        = (ply_boot_server_ask_question_handler_t) on_ask_question,
+                .display_message     = (ply_boot_server_display_message_handler_t) on_display_message,
+                .hide_message        = (ply_boot_server_hide_message_handler_t) on_hide_message,
+                .watch_for_keystroke = (ply_boot_server_watch_for_keystroke_handler_t) on_watch_for_keystroke,
+                .ignore_keystroke    = (ply_boot_server_ignore_keystroke_handler_t) on_ignore_keystroke,
+                .progress_pause      = (ply_boot_server_progress_pause_handler_t) on_progress_pause,
+                .progress_unpause    = (ply_boot_server_progress_unpause_handler_t) on_progress_unpause,
+                .show_splash         = (ply_boot_server_show_splash_handler_t) on_show_splash,
+                .hide_splash         = (ply_boot_server_hide_splash_handler_t) on_hide_splash,
+                .newroot             = (ply_boot_server_newroot_handler_t) on_newroot,
+                .system_initialized  = (ply_boot_server_system_initialized_handler_t) on_system_initialized,
+                .error               = (ply_boot_server_error_handler_t) on_error,
+                .deactivate          = (ply_boot_server_deactivate_handler_t) on_deactivate,
+                .reactivate          = (ply_boot_server_reactivate_handler_t) on_reactivate,
+                .quit                = (ply_boot_server_quit_handler_t) on_quit,
+                .has_active_vt       = (ply_boot_server_has_active_vt_handler_t) on_has_active_vt,
+                .reload              = (ply_boot_server_reload_handler_t) on_reload,
+                .connection_hangup   = (ply_boot_server_connection_hangup_handler_t) on_connection_hangup,
+        };
+        ply_boot_server_t *server;
+
+        server = ply_boot_server_new_with_handlers (&handlers, state);
+
+        if (!ply_boot_server_listen (server)) {
+                ply_save_errno ();
+                ply_boot_server_free (server);
+                ply_restore_errno ();
+                return NULL;
+        }
+
+        ply_boot_server_attach_to_event_loop (server, state->loop);
+
+        return server;
+}
+
+static void
+update_display (state_t *state)
+{
+        plymouthd_interaction_update_display (state->interaction,
+                                              state->boot_splash);
+}
+
+static void
+toggle_between_splash_and_details (state_t *state)
+{
+        ply_trace ("toggling between splash and details");
+        if (state->boot_splash != NULL) {
+                ply_trace ("hiding and freeing current splash");
+                hide_splash (state);
+                ply_boot_splash_free (state->boot_splash);
+                state->boot_splash = NULL;
+        }
+
+        if (!state->showing_details) {
+                show_detailed_splash (state);
+                state->showing_details = true;
+        } else {
+                show_default_splash (state);
+                state->showing_details = false;
+        }
+}
+
+static void
+on_escape_pressed (state_t *state)
+{
+        ply_trace ("escape key pressed");
+        bool has_vt_consoles = true;
+
+        if (state->local_console_terminal != NULL) {
+                if (!ply_terminal_is_vt (state->local_console_terminal))
+                        has_vt_consoles = false;
+        } else {
+                has_vt_consoles = false;
+        }
+
+        if (plymouthd_validate_prompt_input (state->boot_splash, "", "\e") &&
+            has_vt_consoles == true)
+                toggle_between_splash_and_details (state);
+}
+
+static void
+on_keyboard_input (state_t    *state,
+                   const char *keyboard_input,
+                   size_t      character_size)
+{
+        plymouthd_interaction_handle_input (state->interaction,
+                                            state->boot_splash,
+                                            keyboard_input,
+                                            character_size);
+}
+
+static void
+on_backspace (state_t *state)
+{
+        plymouthd_interaction_handle_backspace (state->interaction,
+                                                state->boot_splash);
+}
+
+static void
+on_enter (state_t    *state,
+          const char *line)
+{
+        plymouthd_interaction_handle_enter (state->interaction,
+                                            state->boot_splash,
+                                            line);
+}
+
+static void
+attach_splash_to_devices (state_t           *state,
+                          ply_boot_splash_t *splash)
+{
+        ply_list_t *keyboards;
+        ply_list_t *pixel_displays;
+        ply_list_t *text_displays;
+        ply_list_node_t *node;
+
+        keyboards = ply_device_manager_get_keyboards (state->device_manager);
+        node = ply_list_get_first_node (keyboards);
+        while (node != NULL) {
+                ply_keyboard_t *keyboard;
+                ply_list_node_t *next_node;
+
+                keyboard = ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (keyboards, node);
+
+                ply_boot_splash_set_keyboard (splash, keyboard);
+
+                node = next_node;
+        }
+
+        pixel_displays = ply_device_manager_get_pixel_displays (state->device_manager);
+        node = ply_list_get_first_node (pixel_displays);
+        while (node != NULL) {
+                ply_pixel_display_t *pixel_display;
+                ply_list_node_t *next_node;
+
+                pixel_display = ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (pixel_displays, node);
+
+                ply_boot_splash_add_pixel_display (splash, pixel_display);
+
+                node = next_node;
+        }
+
+        text_displays = ply_device_manager_get_text_displays (state->device_manager);
+        node = ply_list_get_first_node (text_displays);
+        while (node != NULL) {
+                ply_text_display_t *text_display;
+                ply_list_node_t *next_node;
+
+                text_display = ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (text_displays, node);
+
+                ply_boot_splash_add_text_display (splash, text_display);
+
+                node = next_node;
+        }
+}
+
+#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
+static void
+tell_systemd_to_print_details (state_t *state)
+{
+        ply_trace ("telling systemd to start printing details");
+        if (kill (1, SIGRTMIN + 20) < 0)
+                ply_trace ("could not tell systemd to print details: %m");
+}
+
+static void
+tell_systemd_to_stop_printing_details (state_t *state)
+{
+        ply_trace ("telling systemd to stop printing details");
+        if (kill (1, SIGRTMIN + 21) < 0)
+                ply_trace ("could not tell systemd to stop printing details: %m");
+}
+#endif
+
+static ply_boot_splash_t *
+show_theme (state_t    *state,
+            const char *theme_path)
+{
+        ply_boot_splash_t *splash;
+
+        splash = plymouthd_load_splash (theme_path,
+                                        PLYMOUTH_PLUGIN_PATH,
+                                        state->boot_buffer,
+                                        state->loop,
+                                        plymouthd_progress_get_core (state->progress));
+
+        if (splash == NULL)
+                return NULL;
+
+        attach_splash_to_devices (state, splash);
+        if (ply_boot_splash_uses_pixel_displays (splash))
+                ply_device_manager_activate_renderers (state->device_manager);
+
+        if (!ply_boot_splash_show (splash, state->mode)) {
+                ply_save_errno ();
+                ply_boot_splash_free (splash);
+                ply_restore_errno ();
+                return NULL;
+        }
+
+        ply_device_manager_activate_keyboards (state->device_manager);
+
+        return splash;
+}
+
+static bool
+attach_to_running_session (state_t *state)
+{
+        bool should_be_redirected;
+
+        should_be_redirected = plymouthd_logging_is_enabled (state->logging);
+
+        if (!plymouthd_session_attach (state->session, should_be_redirected)) {
+                ply_buffer_free (state->boot_buffer);
+                state->boot_buffer = NULL;
+                return false;
+        }
+
+#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
+        tell_systemd_to_print_details (state);
+#endif
+
+        return true;
+}
+
+static void
+detach_from_running_session (state_t *state)
+{
+        if (!plymouthd_session_is_attached (state->session))
+                return;
+
+#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
+        tell_systemd_to_stop_printing_details (state);
+#endif
+
+        plymouthd_session_detach (state->session);
+}
+
+static bool
+redirect_standard_io_to_dev_null (void)
+{
+        int fd;
+
+        fd = open ("/dev/null", O_RDWR | O_APPEND);
+
+        if (fd < 0)
+                return false;
+
+        dup2 (fd, STDIN_FILENO);
+        dup2 (fd, STDOUT_FILENO);
+        dup2 (fd, STDERR_FILENO);
+
+        close (fd);
+
+        return true;
+}
+static const char *
+find_fallback_tty (state_t *state)
+{
+        static const char *tty_list[] =
+        {
+                "/dev/ttyS0",
+                "/dev/hvc0",
+                "/dev/xvc0",
+                "/dev/ttySG0",
+                NULL
+        };
+        int i;
+
+        for (i = 0; tty_list[i] != NULL; i++) {
+                if (ply_character_device_exists (tty_list[i]))
+                        return tty_list[i];
+        }
+
+        return state->default_tty;
+}
+
+static bool
+initialize_environment (state_t    *state,
+                        const char *debug_path,
+                        bool        capture_debug)
+{
+        ply_trace ("initializing minimal work environment");
+
+        if (!state->default_tty)
+                if (getenv ("DISPLAY") != NULL && access (PLYMOUTH_PLUGIN_PATH "renderers/x11.so", F_OK) == 0)
+                        state->default_tty = "/dev/tty";
+        if (!state->default_tty) {
+                if (state->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
+                    state->mode == PLY_BOOT_SPLASH_MODE_REBOOT)
+                        state->default_tty = SHUTDOWN_TTY;
+                else
+                        state->default_tty = BOOT_TTY;
+
+                ply_trace ("checking if '%s' exists", state->default_tty);
+                if (!ply_character_device_exists (state->default_tty)) {
+                        if (!state->should_force_default_splash) {
+                                ply_trace ("nope, forcing details mode");
+                                state->should_force_details = true;
+                        }
+
+                        state->default_tty = find_fallback_tty (state);
+                        ply_trace ("going to go with '%s'", state->default_tty);
+                }
+        }
+
+        diagnostics = plymouthd_diagnostics_new (state->mode,
+                                                 state->default_tty,
+                                                 debug_path,
+                                                 capture_debug);
+
+        ply_trace ("source built on %s", __DATE__);
+
+        state->interaction = plymouthd_interaction_new ();
+        state->messages = plymouthd_messages_new ();
+
+        if (!ply_is_tracing_to_terminal ())
+                redirect_standard_io_to_dev_null ();
+
+        ply_trace ("Making sure " PLYMOUTH_RUNTIME_DIR " exists");
+        if (!ply_create_directory (PLYMOUTH_RUNTIME_DIR))
+                ply_trace ("could not create " PLYMOUTH_RUNTIME_DIR ": %m");
+
+        ply_trace ("initialized minimal work environment");
+        return true;
+}
+
+#include <termios.h>
+#include <unistd.h>
+#include <execinfo.h>
+
+#define BACKTRACE_SIZE 1024
+#define MAPS_SIZE 8192
+#define BACKTRACE_FRAMES_TO_SKIP 2 /* write_backtrace and on_crash themselves */
+
+static void
+write_maps (int output_fd)
+{
+        char maps_buffer[MAPS_SIZE];
+        ssize_t bytes_read;
+        ssize_t line_start = 0, buffer_end = 0;
+        int fd;
+
+        write (output_fd, "maps:\n", strlen ("maps:\n"));
+        fd = open ("/proc/self/maps", O_RDONLY);
+
+        if (fd < 0)
+                return;
+
+        while ((bytes_read = read (fd, maps_buffer + buffer_end, MAPS_SIZE - buffer_end)) > 0) {
+                bytes_read += buffer_end;
+                buffer_end = 0;
+
+                for (ssize_t i = line_start; i < bytes_read; ++i) {
+                        if (maps_buffer[i] == '\n') {
+                                write (output_fd, maps_buffer + line_start, i - line_start + 1);
+                                line_start = i + 1;
+                        }
+                }
+
+                if (line_start < bytes_read) {
+                        memmove (maps_buffer, maps_buffer + line_start, bytes_read - line_start);
+                        buffer_end = bytes_read - line_start;
+                        line_start = 0;
+                } else {
+                        line_start = 0;
+                }
+        }
+
+        if (buffer_end > 0) {
+                write (output_fd, maps_buffer, buffer_end);
+        }
+
+        close (fd);
+}
+
+static void
+write_backtrace (int output_fd)
+{
+        void *addresses[BACKTRACE_SIZE];
+        int number_of_addresses;
+
+        write (output_fd, "backtrace:\n", strlen ("backtrace:\n"));
+        number_of_addresses = backtrace (addresses, BACKTRACE_SIZE);
+
+        if (number_of_addresses <= BACKTRACE_FRAMES_TO_SKIP)
+                return;
+
+        backtrace_symbols_fd (addresses + BACKTRACE_FRAMES_TO_SKIP,
+                              number_of_addresses - BACKTRACE_FRAMES_TO_SKIP,
+                              output_fd);
+}
+
+static void
+on_crash (int signum)
+{
+        struct termios term_attributes;
+        int fd;
+        static const char *show_cursor_sequence = "\033[?25h";
+
+        if (plymouthd_diagnostics_get_crash_fd (diagnostics) != -1) {
+                fd = plymouthd_diagnostics_get_crash_fd (diagnostics);
+        } else {
+                fd = open ("/dev/tty1", O_RDWR | O_NOCTTY);
+                if (fd < 0) fd = open ("/dev/hvc0", O_RDWR | O_NOCTTY);
+        }
+
+        if (fd >= 0) {
+                ioctl (fd, KDSETMODE, KD_TEXT);
+
+                write (fd, show_cursor_sequence, sizeof(show_cursor_sequence) - 1);
+
+                tcgetattr (fd, &term_attributes);
+
+                term_attributes.c_iflag |= BRKINT | IGNPAR | ICRNL | IXON;
+                term_attributes.c_oflag |= OPOST;
+                term_attributes.c_lflag |= ECHO | ICANON | ISIG | IEXTEN;
+
+                tcsetattr (fd, TCSAFLUSH, &term_attributes);
+
+                write_maps (fd);
+                write_backtrace (fd);
+        }
+
+        if (plymouthd_diagnostics_has_buffer (diagnostics)) {
+                plymouthd_diagnostics_dump (diagnostics);
+                sleep (30);
+        }
+
+        if (pid_file != NULL) {
+                unlink (pid_file);
+                free (pid_file);
+                pid_file = NULL;
+        }
+
+        signal (signum, SIG_DFL);
+        raise (signum);
+}
+
+static void
+start_plymouthd_fd_escrow (void)
+{
+        pid_t pid;
+
+        pid = fork ();
+        if (pid == 0) {
+                const char *argv[] = { PLYMOUTH_DRM_ESCROW_DIRECTORY "/plymouthd-fd-escrow", NULL };
+
+                execve (argv[0], (char * const *) argv, NULL);
+                ply_trace ("could not launch fd escrow process: %m");
+                _exit (1);
+        }
+}
+
+static void
+on_term_signal (state_t *state)
+{
+        bool retain_splash = false;
+
+        ply_trace ("received SIGTERM");
+
+        /*
+         * On shutdown/reboot with pixel-displays active, start the plymouthd-fd-escrow
+         * helper to hold on to the pixel-displays fds until the end.
+         */
+        if ((state->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
+             state->mode == PLY_BOOT_SPLASH_MODE_REBOOT) &&
+            !state->is_inactive && state->boot_splash &&
+            ply_boot_splash_uses_pixel_displays (state->boot_splash)) {
+                start_plymouthd_fd_escrow ();
+                retain_splash = true;
+        }
+
+        on_quit (state, retain_splash, ply_trigger_new (NULL));
+}
+
+static void
+write_pid_file (const char *filename)
+{
+        FILE *fp;
+
+        fp = fopen (filename, "w");
+        if (fp == NULL) {
+                ply_error ("could not write pid file %s: %m", filename);
+        } else {
+                fprintf (fp, "%d\n", (int) getpid ());
+                fclose (fp);
+        }
+}
+
+int
+plymouthd_run (int    argc,
+               char **argv)
+{
+        state_t state = { 0 };
+        int exit_code;
+        bool should_ignore_serial_consoles;
+        ply_daemon_handle_t *daemon_handle = NULL;
+        plymouthd_options_t *options;
+        ply_device_manager_flags_t device_manager_flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
+
+        state.start_time = ply_get_timestamp ();
+        options = plymouthd_options_new ();
+
+        state.loop = ply_event_loop_get_default ();
+
+        /* Initialize the translations if they are available (!initrd) */
+        if (ply_file_exists (PLYMOUTH_LOCALE_DIRECTORY "/nl/LC_MESSAGES/plymouth.mo"))
+                setlocale (LC_ALL, "");
+
+        if (!plymouthd_options_parse (options, state.loop, argv, argc)) {
+                char *help_string;
+
+                help_string = plymouthd_options_get_help_string (options);
+
+                ply_error_without_new_line ("%s", help_string);
+
+                free (help_string);
+                plymouthd_options_free (options);
+                return EX_USAGE;
+        }
+
+        if (plymouthd_options_should_help (options)) {
+                char *help_string;
+
+                help_string = plymouthd_options_get_help_string (options);
+
+                if (argc < 2)
+                        fprintf (stderr, "%s", help_string);
+                else
+                        printf ("%s", help_string);
+
+                free (help_string);
+                plymouthd_options_free (options);
+                return 0;
+        }
+
+        if (plymouthd_options_should_debug (options) && !ply_is_tracing ())
+                ply_toggle_tracing ();
+
+        state.mode = plymouthd_options_get_mode (options);
+        should_ignore_serial_consoles =
+                plymouthd_options_should_ignore_serial_consoles (options);
+
+        if (plymouthd_options_get_tty (options) != NULL)
+                state.default_tty = plymouthd_options_get_tty (options);
+
+        if (plymouthd_options_get_kernel_command_line (options) != NULL)
+                ply_kernel_command_line_override (
+                        plymouthd_options_get_kernel_command_line (options));
+
+        pid_file = plymouthd_options_take_pid_file (options);
+
+        if (geteuid () != 0) {
+                ply_error ("plymouthd must be run as root user");
+                return EX_OSERR;
+        }
+
+        state.logging = plymouthd_logging_new (state.mode,
+                                               plymouthd_options_get_boot_log_path (options),
+                                               !plymouthd_options_should_log_boot (options));
+
+        chdir ("/");
+        signal (SIGPIPE, SIG_IGN);
+
+        if (plymouthd_options_should_daemonize (options)) {
+                daemon_handle = ply_create_daemon ();
+
+                if (daemon_handle == NULL) {
+                        ply_error ("plymouthd: cannot daemonize: %m");
+                        return EX_UNAVAILABLE;
+                }
+        }
+
+        signal (SIGABRT, on_crash);
+        signal (SIGSEGV, on_crash);
+        signal (SIGFPE, on_crash);
+
+        if (plymouthd_options_should_use_graphical_boot (options) ||
+            ply_kernel_command_line_has_argument ("plymouth.graphical") ||
+            plymouthd_kernel_console_is_ttynull ()) {
+                state.should_force_default_splash = true;
+                should_ignore_serial_consoles = true;
+        }
+
+        /* before do anything we need to make sure we have a working
+         * environment.
+         */
+        if (!initialize_environment (
+                    &state,
+                    plymouthd_options_get_debug_path (options),
+                    plymouthd_options_should_debug (options))) {
+                if (errno == 0) {
+                        if (daemon_handle != NULL)
+                                ply_detach_daemon (daemon_handle, 0);
+                        return 0;
+                }
+
+                ply_error ("plymouthd: could not setup basic operating environment: %m");
+                if (daemon_handle != NULL)
+                        ply_detach_daemon (daemon_handle, EX_OSERR);
+                return EX_OSERR;
+        }
+
+        /* Make the first byte in argv be '@' so that we can survive systemd's killing
+         * spree when going from initrd to /
+         * http://www.freedesktop.org/wiki/Software/systemd/RootStorageDaemons
+         * Note ply_file_exists () does not work here because /etc/initrd-release
+         * is a symlink when using a dracut generated initrd.
+         */
+        if (state.mode == PLY_BOOT_SPLASH_MODE_BOOT_UP &&
+            access ("/etc/initrd-release", F_OK) >= 0)
+                argv[0][0] = '@';
+
+        /* Catch SIGTERM for clean shutdown on poweroff/reboot */
+        ply_event_loop_watch_signal (state.loop, SIGTERM,
+                                     (ply_event_handler_t) on_term_signal, &state);
+
+        state.boot_server = start_boot_server (&state);
+
+        if (state.boot_server == NULL) {
+                ply_trace ("plymouthd is already running");
+
+                if (daemon_handle != NULL)
+                        ply_detach_daemon (daemon_handle, EX_OK);
+                return EX_OK;
+        }
+
+        state.boot_buffer = ply_buffer_new ();
+        state.transition = plymouthd_transition_new ();
+        state.session = plymouthd_session_new (
+                state.loop,
+                (plymouthd_session_output_handler_t) on_session_output,
+                (plymouthd_session_hangup_handler_t) on_session_hangup,
+                (plymouthd_session_kmsg_handler_t) on_new_kmsg_message,
+                &state);
+
+        if (plymouthd_options_should_attach_to_session (options)) {
+                state.should_be_attached = true;
+                if (!attach_to_running_session (&state)) {
+                        ply_trace ("could not redirect console session: %m");
+                        if (plymouthd_options_should_daemonize (options))
+                                ply_detach_daemon (daemon_handle, EX_UNAVAILABLE);
+                        return EX_UNAVAILABLE;
+                }
+        }
+
+        state.progress = plymouthd_progress_new (state.mode);
+        plymouthd_settings_init (&state.settings);
+
+        plymouthd_progress_load_cache (state.progress);
+
+        if (pid_file != NULL)
+                write_pid_file (pid_file);
+
+        if (daemon_handle != NULL
+            && !ply_detach_daemon (daemon_handle, 0)) {
+                ply_error ("plymouthd: could not tell parent to exit: %m");
+                return EX_UNAVAILABLE;
+        }
+
+        plymouthd_settings_load (&state.settings);
+
+        if (ply_kernel_command_line_has_argument ("plymouth.ignore-serial-consoles") ||
+            should_ignore_serial_consoles)
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_SERIAL_CONSOLES;
+
+        if (ply_kernel_command_line_has_argument ("plymouth.ignore-udev") ||
+            (getenv ("DISPLAY") != NULL))
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
+
+        if ((ply_kernel_command_line_has_argument ("plymouth.force-frame-buffer-on-boot")) &&
+            state.mode != PLY_BOOT_SPLASH_MODE_SHUTDOWN &&
+            state.mode != PLY_BOOT_SPLASH_MODE_REBOOT)
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER;
+
+        if (!plymouthd_should_show_default_splash (
+                    state.should_force_details,
+                    state.should_force_default_splash)) {
+                /* don't bother listening for udev events or setting up a graphical renderer
+                 * if we're forcing details */
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
+                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
+
+                /* don't ever delay showing the detailed splash */
+                state.settings.splash_delay = NAN;
+        }
+
+        if (state.settings.device_scale != -1)
+                ply_set_device_scale (state.settings.device_scale);
+
+        device_manager_flags = plymouthd_add_simpledrm_flags (device_manager_flags,
+                                                              state.settings.use_simpledrm);
+
+        load_devices (&state, device_manager_flags);
+
+        ply_trace ("entering event loop");
+        exit_code = ply_event_loop_run (state.loop);
+        ply_trace ("exited event loop");
+
+        ply_boot_splash_free (state.boot_splash);
+        state.boot_splash = NULL;
+
+        ply_boot_server_free (state.boot_server);
+        state.boot_server = NULL;
+
+        ply_trace ("freeing terminal session");
+        plymouthd_session_free (state.session);
+        plymouthd_transition_free (state.transition);
+
+        ply_buffer_free (state.boot_buffer);
+        plymouthd_progress_free (state.progress);
+        plymouthd_interaction_free (state.interaction);
+        plymouthd_logging_free (state.logging);
+        plymouthd_messages_free (state.messages);
+
+        ply_trace ("exiting with code %d", exit_code);
+
+        plymouthd_diagnostics_dump (diagnostics);
+
+        ply_free_error_log ();
+        plymouthd_diagnostics_free (diagnostics);
+
+        plymouthd_settings_free (&state.settings);
+        plymouthd_options_free (options);
+
+        return exit_code;
+}

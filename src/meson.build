@@ -193,6 +193,7 @@ ply_boot_server_dep = declare_dependency(
 
 plymouthd_sources = files(
   'main.c',
+  'plymouthd.c',
   'plugins/splash/details/plugin.c',
   'ply-boot-protocol.h',
   'ply-boot-server.h',

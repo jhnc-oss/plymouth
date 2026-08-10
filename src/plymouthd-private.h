@@ -1,4 +1,4 @@
-/* main.c - plymouth daemon entry point
+/* plymouthd-private.h - internal daemon application
  *
  * Copyright (C) 2026 Red Hat, Inc.
  *
@@ -8,11 +8,12 @@
  * any later version.
  */
 
-#include "plymouthd-private.h"
+#ifndef PLYMOUTHD_PRIVATE_H
+#define PLYMOUTHD_PRIVATE_H
 
-int
-main (int    argc,
-      char **argv)
-{
-        return plymouthd_run (argc, argv);
-}
+#include "ply-private.h"
+
+PLY_PRIVATE int plymouthd_run (int    argc,
+                               char **argv);
+
+#endif /* PLYMOUTHD_PRIVATE_H */
