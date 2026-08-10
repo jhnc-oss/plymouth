@@ -20,7 +20,6 @@
 #include "ply-terminal.h"
 #include "ply-utils.h"
 #include "plymouthd-display-private.h"
-#include "plymouthd-input-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-state-private.h"
 
