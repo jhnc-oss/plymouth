@@ -69,6 +69,32 @@ plymouthd_update_display (plymouthd_t *daemon)
 }
 
 void
+plymouthd_handle_pixel_display_added (plymouthd_t         *daemon,
+                                      ply_pixel_display_t *display)
+{
+        if (!daemon->is_shown)
+                return;
+
+        if (daemon->boot_splash == NULL) {
+                ply_trace ("pixel display added before splash loaded, so loading splash now");
+                plymouthd_show_splash (daemon);
+        } else {
+                ply_trace ("pixel display added after splash loaded, so attaching to splash");
+                ply_boot_splash_add_pixel_display (daemon->boot_splash, display);
+                plymouthd_update_display (daemon);
+        }
+}
+
+void
+plymouthd_handle_pixel_display_removed (plymouthd_t         *daemon,
+                                        ply_pixel_display_t *display)
+{
+        if (daemon->boot_splash != NULL)
+                ply_boot_splash_remove_pixel_display (daemon->boot_splash,
+                                                      display);
+}
+
+void
 plymouthd_cancel_pending_show (plymouthd_t *daemon)
 {
         if (isnan (daemon->settings.splash_delay))
