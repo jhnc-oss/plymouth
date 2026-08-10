@@ -53,6 +53,7 @@ plymouthd_private_sources = files(
   'plymouthd-messages.c',
   'plymouthd-options.c',
   'plymouthd-policy.c',
+  'plymouthd-process.c',
   'plymouthd-progress.c',
   'plymouthd-session.c',
   'plymouthd-settings.c',
