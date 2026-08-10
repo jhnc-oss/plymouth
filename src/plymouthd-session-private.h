@@ -40,7 +40,11 @@ PLY_PRIVATE bool plymouthd_session_attach (plymouthd_session_t *session,
 PLY_PRIVATE void plymouthd_session_detach (plymouthd_session_t *session);
 PLY_PRIVATE bool plymouthd_session_is_attached (plymouthd_session_t *session);
 PLY_PRIVATE bool plymouthd_session_is_redirected (plymouthd_session_t *session);
+PLY_PRIVATE bool plymouthd_session_has_terminal (plymouthd_session_t *session);
 PLY_PRIVATE ply_terminal_session_t *
 plymouthd_session_get_terminal_session (plymouthd_session_t *session);
+PLY_PRIVATE bool plymouthd_session_open_log (plymouthd_session_t *session,
+                                             const char          *path);
+PLY_PRIVATE void plymouthd_session_close_log (plymouthd_session_t *session);
 
 #endif /* PLYMOUTHD_SESSION_PRIVATE_H */
