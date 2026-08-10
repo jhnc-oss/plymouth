@@ -14,7 +14,6 @@
 
 #include "ply-event-loop.h"
 #include "ply-utils.h"
-#include "plymouthd-settings-private.h"
 
 plymouthd_t *
 plymouthd_new_state (ply_boot_splash_mode_t mode)
@@ -25,7 +24,6 @@ plymouthd_new_state (ply_boot_splash_mode_t mode)
         state->start_time = ply_get_timestamp ();
         state->loop = ply_event_loop_get_default ();
         state->mode = mode;
-        plymouthd_settings_init (&state->settings);
 
         return state;
 }

@@ -83,6 +83,7 @@ plymouthd_new (plymouthd_options_t *options,
         bool should_ignore_serial_consoles;
 
         daemon = plymouthd_new_state (plymouthd_options_get_mode (options));
+        plymouthd_settings_init (&daemon->settings);
 
         should_ignore_serial_consoles =
                 plymouthd_options_should_ignore_serial_consoles (options);
