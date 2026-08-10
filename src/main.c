@@ -59,12 +59,10 @@
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-policy-private.h"
+#include "plymouthd-progress-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
-
-#define BOOT_DURATION_FILE     PLYMOUTH_TIME_DIRECTORY "/boot-duration"
-#define SHUTDOWN_DURATION_FILE PLYMOUTH_TIME_DIRECTORY "/shutdown-duration"
 
 static int crash_fd = -1;
 
@@ -74,10 +72,10 @@ typedef struct
         ply_boot_server_t       *boot_server;
         ply_boot_splash_t       *boot_splash;
         ply_buffer_t            *boot_buffer;
-        ply_progress_t          *progress;
         plymouthd_interaction_t *interaction;
         plymouthd_logging_t     *logging;
         plymouthd_messages_t    *messages;
+        plymouthd_progress_t    *progress;
         plymouthd_session_t     *session;
         ply_command_parser_t    *command_parser;
         ply_boot_splash_mode_t   mode;
@@ -125,7 +123,6 @@ static void toggle_between_splash_and_details (state_t *state);
 static void tell_systemd_to_print_details (state_t *state);
 static void tell_systemd_to_stop_printing_details (state_t *state);
 #endif
-static const char *get_cache_file_for_mode (ply_boot_splash_mode_t mode);
 static void on_escape_pressed (state_t *state);
 static void on_enter (state_t    *state,
                       const char *line);
@@ -163,8 +160,7 @@ on_update (state_t    *state,
            const char *status)
 {
         ply_trace ("updating status to '%s'", status);
-        ply_progress_status_update (state->progress,
-                                    status);
+        plymouthd_progress_status_update (state->progress, status);
         if (state->boot_splash != NULL)
                 ply_boot_splash_update_status (state->boot_splash,
                                                status);
@@ -183,6 +179,7 @@ on_change_mode (state_t    *state,
 
         state->mode = new_mode;
         plymouthd_logging_set_mode (state->logging, new_mode);
+        plymouthd_progress_set_mode (state->progress, new_mode);
 
         if (plymouthd_session_get_terminal_session (state->session) != NULL) {
                 plymouthd_logging_prepare (
@@ -411,14 +408,14 @@ static void
 on_progress_pause (state_t *state)
 {
         ply_trace ("pausing progress");
-        ply_progress_pause (state->progress);
+        plymouthd_progress_pause (state->progress);
 }
 
 static void
 on_progress_unpause (state_t *state)
 {
         ply_trace ("unpausing progress");
-        ply_progress_unpause (state->progress);
+        plymouthd_progress_unpause (state->progress);
 }
 
 static void
@@ -443,39 +440,9 @@ on_newroot (state_t    *state,
         chdir ("/");
         /* Update local now that we have /usr/share/locale available */
         setlocale (LC_ALL, "");
-        ply_progress_load_cache (state->progress, get_cache_file_for_mode (state->mode));
+        plymouthd_progress_load_cache (state->progress);
         if (state->boot_splash != NULL)
                 ply_boot_splash_root_mounted (state->boot_splash);
-}
-
-static const char *
-get_cache_file_for_mode (ply_boot_splash_mode_t mode)
-{
-        const char *filename;
-
-        switch (mode) {
-        case PLY_BOOT_SPLASH_MODE_BOOT_UP:
-                filename = BOOT_DURATION_FILE;
-                break;
-        case PLY_BOOT_SPLASH_MODE_SHUTDOWN:
-        case PLY_BOOT_SPLASH_MODE_REBOOT:
-                filename = SHUTDOWN_DURATION_FILE;
-                break;
-        case PLY_BOOT_SPLASH_MODE_UPDATES:
-        case PLY_BOOT_SPLASH_MODE_SYSTEM_UPGRADE:
-        case PLY_BOOT_SPLASH_MODE_FIRMWARE_UPGRADE:
-        case PLY_BOOT_SPLASH_MODE_SYSTEM_RESET:
-                filename = NULL;
-                break;
-        case PLY_BOOT_SPLASH_MODE_INVALID:
-        default:
-                ply_error ("Unhandled case in %s line %d\n", __FILE__, __LINE__);
-                abort ();
-                break;
-        }
-
-        ply_trace ("returning cache file '%s'", filename);
-        return filename;
 }
 
 static void
@@ -992,9 +959,7 @@ on_quit (state_t       *state,
 
         if (plymouthd_logging_is_initialized (state->logging)) {
                 ply_trace ("system initialized so saving boot-duration file");
-                ply_create_directory (PLYMOUTH_TIME_DIRECTORY);
-                ply_progress_save_cache (state->progress,
-                                         get_cache_file_for_mode (state->mode));
+                plymouthd_progress_save_cache (state->progress);
         } else {
                 ply_trace ("system not initialized so skipping saving boot-duration file");
         }
@@ -1247,7 +1212,7 @@ show_theme (state_t    *state,
                                         PLYMOUTH_PLUGIN_PATH,
                                         state->boot_buffer,
                                         state->loop,
-                                        state->progress);
+                                        plymouthd_progress_get_core (state->progress));
 
         if (splash == NULL)
                 return NULL;
@@ -1847,11 +1812,10 @@ main (int    argc,
                 }
         }
 
-        state.progress = ply_progress_new ();
+        state.progress = plymouthd_progress_new (state.mode);
         plymouthd_settings_init (&state.settings);
 
-        ply_progress_load_cache (state.progress,
-                                 get_cache_file_for_mode (state.mode));
+        plymouthd_progress_load_cache (state.progress);
 
         if (pid_file != NULL)
                 write_pid_file (pid_file);
@@ -1913,7 +1877,7 @@ main (int    argc,
         plymouthd_session_free (state.session);
 
         ply_buffer_free (state.boot_buffer);
-        ply_progress_free (state.progress);
+        plymouthd_progress_free (state.progress);
         plymouthd_interaction_free (state.interaction);
         plymouthd_logging_free (state.logging);
         plymouthd_messages_free (state.messages);
