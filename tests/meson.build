@@ -559,7 +559,12 @@ boot_splash_test_executable = executable(
   'test-boot-splash',
   'test-boot-splash.c',
   c_args: boot_splash_test_c_args,
-  dependencies: [libply_dep, libply_splash_core_dep, ply_renderer_dep],
+  dependencies: [
+    libply_dep,
+    libply_splash_core_dep,
+    ply_renderer_dep,
+    plymouthd_splash_dep,
+  ],
   include_directories: [
     include_directories('.'),
     include_directories('../src/libply-splash-core'),

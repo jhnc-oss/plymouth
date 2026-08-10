@@ -19,10 +19,12 @@
 #include "ply-keyboard.h"
 #include "ply-list.h"
 #include "ply-pixel-display.h"
+#include "ply-progress.h"
 #include "ply-renderer-private.h"
 #include "ply-terminal.h"
 #include "ply-text-display.h"
 #include "ply-utils.h"
+#include "plymouthd-splash-private.h"
 
 typedef struct
 {
@@ -145,6 +147,48 @@ test_theme_loads_and_attached_devices_are_removed (void)
         ply_renderer_close (renderer);
         ply_renderer_free (renderer);
         ply_buffer_free (boot_buffer);
+        ply_close_module (module);
+        return true;
+}
+
+static bool
+test_daemon_loader_attaches_runtime_dependencies (void)
+{
+        const test_splash_plugin_state_t *state;
+        ply_module_handle_t *module;
+        ply_event_loop_t *loop;
+        ply_boot_splash_t *splash;
+        ply_buffer_t *boot_buffer;
+        ply_progress_t *progress;
+
+        module = ply_open_module (TEST_SPLASH_PLUGIN_PATH);
+        PLY_TEST_ASSERT (module != NULL);
+        loop = ply_event_loop_new ();
+        PLY_TEST_ASSERT (loop != NULL);
+        boot_buffer = ply_buffer_new ();
+        progress = ply_progress_new ();
+
+        splash = plymouthd_load_splash (TEST_SPLASH_THEME_PATH,
+                                        TEST_SPLASH_PLUGIN_DIR,
+                                        boot_buffer,
+                                        loop,
+                                        progress);
+        PLY_TEST_ASSERT (splash != NULL);
+        PLY_TEST_ASSERT (ply_boot_splash_show (
+                                 splash,
+                                 PLY_BOOT_SPLASH_MODE_BOOT_UP));
+
+        state = get_plugin_state (module);
+        PLY_TEST_ASSERT (state != NULL);
+        PLY_TEST_ASSERT (state->create_count == 1);
+        PLY_TEST_ASSERT (state->show_count == 1);
+        PLY_TEST_ASSERT (state->show_loop == loop);
+        PLY_TEST_ASSERT (state->boot_buffer == boot_buffer);
+
+        ply_boot_splash_free (splash);
+        ply_progress_free (progress);
+        ply_buffer_free (boot_buffer);
+        ply_event_loop_free (loop);
         ply_close_module (module);
         return true;
 }
@@ -296,6 +340,7 @@ test_plugin_idle_completion_reaches_caller (void)
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_theme_loads_and_attached_devices_are_removed),
+        PLY_TEST_CASE (test_daemon_loader_attaches_runtime_dependencies),
         PLY_TEST_CASE (test_runtime_operations_reach_splash_plugin),
         PLY_TEST_CASE (test_plugin_idle_completion_reaches_caller),
 };
