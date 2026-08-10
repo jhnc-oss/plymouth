@@ -97,9 +97,9 @@ plymouthd_handle_keyboard_added (plymouthd_t                     *daemon,
         }
 }
 
-void
-plymouthd_detach_keyboard (ply_keyboard_t                  *keyboard,
-                           plymouthd_input_escape_handler_t escape_handler)
+static void
+detach_keyboard (ply_keyboard_t                  *keyboard,
+                 plymouthd_input_escape_handler_t escape_handler)
 {
         ply_trace ("no longer listening for keystrokes");
         ply_keyboard_remove_input_handler (
@@ -124,7 +124,7 @@ plymouthd_handle_keyboard_removed (plymouthd_t                     *daemon,
                                    ply_keyboard_t                  *keyboard,
                                    plymouthd_input_escape_handler_t escape_handler)
 {
-        plymouthd_detach_keyboard (keyboard, escape_handler);
+        detach_keyboard (keyboard, escape_handler);
 
         if (daemon->boot_splash != NULL)
                 ply_boot_splash_unset_keyboard (daemon->boot_splash);

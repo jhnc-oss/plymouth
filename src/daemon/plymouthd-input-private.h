@@ -28,7 +28,5 @@ PLY_PRIVATE void plymouthd_handle_keyboard_added (plymouthd_t                   
 PLY_PRIVATE void plymouthd_handle_keyboard_removed (plymouthd_t                     *daemon,
                                                     ply_keyboard_t                  *keyboard,
                                                     plymouthd_input_escape_handler_t escape_handler);
-PLY_PRIVATE void plymouthd_detach_keyboard (ply_keyboard_t                  *keyboard,
-                                            plymouthd_input_escape_handler_t escape_handler);
 
 #endif /* PLYMOUTHD_INPUT_PRIVATE_H */
