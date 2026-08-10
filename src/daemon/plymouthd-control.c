@@ -216,8 +216,8 @@ plymouthd_handle_deactivate (state_t       *state,
         ply_trace ("deactivating");
         plymouthd_cancel_pending_show (state);
 
-        ply_device_manager_pause (state->device_manager);
-        ply_device_manager_deactivate_keyboards (state->device_manager);
+        plymouthd_pause_devices (state);
+        plymouthd_deactivate_keyboards (state);
 
         if (state->boot_splash != NULL) {
                 if (plymouthd_transition_begin_idle (state->transition)) {
