@@ -48,6 +48,7 @@ plymouthd_private_inc = include_directories('daemon')
 plymouthd_private_sources = files(
   'daemon/plymouthd.c',
   'daemon/plymouthd-commands.c',
+  'daemon/plymouthd-control.c',
   'daemon/plymouthd-diagnostics.c',
   'daemon/plymouthd-display.c',
   'daemon/plymouthd-interaction.c',
