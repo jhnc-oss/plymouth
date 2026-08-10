@@ -117,10 +117,7 @@ plymouthd_handle_show_splash (state_t *state)
         if (state->local_console_terminal != NULL)
                 ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_GRAPHICS);
 
-#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-        if (plymouthd_session_is_attached (state->session))
-                tell_systemd_to_print_details (state);
-#endif
+        plymouthd_session_request_details (state->session);
 
         if (has_displays) {
                 ply_trace ("at least one display already available, so loading splash");
