@@ -15,9 +15,9 @@
 
 #include "ply-boot-splash-plugin.h"
 #include "ply-private.h"
-#include "ply-terminal-session.h"
 
 typedef struct _plymouthd_logging plymouthd_logging_t;
+typedef struct _plymouthd_session plymouthd_session_t;
 
 PLY_PRIVATE plymouthd_logging_t *plymouthd_logging_new (ply_boot_splash_mode_t mode,
                                                         const char            *boot_log_file,
@@ -29,10 +29,10 @@ PLY_PRIVATE bool plymouthd_logging_is_enabled (plymouthd_logging_t *logging);
 PLY_PRIVATE bool plymouthd_logging_is_initialized (plymouthd_logging_t *logging);
 PLY_PRIVATE const char *plymouthd_logging_get_log_file (plymouthd_logging_t *logging);
 PLY_PRIVATE const char *plymouthd_logging_get_spool_file (plymouthd_logging_t *logging);
-PLY_PRIVATE void plymouthd_logging_prepare (plymouthd_logging_t    *logging,
-                                            ply_terminal_session_t *session);
-PLY_PRIVATE void plymouthd_logging_system_initialized (plymouthd_logging_t    *logging,
-                                                       ply_terminal_session_t *session);
+PLY_PRIVATE void plymouthd_logging_prepare (plymouthd_logging_t *logging,
+                                            plymouthd_session_t *session);
+PLY_PRIVATE void plymouthd_logging_system_initialized (plymouthd_logging_t *logging,
+                                                       plymouthd_session_t *session);
 PLY_PRIVATE void plymouthd_logging_record_error (plymouthd_logging_t *logging);
 
 #endif /* PLYMOUTHD_LOGGING_PRIVATE_H */

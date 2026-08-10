@@ -128,11 +128,7 @@ plymouthd_handle_change_mode (state_t    *state,
         plymouthd_logging_set_mode (state->logging, new_mode);
         plymouthd_progress_set_mode (state->progress, new_mode);
 
-        if (plymouthd_session_get_terminal_session (state->session) != NULL) {
-                plymouthd_logging_prepare (
-                        state->logging,
-                        plymouthd_session_get_terminal_session (state->session));
-        }
+        plymouthd_logging_prepare (state->logging, state->session);
 
         if (state->boot_splash == NULL) {
                 ply_trace ("no splash set");
@@ -310,9 +306,7 @@ plymouthd_handle_system_initialized (state_t *state)
                 tell_systemd_to_print_details (state);
 #endif
 
-        plymouthd_logging_system_initialized (
-                state->logging,
-                plymouthd_session_get_terminal_session (state->session));
+        plymouthd_logging_system_initialized (state->logging, state->session);
 }
 
 void
