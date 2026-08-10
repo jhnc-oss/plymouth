@@ -20,54 +20,35 @@
  * Written by: Ray Strode <rstrode@redhat.com>
  */
 
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <math.h>
-#include <limits.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <sysexits.h>
-#include <unistd.h>
-#include <wchar.h>
-#include <paths.h>
+#include "plymouthd-control-private.h"
+
 #include <assert.h>
-#include <values.h>
 #include <locale.h>
+#include <signal.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include <linux/vt.h>
-
-#include "ply-buffer.h"
-#include "ply-boot-server-private.h"
 #include "ply-boot-splash.h"
+#include "ply-buffer.h"
 #include "ply-device-manager.h"
 #include "ply-event-loop.h"
-#include "ply-hashtable.h"
-#include "ply-list.h"
+#include "ply-kmsg-reader.h"
 #include "ply-logger.h"
-#include "ply-renderer.h"
-#include "ply-terminal-session.h"
+#include "ply-terminal.h"
 #include "ply-trigger.h"
 #include "ply-utils.h"
-#include "ply-progress.h"
-#include "ply-kmsg-reader.h"
-#include "plymouthd-interaction-private.h"
-#include "plymouthd-commands-private.h"
-#include "plymouthd-control-private.h"
 #include "plymouthd-display-private.h"
+#include "plymouthd-interaction-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
-#include "plymouthd-options-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-session-private.h"
-#include "plymouthd-state-private.h"
 #include "plymouthd-settings-private.h"
-#include "plymouthd-splash-private.h"
+#include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
-#include "plymouthd-private.h"
 
 typedef plymouthd_t state_t;
 
