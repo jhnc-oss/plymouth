@@ -144,6 +144,7 @@ plymouthd_session_attach (plymouthd_session_t *session,
         ply_kmsg_reader_start (session->kmsg_reader);
         session->redirected = redirect_console;
         session->attached = true;
+        plymouthd_session_request_details (session);
 
         return true;
 }

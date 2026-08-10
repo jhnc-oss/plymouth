@@ -54,7 +54,6 @@ static void detach_from_running_session (state_t *state);
 static void dump_details_and_quit_splash (state_t *state);
 
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-static void tell_systemd_to_print_details (state_t *state);
 static void tell_systemd_to_stop_printing_details (state_t *state);
 #endif
 void
@@ -375,14 +374,6 @@ plymouthd_handle_kmsg (state_t        *state,
 
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
 static void
-tell_systemd_to_print_details (state_t *state)
-{
-        ply_trace ("telling systemd to start printing details");
-        if (kill (1, SIGRTMIN + 20) < 0)
-                ply_trace ("could not tell systemd to print details: %m");
-}
-
-static void
 tell_systemd_to_stop_printing_details (state_t *state)
 {
         ply_trace ("telling systemd to stop printing details");
@@ -403,10 +394,6 @@ plymouthd_attach_session (state_t *state)
                 state->boot_buffer = NULL;
                 return false;
         }
-
-#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-        tell_systemd_to_print_details (state);
-#endif
 
         return true;
 }
