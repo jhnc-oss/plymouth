@@ -18,8 +18,9 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include "ply-boot-server.h"
+#include "ply-boot-splash.h"
 #include "ply-buffer.h"
-#include "ply-boot-server-private.h"
 #include "ply-device-manager.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
