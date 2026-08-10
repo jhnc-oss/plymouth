@@ -56,6 +56,7 @@
 #include "ply-progress.h"
 #include "ply-kmsg-reader.h"
 #include "plymouthd-policy-private.h"
+#include "plymouthd-settings-private.h"
 
 #define BOOT_DURATION_FILE     PLYMOUTH_TIME_DIRECTORY "/boot-duration"
 #define SHUTDOWN_DURATION_FILE PLYMOUTH_TIME_DIRECTORY "/shutdown-duration"
@@ -102,11 +103,7 @@ typedef struct
         ply_trigger_t          *kmsg_trigger;
 
         double                  start_time;
-        double                  splash_delay;
-        double                  device_timeout;
-        int                     device_scale;
-        xkb_keysym_t            extra_esc_key;
-        int                     use_simpledrm;
+        plymouthd_settings_t    settings;
 
         uint32_t                no_boot_log : 1;
         uint32_t                showing_details : 1;
@@ -121,9 +118,6 @@ typedef struct
         uint32_t                should_force_default_splash : 1;
         uint32_t                splash_is_becoming_idle : 1;
 
-        char                   *override_splash_path;
-        char                   *system_default_splash_path;
-        char                   *distribution_default_splash_path;
         const char             *default_tty;
 
         int                     number_of_errors;
@@ -268,125 +262,6 @@ show_messages (state_t *state)
         }
 }
 
-static bool
-get_theme_path (const char *splash_string,
-                const char *configured_theme_dir,
-                char      **theme_path)
-{
-        const char *paths[] = { PLYMOUTH_RUNTIME_THEME_PATH,
-                                configured_theme_dir,
-                                PLYMOUTH_THEME_PATH };
-        size_t i;
-
-        for (i = 0; i < PLY_NUMBER_OF_ELEMENTS (paths); ++i) {
-                if (paths[i] == NULL)
-                        continue;
-
-                asprintf (theme_path,
-                          "%s/%s/%s.plymouth",
-                          paths[i], splash_string, splash_string);
-                if (ply_file_exists (*theme_path)) {
-                        ply_trace ("Theme is %s", *theme_path);
-                        return true;
-                }
-                ply_trace ("Theme %s not found", *theme_path);
-                free (*theme_path);
-                *theme_path = NULL;
-        }
-
-        return false;
-}
-
-static bool
-load_settings (state_t    *state,
-               const char *path,
-               char      **theme_path)
-{
-        ply_key_file_t *key_file = NULL;
-        bool settings_loaded = false;
-        char *splash_string = NULL;
-
-        ply_trace ("Trying to load %s", path);
-        key_file = ply_key_file_new (path);
-
-        if (!ply_key_file_load (key_file))
-                goto out;
-
-        splash_string = ply_key_file_get_value (key_file, "Daemon", "Theme");
-
-        if (splash_string != NULL) {
-                char *configured_theme_dir;
-                configured_theme_dir = ply_key_file_get_value (key_file, "Daemon",
-                                                               "ThemeDir");
-                get_theme_path (splash_string, configured_theme_dir, theme_path);
-                free (configured_theme_dir);
-        }
-
-        if (isnan (state->splash_delay)) {
-                state->splash_delay = ply_key_file_get_double (key_file, "Daemon", "ShowDelay", NAN);
-                ply_trace ("Splash delay is set to %lf", state->splash_delay);
-        }
-
-        if (isnan (state->device_timeout)) {
-                state->device_timeout = ply_key_file_get_double (key_file, "Daemon", "DeviceTimeout", NAN);
-                ply_trace ("Device timeout is set to %lf", state->device_timeout);
-        }
-
-        if (state->device_scale == -1)
-                state->device_scale = ply_key_file_get_ulong (key_file, "Daemon", "DeviceScale", -1);
-
-        if (state->extra_esc_key == XKB_KEY_NoSymbol)
-                state->extra_esc_key = ply_key_file_get_ulong (key_file, "Daemon", "XkbExtraEscButton", XKB_KEY_NoSymbol);
-
-        /*
-         * Check the special UseSimpledrmNoLuks config file keyword this enables
-         * simpledrm use except when using LUKS. Showing the LUKS unlock screen
-         * using simpledrm has 2 problems:
-         * 1. If the GPU drivers are built into the initrd then typically the
-         *    unlock screen will briefly show and then the screen goes black
-         *    while the native GPU driver loads leading to a jarring experience.
-         * 2. The i915 driver uses the firmware framebuffer as fallback when
-         *    userspace has not installed a fb to scan out from. This happens
-         *    e.g. on logout between the user-session and the display-manager.
-         *    Drawing the unlock screen on the simpledrm fb results in it briefly
-         *    showing when logging out, which looks quite ugly. Also see:
-         *    https://bugzilla.redhat.com/show_bug.cgi?id=2359283
-         */
-        if (state->use_simpledrm == -1) {
-                int direct_setting;
-                int setting_without_encryption;
-                bool uses_disk_encryption;
-
-                direct_setting = ply_key_file_get_ulong (key_file,
-                                                         "Daemon",
-                                                         "UseSimpledrm",
-                                                         -1);
-                setting_without_encryption = ply_key_file_get_ulong (key_file,
-                                                                     "Daemon",
-                                                                     "UseSimpledrmNoLuks",
-                                                                     -1);
-                uses_disk_encryption =
-                        ply_kernel_command_line_get_string_after_prefix ("rd.luks.uuid=") != NULL;
-
-                state->use_simpledrm =
-                        plymouthd_select_simpledrm_config (state->use_simpledrm,
-                                                           direct_setting,
-                                                           setting_without_encryption,
-                                                           uses_disk_encryption);
-
-                if (direct_setting == -1 &&
-                    setting_without_encryption != -1 &&
-                    uses_disk_encryption)
-                        ply_trace ("Ignoring UseSimpledrmNoLuks because of LUKS use");
-        }
-        settings_loaded = true;
-out:
-        free (splash_string);
-        ply_key_file_free (key_file);
-
-        return settings_loaded;
-}
-
 static void
 show_detailed_splash (state_t *state)
 {
@@ -412,103 +287,27 @@ show_detailed_splash (state_t *state)
 }
 
 static void
-find_override_splash (state_t *state)
-{
-        char *splash_string;
-
-        if (state->override_splash_path != NULL)
-                return;
-
-        splash_string = ply_kernel_command_line_get_key_value ("plymouth.splash=");
-
-        if (splash_string != NULL) {
-                ply_trace ("Splash is configured to be '%s'", splash_string);
-
-                get_theme_path (splash_string, NULL, &state->override_splash_path);
-
-                free (splash_string);
-        }
-
-        if (isnan (state->splash_delay)) {
-                const char *delay_string;
-
-                delay_string = ply_kernel_command_line_get_string_after_prefix ("plymouth.splash-delay=");
-
-                if (delay_string != NULL)
-                        state->splash_delay = ply_strtod (delay_string);
-        }
-
-        if (state->device_scale == -1)
-                state->device_scale = ply_kernel_command_line_get_ulong ("plymouth.force-scale=", -1);
-
-        if (state->use_simpledrm == -1) {
-                int numeric_setting;
-
-                numeric_setting = ply_kernel_command_line_get_ulong ("plymouth.use-simpledrm=", -1);
-                state->use_simpledrm =
-                        plymouthd_select_simpledrm_command_line (
-                                state->use_simpledrm,
-                                numeric_setting,
-                                ply_kernel_command_line_has_argument ("plymouth.use-simpledrm"),
-                                ply_kernel_command_line_has_argument ("nomodeset"));
-        }
-}
-
-static void
-find_system_default_splash (state_t *state)
-{
-        if (state->system_default_splash_path != NULL)
-                return;
-
-        if (!load_settings (state, PLYMOUTH_CONF_DIR "plymouthd.conf", &state->system_default_splash_path)) {
-                ply_trace ("failed to load " PLYMOUTH_CONF_DIR "plymouthd.conf");
-                return;
-        }
-
-        if (state->system_default_splash_path != NULL)
-                ply_trace ("System configured theme file is '%s'", state->system_default_splash_path);
-}
-
-static void
-find_distribution_default_splash (state_t *state)
-{
-        if (state->distribution_default_splash_path != NULL)
-                return;
-
-        if (!load_settings (state, PLYMOUTH_RUNTIME_DIR "/plymouthd.defaults", &state->distribution_default_splash_path)) {
-                ply_trace ("failed to load " PLYMOUTH_RUNTIME_DIR "/plymouthd.defaults, trying " PLYMOUTH_POLICY_DIR);
-                if (!load_settings (state, PLYMOUTH_POLICY_DIR "plymouthd.defaults", &state->distribution_default_splash_path)) {
-                        ply_trace ("failed to load " PLYMOUTH_POLICY_DIR "plymouthd.defaults");
-                        return;
-                }
-        }
-
-        if (state->distribution_default_splash_path != NULL)
-                ply_trace ("Distribution default theme file is '%s'", state->distribution_default_splash_path);
-}
-
-static void
 show_default_splash (state_t *state)
 {
         if (state->boot_splash != NULL)
                 return;
 
         ply_trace ("Showing splash screen");
-        if (state->override_splash_path != NULL) {
-                ply_trace ("Trying override splash at '%s'", state->override_splash_path);
-                state->boot_splash = show_theme (state, state->override_splash_path);
+        if (state->settings.override_splash_path != NULL) {
+                ply_trace ("Trying override splash at '%s'", state->settings.override_splash_path);
+                state->boot_splash = show_theme (state, state->settings.override_splash_path);
         }
 
         if (state->boot_splash == NULL &&
-            state->system_default_splash_path != NULL) {
+            state->settings.system_default_splash_path != NULL) {
                 ply_trace ("Trying system default splash");
-                state->boot_splash = show_theme (state, state->system_default_splash_path);
+                state->boot_splash = show_theme (state, state->settings.system_default_splash_path);
         }
 
         if (state->boot_splash == NULL &&
-            state->distribution_default_splash_path != NULL) {
+            state->settings.distribution_default_splash_path != NULL) {
                 ply_trace ("Trying distribution default splash");
-                state->boot_splash = show_theme (state, state->distribution_default_splash_path);
+                state->boot_splash = show_theme (state, state->settings.distribution_default_splash_path);
         }
 
         if (state->boot_splash == NULL) {
@@ -540,14 +339,14 @@ show_default_splash (state_t *state)
 static void
 cancel_pending_delayed_show (state_t *state)
 {
-        if (isnan (state->splash_delay))
+        if (isnan (state->settings.splash_delay))
                 return;
 
         ply_event_loop_stop_watching_for_timeout (state->loop,
                                                   (ply_event_loop_timeout_handler_t)
                                                   show_splash,
                                                   state);
-        state->splash_delay = NAN;
+        state->settings.splash_delay = NAN;
 }
 
 static void
@@ -1042,16 +841,7 @@ on_reload (state_t *state)
                 state->boot_splash = NULL;
         }
 
-        free (state->override_splash_path);
-        state->override_splash_path = NULL;
-        free (state->system_default_splash_path);
-        state->system_default_splash_path = NULL;
-        free (state->distribution_default_splash_path);
-        state->distribution_default_splash_path = NULL;
-
-        find_override_splash (state);
-        find_system_default_splash (state);
-        find_distribution_default_splash (state);
+        plymouthd_settings_reload_theme_paths (&state->settings);
 
         if (state->is_inactive) {
                 ply_trace ("reload while inactive");
@@ -1121,13 +911,13 @@ show_splash (state_t *state)
         if (state->boot_splash != NULL)
                 return;
 
-        if (!isnan (state->splash_delay)) {
+        if (!isnan (state->settings.splash_delay)) {
                 double now, running_time;
 
                 now = ply_get_timestamp ();
                 running_time = now - state->start_time;
-                if (state->splash_delay > running_time) {
-                        double time_left = state->splash_delay - running_time;
+                if (state->settings.splash_delay > running_time) {
+                        double time_left = state->settings.splash_delay - running_time;
 
                         ply_trace ("delaying show splash for %lf seconds",
                                    time_left);
@@ -1265,11 +1055,13 @@ static void
 load_devices (state_t                   *state,
               ply_device_manager_flags_t flags)
 {
-        state->device_manager = ply_device_manager_new (state->default_tty, flags, state->extra_esc_key);
+        state->device_manager = ply_device_manager_new (state->default_tty,
+                                                        flags,
+                                                        state->settings.extra_esc_key);
         state->local_console_terminal = ply_device_manager_get_default_terminal (state->device_manager);
 
         ply_device_manager_watch_devices (state->device_manager,
-                                          state->device_timeout,
+                                          state->settings.device_timeout,
                                           (ply_keyboard_added_handler_t)
                                           on_keyboard_added,
                                           (ply_keyboard_removed_handler_t)
@@ -2607,11 +2399,7 @@ main (int    argc,
         }
 
         state.progress = ply_progress_new ();
-        state.splash_delay = NAN;
-        state.device_timeout = NAN;
-        state.device_scale = -1;
-        state.use_simpledrm = -1;
-        state.extra_esc_key = XKB_KEY_NoSymbol;
+        plymouthd_settings_init (&state.settings);
 
         ply_progress_load_cache (state.progress,
                                  get_cache_file_for_mode (state.mode));
@@ -2625,9 +2413,7 @@ main (int    argc,
                 return EX_UNAVAILABLE;
         }
 
-        find_override_splash (&state);
-        find_system_default_splash (&state);
-        find_distribution_default_splash (&state);
+        plymouthd_settings_load (&state.settings);
 
         if (ply_kernel_command_line_has_argument ("plymouth.ignore-serial-consoles") ||
             ignore_serial_consoles == true)
@@ -2649,14 +2435,14 @@ main (int    argc,
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
 
                 /* don't ever delay showing the detailed splash */
-                state.splash_delay = NAN;
+                state.settings.splash_delay = NAN;
         }
 
-        if (state.device_scale != -1)
-                ply_set_device_scale (state.device_scale);
+        if (state.settings.device_scale != -1)
+                ply_set_device_scale (state.settings.device_scale);
 
         device_manager_flags = plymouthd_add_simpledrm_flags (device_manager_flags,
-                                                              state.use_simpledrm);
+                                                              state.settings.use_simpledrm);
 
         load_devices (&state, device_manager_flags);
 
@@ -2687,9 +2473,7 @@ main (int    argc,
 
         ply_free_error_log ();
 
-        free (state.override_splash_path);
-        free (state.system_default_splash_path);
-        free (state.distribution_default_splash_path);
+        plymouthd_settings_free (&state.settings);
 
         return exit_code;
 }
