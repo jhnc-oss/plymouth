@@ -46,6 +46,7 @@ ply_boot_server_dep = declare_dependency(
 plymouthd_private_inc = include_directories('daemon')
 
 plymouthd_private_sources = files(
+  'daemon/plymouthd-actions.c',
   'daemon/plymouthd.c',
   'daemon/plymouthd-commands.c',
   'daemon/plymouthd-control.c',
