@@ -93,10 +93,10 @@ attach_keyboard (plymouthd_t                     *daemon,
                 daemon);
 }
 
-void
-plymouthd_handle_keyboard_added (plymouthd_t                     *daemon,
-                                 ply_keyboard_t                  *keyboard,
-                                 plymouthd_input_escape_handler_t escape_handler)
+static void
+keyboard_added (plymouthd_t                     *daemon,
+                ply_keyboard_t                  *keyboard,
+                plymouthd_input_escape_handler_t escape_handler)
 {
         attach_keyboard (daemon, keyboard, escape_handler);
 
@@ -110,7 +110,7 @@ void
 plymouthd_handle_keyboard_added (plymouthd_t    *daemon,
                                  ply_keyboard_t *keyboard)
 {
-        plymouthd_handle_keyboard_added (daemon, keyboard, on_escape_pressed);
+        keyboard_added (daemon, keyboard, on_escape_pressed);
 }
 
 static void
