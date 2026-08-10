@@ -17,7 +17,7 @@
 
 #include "ply-private.h"
 
-typedef struct
+typedef struct _plymouthd_settings
 {
         double       splash_delay;
         double       device_timeout;
