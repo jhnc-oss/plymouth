@@ -76,6 +76,27 @@ plymouthd_messages_dep = declare_dependency(
   link_with: plymouthd_messages,
 )
 
+plymouthd_cflags = [
+  '-DPLYMOUTH_LOCALE_DIRECTORY="@0@"'.format(get_option('prefix') / get_option('localedir')),
+  '-DPLYMOUTH_DRM_ESCROW_DIRECTORY="@0@"'.format(get_option('prefix') / get_option('libexecdir') / 'plymouth'),
+  '-DPLYMOUTH_LOG_DIRECTORY="@0@"'.format('/var/log'),
+  '-DPLYMOUTH_SPOOL_DIRECTORY="@0@"'.format(plymouthd_spool_dir),
+]
+
+plymouthd_logging = static_library(
+  'plymouthd-logging-private',
+  'plymouthd-logging.c',
+  c_args: plymouthd_cflags,
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_logging_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_logging,
+)
+
 ply_peer_credentials = static_library(
   'ply-peer-credentials-private',
   'ply-peer-credentials.c',
@@ -120,13 +141,7 @@ plymouthd_deps = [
   plymouthd_splash_dep,
   plymouthd_interaction_dep,
   plymouthd_messages_dep,
-]
-
-plymouthd_cflags = [
-  '-DPLYMOUTH_LOCALE_DIRECTORY="@0@"'.format(get_option('prefix') / get_option('localedir')),
-  '-DPLYMOUTH_DRM_ESCROW_DIRECTORY="@0@"'.format(get_option('prefix') / get_option('libexecdir') / 'plymouth'),
-  '-DPLYMOUTH_LOG_DIRECTORY="@0@"'.format('/var/log'),
-  '-DPLYMOUTH_SPOOL_DIRECTORY="@0@"'.format(plymouthd_spool_dir),
+  plymouthd_logging_dep,
 ]
 
 plymouthd = executable('plymouthd',
