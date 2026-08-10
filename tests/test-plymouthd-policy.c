@@ -19,6 +19,7 @@
 
 #include "ply-test.h"
 
+#include "ply-utils.h"
 #include "plymouthd-policy-private.h"
 
 static bool
@@ -137,12 +138,29 @@ test_setting_adds_expected_device_flags (void)
         return true;
 }
 
+static bool
+test_shell_init_detection_keeps_suffix_behavior (void)
+{
+        ply_kernel_command_line_override ("init=/bin/sh");
+        PLY_TEST_ASSERT (plymouthd_shell_is_init ());
+
+        ply_kernel_command_line_override ("init=/bin/bash");
+        PLY_TEST_ASSERT (plymouthd_shell_is_init ());
+
+        ply_kernel_command_line_override ("init=/bin/init");
+        PLY_TEST_ASSERT (!plymouthd_shell_is_init ());
+
+        ply_kernel_command_line_override ("");
+        PLY_TEST_ASSERT (!plymouthd_shell_is_init ());
+        return true;
+}
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_mode_names_map_to_splash_modes),
         PLY_TEST_CASE (test_configuration_precedence_respects_encryption),
         PLY_TEST_CASE (test_kernel_argument_precedence_is_stable),
         PLY_TEST_CASE (test_setting_adds_expected_device_flags),
+        PLY_TEST_CASE (test_shell_init_detection_keeps_suffix_behavior),
 };
 
 PLY_TEST_MAIN (test_cases)
