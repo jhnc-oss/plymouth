@@ -462,7 +462,7 @@ on_text_display_removed (plymouthd_t        *daemon,
                                                      display);
 }
 
-void
+static void
 plymouthd_load_devices (plymouthd_t               *daemon,
                         ply_device_manager_flags_t flags)
 {

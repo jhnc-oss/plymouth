@@ -12,14 +12,12 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <math.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
 #include "ply-buffer.h"
-#include "ply-device-manager.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -140,7 +138,6 @@ plymouthd_new (plymouthd_options_t *options,
 {
         plymouthd_t *daemon;
         ply_daemon_handle_t *daemon_handle = NULL;
-        ply_device_manager_flags_t device_manager_flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
         bool should_ignore_serial_consoles;
 
         daemon = plymouthd_new_state (plymouthd_options_get_mode (options));
@@ -253,42 +250,8 @@ plymouthd_new (plymouthd_options_t *options,
         }
 
         plymouthd_settings_load (&daemon->settings);
-
-        if (ply_kernel_command_line_has_argument (
-                    "plymouth.ignore-serial-consoles") ||
-            should_ignore_serial_consoles) {
-                device_manager_flags |=
-                        PLY_DEVICE_MANAGER_FLAGS_IGNORE_SERIAL_CONSOLES;
-        }
-
-        if (ply_kernel_command_line_has_argument ("plymouth.ignore-udev") ||
-            getenv ("DISPLAY") != NULL) {
-                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
-        }
-
-        if (ply_kernel_command_line_has_argument (
-                    "plymouth.force-frame-buffer-on-boot") &&
-            daemon->mode != PLY_BOOT_SPLASH_MODE_SHUTDOWN &&
-            daemon->mode != PLY_BOOT_SPLASH_MODE_REBOOT) {
-                device_manager_flags |=
-                        PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER;
-        }
-
-        if (!plymouthd_should_show_default_splash (
-                    daemon->should_force_details,
-                    daemon->should_force_default_splash)) {
-                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
-                device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
-                daemon->settings.splash_delay = NAN;
-        }
-
-        if (daemon->settings.device_scale != -1)
-                ply_set_device_scale (daemon->settings.device_scale);
-
-        device_manager_flags = plymouthd_add_simpledrm_flags (
-                device_manager_flags,
-                daemon->settings.use_simpledrm);
-        plymouthd_load_devices (daemon, device_manager_flags);
+        plymouthd_initialize_devices (daemon,
+                                      should_ignore_serial_consoles);
 
         *exit_code = EX_OK;
         return daemon;
