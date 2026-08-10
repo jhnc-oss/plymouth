@@ -604,9 +604,7 @@ plymouthd_handle_quit (state_t       *state,
                 ply_trace ("system not initialized so skipping saving boot-duration file");
         }
         ply_trace ("closing log");
-        if (plymouthd_session_get_terminal_session (state->session) != NULL)
-                ply_terminal_session_close_log (
-                        plymouthd_session_get_terminal_session (state->session));
+        plymouthd_session_close_log (state->session);
 
         ply_device_manager_deactivate_keyboards (state->device_manager);
 
