@@ -123,6 +123,20 @@ plymouthd_progress_dep = declare_dependency(
   link_with: plymouthd_progress,
 )
 
+plymouthd_diagnostics = static_library(
+  'plymouthd-diagnostics-private',
+  'plymouthd-diagnostics.c',
+  c_args: plymouthd_cflags,
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_diagnostics_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_diagnostics,
+)
+
 ply_peer_credentials = static_library(
   'ply-peer-credentials-private',
   'ply-peer-credentials.c',
@@ -170,6 +184,7 @@ plymouthd_deps = [
   plymouthd_logging_dep,
   plymouthd_session_dep,
   plymouthd_progress_dep,
+  plymouthd_diagnostics_dep,
 ]
 
 plymouthd = executable('plymouthd',
