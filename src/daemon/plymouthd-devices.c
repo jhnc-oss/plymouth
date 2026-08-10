@@ -22,7 +22,6 @@
 #include "ply-utils.h"
 #include "plymouthd-display-private.h"
 #include "plymouthd-input-private.h"
-#include "plymouthd-interaction-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-state-private.h"
 
@@ -203,18 +202,13 @@ plymouthd_free_devices (plymouthd_t *daemon)
 static void
 on_escape_pressed (plymouthd_t *daemon)
 {
-        bool has_vt_consoles = true;
+        bool has_vt_console = true;
 
-        ply_trace ("escape key pressed");
         if (daemon->devices->local_console_terminal == NULL ||
             !ply_terminal_is_vt (daemon->devices->local_console_terminal))
-                has_vt_consoles = false;
+                has_vt_console = false;
 
-        if (plymouthd_validate_prompt_input (daemon->boot_splash,
-                                             "",
-                                             "\e") &&
-            has_vt_consoles)
-                plymouthd_toggle_details (daemon);
+        plymouthd_handle_escape (daemon, has_vt_console);
 }
 
 static void
