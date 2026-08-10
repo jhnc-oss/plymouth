@@ -56,6 +56,28 @@ plymouthd_has_vt_console (plymouthd_t *daemon)
 }
 
 void
+plymouthd_for_each_keyboard (
+        plymouthd_t                         *daemon,
+        plymouthd_devices_keyboard_handler_t handler,
+        void                                *user_data)
+{
+        ply_list_t *keyboards;
+        ply_list_node_t *node;
+
+        keyboards = ply_device_manager_get_keyboards (daemon->devices->device_manager);
+        node = ply_list_get_first_node (keyboards);
+        while (node != NULL) {
+                ply_keyboard_t *keyboard;
+                ply_list_node_t *next_node;
+
+                keyboard = ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (keyboards, node);
+                handler (keyboard, user_data);
+                node = next_node;
+        }
+}
+
+void
 plymouthd_attach_splash_to_devices (plymouthd_t       *daemon,
                                     ply_boot_splash_t *splash)
 {
