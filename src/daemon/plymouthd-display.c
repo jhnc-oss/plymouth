@@ -13,13 +13,10 @@
 #include <math.h>
 
 #include "ply-boot-splash.h"
-#include "ply-device-manager.h"
 #include "ply-event-loop.h"
-#include "ply-keyboard.h"
-#include "ply-list.h"
 #include "ply-logger.h"
-#include "ply-terminal.h"
 #include "ply-utils.h"
+#include "plymouthd-devices-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-policy-private.h"
@@ -31,54 +28,6 @@ static void
 show_messages (plymouthd_t *daemon)
 {
         plymouthd_messages_replay (daemon->messages, daemon->boot_splash);
-}
-
-static void
-attach_splash_to_devices (plymouthd_t       *daemon,
-                          ply_boot_splash_t *splash)
-{
-        ply_list_t *keyboards;
-        ply_list_t *pixel_displays;
-        ply_list_t *text_displays;
-        ply_list_node_t *node;
-
-        keyboards = ply_device_manager_get_keyboards (daemon->device_manager);
-        node = ply_list_get_first_node (keyboards);
-        while (node != NULL) {
-                ply_keyboard_t *keyboard;
-                ply_list_node_t *next_node;
-
-                keyboard = ply_list_node_get_data (node);
-                next_node = ply_list_get_next_node (keyboards, node);
-                ply_boot_splash_set_keyboard (splash, keyboard);
-                node = next_node;
-        }
-
-        pixel_displays =
-                ply_device_manager_get_pixel_displays (daemon->device_manager);
-        node = ply_list_get_first_node (pixel_displays);
-        while (node != NULL) {
-                ply_pixel_display_t *pixel_display;
-                ply_list_node_t *next_node;
-
-                pixel_display = ply_list_node_get_data (node);
-                next_node = ply_list_get_next_node (pixel_displays, node);
-                ply_boot_splash_add_pixel_display (splash, pixel_display);
-                node = next_node;
-        }
-
-        text_displays =
-                ply_device_manager_get_text_displays (daemon->device_manager);
-        node = ply_list_get_first_node (text_displays);
-        while (node != NULL) {
-                ply_text_display_t *text_display;
-                ply_list_node_t *next_node;
-
-                text_display = ply_list_node_get_data (node);
-                next_node = ply_list_get_next_node (text_displays, node);
-                ply_boot_splash_add_text_display (splash, text_display);
-                node = next_node;
-        }
 }
 
 static ply_boot_splash_t *
@@ -97,9 +46,9 @@ show_theme (plymouthd_t *daemon,
                 return NULL;
 
         plymouthd_progress_attach_to_splash (daemon->progress, splash);
-        attach_splash_to_devices (daemon, splash);
+        plymouthd_attach_splash_to_devices (daemon, splash);
         if (ply_boot_splash_uses_pixel_displays (splash))
-                ply_device_manager_activate_renderers (daemon->device_manager);
+                plymouthd_activate_renderers (daemon);
 
         if (!ply_boot_splash_show (splash, daemon->mode)) {
                 ply_save_errno ();
@@ -108,7 +57,7 @@ show_theme (plymouthd_t *daemon,
                 return NULL;
         }
 
-        ply_device_manager_activate_keyboards (daemon->device_manager);
+        plymouthd_activate_keyboards (daemon);
         return splash;
 }
 
@@ -244,8 +193,7 @@ plymouthd_show_splash (plymouthd_t *daemon)
                                 (ply_event_loop_timeout_handler_t)
                                 plymouthd_show_splash,
                                 daemon);
-                        ply_device_manager_activate_keyboards (
-                                daemon->device_manager);
+                        plymouthd_activate_keyboards (daemon);
                         return;
                 }
         }
@@ -266,7 +214,7 @@ plymouthd_hide_splash (plymouthd_t *daemon)
 {
         if (daemon->boot_splash != NULL &&
             ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
-                ply_device_manager_deactivate_renderers (daemon->device_manager);
+                plymouthd_deactivate_renderers (daemon);
 
         daemon->is_shown = false;
         plymouthd_cancel_pending_show (daemon);
@@ -274,11 +222,7 @@ plymouthd_hide_splash (plymouthd_t *daemon)
         if (daemon->boot_splash != NULL)
                 ply_boot_splash_hide (daemon->boot_splash);
 
-        if (daemon->local_console_terminal != NULL) {
-                ply_terminal_set_mode (daemon->local_console_terminal,
-                                       PLY_TERMINAL_MODE_TEXT);
-                ply_terminal_set_buffered_input (daemon->local_console_terminal);
-        }
+        plymouthd_restore_text_console (daemon);
 }
 
 void
