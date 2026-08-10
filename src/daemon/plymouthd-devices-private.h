@@ -17,10 +17,13 @@
 
 typedef struct _ply_boot_splash ply_boot_splash_t;
 typedef struct _ply_keyboard ply_keyboard_t;
+typedef struct _ply_pixel_display ply_pixel_display_t;
 typedef struct _plymouthd plymouthd_t;
 
 typedef void (*plymouthd_devices_keyboard_handler_t)(ply_keyboard_t *keyboard,
                                                      void           *user_data);
+typedef void (*plymouthd_devices_pixel_display_handler_t)(ply_pixel_display_t *display,
+                                                          void                *user_data);
 
 PLY_PRIVATE void plymouthd_initialize_devices (plymouthd_t *daemon,
                                                bool         should_ignore_serial_consoles);
@@ -30,6 +33,9 @@ PLY_PRIVATE bool plymouthd_has_vt_console (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_for_each_keyboard (plymouthd_t                         *daemon,
                                               plymouthd_devices_keyboard_handler_t handler,
                                               void                                *user_data);
+PLY_PRIVATE void plymouthd_for_each_pixel_display (plymouthd_t                              *daemon,
+                                                   plymouthd_devices_pixel_display_handler_t handler,
+                                                   void                                     *user_data);
 PLY_PRIVATE void plymouthd_attach_splash_to_devices (plymouthd_t       *daemon,
                                                      ply_boot_splash_t *splash);
 PLY_PRIVATE void plymouthd_activate_renderers (plymouthd_t *daemon);

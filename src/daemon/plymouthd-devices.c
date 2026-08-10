@@ -78,6 +78,29 @@ plymouthd_for_each_keyboard (
 }
 
 void
+plymouthd_for_each_pixel_display (
+        plymouthd_t                              *daemon,
+        plymouthd_devices_pixel_display_handler_t handler,
+        void                                     *user_data)
+{
+        ply_list_t *pixel_displays;
+        ply_list_node_t *node;
+
+        pixel_displays =
+                ply_device_manager_get_pixel_displays (daemon->devices->device_manager);
+        node = ply_list_get_first_node (pixel_displays);
+        while (node != NULL) {
+                ply_pixel_display_t *pixel_display;
+                ply_list_node_t *next_node;
+
+                pixel_display = ply_list_node_get_data (node);
+                next_node = ply_list_get_next_node (pixel_displays, node);
+                handler (pixel_display, user_data);
+                node = next_node;
+        }
+}
+
+void
 plymouthd_attach_splash_to_devices (plymouthd_t       *daemon,
                                     ply_boot_splash_t *splash)
 {
