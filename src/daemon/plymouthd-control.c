@@ -149,12 +149,7 @@ deactivate_console (state_t *state)
 {
         detach_from_running_session (state);
 
-        if (state->local_console_terminal != NULL) {
-                ply_trace ("deactivating terminal");
-                ply_terminal_stop_watching_for_vt_changes (state->local_console_terminal);
-                ply_terminal_set_buffered_input (state->local_console_terminal);
-                ply_terminal_close (state->local_console_terminal);
-        }
+        plymouthd_deactivate_console (state);
 
         /* do not let any tty opened where we could write after deactivate */
         if (ply_kernel_command_line_has_argument ("plymouth.debug"))
