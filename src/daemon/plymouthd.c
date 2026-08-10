@@ -217,5 +217,6 @@ plymouthd_free (plymouthd_t *daemon)
         ply_buffer_free (daemon->boot_buffer);
         plymouthd_progress_free (daemon->progress);
         plymouthd_interaction_free (daemon->interaction);
+        plymouthd_logging_free (daemon->logging);
         plymouthd_free_state (daemon);
 }

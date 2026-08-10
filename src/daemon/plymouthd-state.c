@@ -14,7 +14,6 @@
 
 #include "ply-event-loop.h"
 #include "ply-utils.h"
-#include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-process-private.h"
 #include "plymouthd-settings-private.h"
@@ -39,7 +38,6 @@ plymouthd_free_state (plymouthd_t *state)
         if (state == NULL)
                 return;
 
-        plymouthd_logging_free (state->logging);
         plymouthd_messages_free (state->messages);
         plymouthd_settings_free (&state->settings);
         plymouthd_process_free (state->process);
