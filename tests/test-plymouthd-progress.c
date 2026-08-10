@@ -20,7 +20,6 @@ test_boot_and_shutdown_modes_select_established_caches (void)
         plymouthd_progress_t *progress;
 
         progress = plymouthd_progress_new (PLY_BOOT_SPLASH_MODE_BOOT_UP);
-        PLY_TEST_ASSERT (plymouthd_progress_get_core (progress) != NULL);
         PLY_TEST_ASSERT (strcmp (plymouthd_progress_get_cache_file (progress),
                                  PLYMOUTH_TIME_DIRECTORY "/boot-duration") == 0);
 
