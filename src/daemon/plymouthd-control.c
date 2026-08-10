@@ -31,6 +31,7 @@
 #include "ply-terminal.h"
 #include "ply-trigger.h"
 #include "ply-utils.h"
+#include "plymouthd-devices-private.h"
 #include "plymouthd-display-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-policy-private.h"
@@ -69,7 +70,7 @@ plymouthd_handle_show_splash (state_t *state)
         }
 
         state->is_shown = true;
-        has_displays = ply_device_manager_has_displays (state->device_manager);
+        has_displays = plymouthd_has_displays (state);
 
         if (!plymouthd_session_is_attached (state->session) &&
             state->should_be_attached && has_displays)
