@@ -14,7 +14,6 @@
 
 #include "ply-event-loop.h"
 #include "ply-utils.h"
-#include "plymouthd-process-private.h"
 #include "plymouthd-settings-private.h"
 
 plymouthd_t *
@@ -36,8 +35,6 @@ plymouthd_free_state (plymouthd_t *state)
 {
         if (state == NULL)
                 return;
-
-        plymouthd_process_free (state->process);
 
         free (state);
 }
