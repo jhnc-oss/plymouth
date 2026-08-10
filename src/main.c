@@ -55,6 +55,7 @@
 #include "ply-utils.h"
 #include "ply-progress.h"
 #include "ply-kmsg-reader.h"
+#include "plymouthd-interaction-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
@@ -66,62 +67,43 @@ static int crash_fd = -1;
 
 typedef struct
 {
-        const char            *keys;
-        ply_trigger_t         *trigger;
-        ply_boot_connection_t *connection;
-} ply_keystroke_watch_t;
+        ply_event_loop_t        *loop;
+        ply_boot_server_t       *boot_server;
+        ply_boot_splash_t       *boot_splash;
+        ply_kmsg_reader_t       *kmsg_reader;
+        ply_terminal_session_t  *session;
+        ply_buffer_t            *boot_buffer;
+        ply_progress_t          *progress;
+        plymouthd_interaction_t *interaction;
+        ply_list_t              *messages;
+        ply_command_parser_t    *command_parser;
+        ply_boot_splash_mode_t   mode;
+        ply_terminal_t          *local_console_terminal;
+        ply_device_manager_t    *device_manager;
 
-typedef struct
-{
-        enum { PLY_ENTRY_TRIGGER_TYPE_PASSWORD,
-               PLY_ENTRY_TRIGGER_TYPE_QUESTION }
-        type;
-        const char            *prompt;
-        ply_trigger_t         *trigger;
-        ply_boot_connection_t *connection;
-} ply_entry_trigger_t;
+        ply_trigger_t           *deactivate_trigger;
+        ply_trigger_t           *quit_trigger;
+        ply_trigger_t           *kmsg_trigger;
 
-typedef struct
-{
-        ply_event_loop_t       *loop;
-        ply_boot_server_t      *boot_server;
-        ply_boot_splash_t      *boot_splash;
-        ply_kmsg_reader_t      *kmsg_reader;
-        ply_terminal_session_t *session;
-        ply_buffer_t           *boot_buffer;
-        ply_progress_t         *progress;
-        ply_list_t             *keystroke_triggers;
-        ply_list_t             *entry_triggers;
-        ply_buffer_t           *entry_buffer;
-        ply_list_t             *messages;
-        ply_command_parser_t   *command_parser;
-        ply_boot_splash_mode_t  mode;
-        ply_terminal_t         *local_console_terminal;
-        ply_device_manager_t   *device_manager;
+        double                   start_time;
+        plymouthd_settings_t     settings;
 
-        ply_trigger_t          *deactivate_trigger;
-        ply_trigger_t          *quit_trigger;
-        ply_trigger_t          *kmsg_trigger;
+        uint32_t                 no_boot_log : 1;
+        uint32_t                 showing_details : 1;
+        uint32_t                 system_initialized : 1;
+        uint32_t                 is_redirected : 1;
+        uint32_t                 is_attached : 1;
+        uint32_t                 should_be_attached : 1;
+        uint32_t                 should_retain_splash : 1;
+        uint32_t                 is_inactive : 1;
+        uint32_t                 is_shown : 1;
+        uint32_t                 should_force_details : 1;
+        uint32_t                 should_force_default_splash : 1;
+        uint32_t                 splash_is_becoming_idle : 1;
 
-        double                  start_time;
-        plymouthd_settings_t    settings;
+        const char              *default_tty;
 
-        uint32_t                no_boot_log : 1;
-        uint32_t                showing_details : 1;
-        uint32_t                system_initialized : 1;
-        uint32_t                is_redirected : 1;
-        uint32_t                is_attached : 1;
-        uint32_t                should_be_attached : 1;
-        uint32_t                should_retain_splash : 1;
-        uint32_t                is_inactive : 1;
-        uint32_t                is_shown : 1;
-        uint32_t                should_force_details : 1;
-        uint32_t                should_force_default_splash : 1;
-        uint32_t                splash_is_becoming_idle : 1;
-
-        const char             *default_tty;
-
-        int                     number_of_errors;
+        int                      number_of_errors;
 } state_t;
 
 static void show_splash (state_t *state);
@@ -353,8 +335,6 @@ on_ask_for_password (state_t               *state,
                      ply_trigger_t         *answer,
                      ply_boot_connection_t *connection)
 {
-        ply_entry_trigger_t *entry_trigger;
-
         if (state->boot_splash == NULL) {
                 /* Waiting to be shown, boot splash will
                  * arrive shortly so just sit tight
@@ -380,14 +360,11 @@ on_ask_for_password (state_t               *state,
                 }
         }
 
-        entry_trigger = calloc (1, sizeof(ply_entry_trigger_t));
-        entry_trigger->type = PLY_ENTRY_TRIGGER_TYPE_PASSWORD;
-        entry_trigger->prompt = prompt;
-        entry_trigger->trigger = answer;
-        entry_trigger->connection = connection;
-        ply_trace ("queuing password request with boot splash");
-        ply_list_append_data (state->entry_triggers, entry_trigger);
-        update_display (state);
+        plymouthd_interaction_queue_password (state->interaction,
+                                              state->boot_splash,
+                                              prompt,
+                                              answer,
+                                              connection);
 }
 
 static void
@@ -396,16 +373,11 @@ on_ask_question (state_t               *state,
                  ply_trigger_t         *answer,
                  ply_boot_connection_t *connection)
 {
-        ply_entry_trigger_t *entry_trigger;
-
-        entry_trigger = calloc (1, sizeof(ply_entry_trigger_t));
-        entry_trigger->type = PLY_ENTRY_TRIGGER_TYPE_QUESTION;
-        entry_trigger->prompt = prompt;
-        entry_trigger->trigger = answer;
-        entry_trigger->connection = connection;
-        ply_trace ("queuing question with boot splash");
-        ply_list_append_data (state->entry_triggers, entry_trigger);
-        update_display (state);
+        plymouthd_interaction_queue_question (state->interaction,
+                                              state->boot_splash,
+                                              prompt,
+                                              answer,
+                                              connection);
 }
 
 static void
@@ -454,74 +426,26 @@ on_watch_for_keystroke (state_t               *state,
                         ply_trigger_t         *trigger,
                         ply_boot_connection_t *connection)
 {
-        ply_keystroke_watch_t *keystroke_trigger =
-                calloc (1, sizeof(ply_keystroke_watch_t));
-
-        ply_trace ("watching for keystroke");
-        keystroke_trigger->keys = keys;
-        keystroke_trigger->trigger = trigger;
-        keystroke_trigger->connection = connection;
-        ply_list_append_data (state->keystroke_triggers, keystroke_trigger);
+        plymouthd_interaction_watch_keystroke (state->interaction,
+                                               keys,
+                                               trigger,
+                                               connection);
 }
 
 static void
 on_connection_hangup (state_t               *state,
                       ply_boot_connection_t *connection)
 {
-        ply_list_node_t *node;
-
-        node = ply_list_get_first_node (state->entry_triggers);
-        while (node) {
-                ply_list_node_t *next = ply_list_get_next_node (state->entry_triggers, node);
-                ply_entry_trigger_t *entry_trigger = ply_list_node_get_data (node);
-                if (entry_trigger->connection == connection) {
-                        bool is_active = (node == ply_list_get_first_node (state->entry_triggers));
-
-                        ply_trace ("cancelling pending prompt for disconnected client");
-                        ply_trigger_pull (entry_trigger->trigger, NULL);
-                        /* Only clear the typed-text buffer when cancelling the active
-                         * (head) prompt; queued prompts haven't received any input yet. */
-                        if (is_active)
-                                ply_buffer_clear (state->entry_buffer);
-                        ply_list_remove_node (state->entry_triggers, node);
-                        free (entry_trigger);
-                        update_display (state);
-                }
-                node = next;
-        }
-
-        node = ply_list_get_first_node (state->keystroke_triggers);
-        while (node) {
-                ply_list_node_t *next = ply_list_get_next_node (state->keystroke_triggers, node);
-                ply_keystroke_watch_t *keystroke_trigger = ply_list_node_get_data (node);
-                if (keystroke_trigger->connection == connection) {
-                        ply_trace ("cancelling pending keystroke watch for disconnected client");
-                        ply_trigger_pull (keystroke_trigger->trigger, NULL);
-                        ply_list_remove_node (state->keystroke_triggers, node);
-                        free (keystroke_trigger);
-                }
-                node = next;
-        }
+        plymouthd_interaction_cancel_connection (state->interaction,
+                                                 state->boot_splash,
+                                                 connection);
 }
 
 static void
 on_ignore_keystroke (state_t    *state,
                      const char *keys)
 {
-        ply_list_node_t *node;
-
-        ply_trace ("ignoring for keystroke");
-
-        for (node = ply_list_get_first_node (state->keystroke_triggers); node;
-             node = ply_list_get_next_node (state->keystroke_triggers, node)) {
-                ply_keystroke_watch_t *keystroke_trigger = ply_list_node_get_data (node);
-                if ((!keystroke_trigger->keys && !keys) ||
-                    (keystroke_trigger->keys && keys && strcmp (keystroke_trigger->keys, keys) == 0)) {
-                        ply_trigger_pull (keystroke_trigger->trigger, NULL);
-                        ply_list_remove_node (state->keystroke_triggers, node);
-                        return;
-                }
-        }
+        plymouthd_interaction_ignore_keystroke (state->interaction, keys);
 }
 
 static void
@@ -1418,54 +1342,11 @@ start_boot_server (state_t *state)
         return server;
 }
 
-static bool
-validate_input (state_t    *state,
-                const char *entry_text,
-                const char *add_text)
-{
-        bool input_valid;
-
-        if (!state->boot_splash)
-                return true;
-        input_valid = ply_boot_splash_validate_input (state->boot_splash, entry_text, add_text);
-        return input_valid;
-}
-
-
 static void
 update_display (state_t *state)
 {
-        if (!state->boot_splash) return;
-
-        ply_list_node_t *node;
-        node = ply_list_get_first_node (state->entry_triggers);
-        if (node) {
-                ply_entry_trigger_t *entry_trigger = ply_list_node_get_data (node);
-                if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_PASSWORD) {
-                        int bullets = ply_utf8_string_get_length (ply_buffer_get_bytes (state->entry_buffer),
-                                                                  ply_buffer_get_size (state->entry_buffer));
-                        bullets = MAX (0, bullets);
-                        ply_boot_splash_display_password (state->boot_splash,
-                                                          entry_trigger->prompt,
-                                                          bullets);
-                        ply_boot_splash_display_prompt (state->boot_splash,
-                                                        entry_trigger->prompt,
-                                                        ply_buffer_get_bytes (state->entry_buffer),
-                                                        true);
-                } else if (entry_trigger->type == PLY_ENTRY_TRIGGER_TYPE_QUESTION) {
-                        ply_boot_splash_display_question (state->boot_splash,
-                                                          entry_trigger->prompt,
-                                                          ply_buffer_get_bytes (state->entry_buffer));
-                        ply_boot_splash_display_prompt (state->boot_splash,
-                                                        entry_trigger->prompt,
-                                                        ply_buffer_get_bytes (state->entry_buffer),
-                                                        false);
-                } else {
-                        ply_trace ("unkown entry type");
-                }
-        } else {
-                ply_boot_splash_display_normal (state->boot_splash);
-        }
+        plymouthd_interaction_update_display (state->interaction,
+                                              state->boot_splash);
 }
 
 static void
@@ -1501,7 +1382,8 @@ on_escape_pressed (state_t *state)
                 has_vt_consoles = false;
         }
 
-        if (validate_input (state, "", "\e") && has_vt_consoles == true)
+        if (plymouthd_validate_prompt_input (state->boot_splash, "", "\e") &&
+            has_vt_consoles == true)
                 toggle_between_splash_and_details (state);
 }
 
@@ -1510,86 +1392,26 @@ on_keyboard_input (state_t    *state,
                    const char *keyboard_input,
                    size_t      character_size)
 {
-        ply_list_node_t *node;
-
-        node = ply_list_get_first_node (state->entry_triggers);
-        if (node) { /* \x3 (ETX) is Ctrl+C and \x4 (EOT) is Ctrl+D */
-                if (!validate_input (state, ply_buffer_get_bytes (state->entry_buffer), keyboard_input))
-                        return;
-                if (character_size == 1 && (keyboard_input[0] == '\x3' || keyboard_input[0] == '\x4')) {
-                        ply_entry_trigger_t *entry_trigger = ply_list_node_get_data (node);
-                        ply_trigger_pull (entry_trigger->trigger, "\x3");
-                        ply_buffer_clear (state->entry_buffer);
-                        ply_list_remove_node (state->entry_triggers, node);
-                        free (entry_trigger);
-                } else if (character_size >= 2 && keyboard_input[0] == '\033') {
-                        /* Ignore escape sequences */
-                } else {
-                        ply_buffer_append_bytes (state->entry_buffer, keyboard_input, character_size);
-                }
-                update_display (state);
-        } else {
-                for (node = ply_list_get_first_node (state->keystroke_triggers); node;
-                     node = ply_list_get_next_node (state->keystroke_triggers, node)) {
-                        ply_keystroke_watch_t *keystroke_trigger = ply_list_node_get_data (node);
-                        if (!keystroke_trigger->keys || strstr (keystroke_trigger->keys, keyboard_input)) { /* assume strstr works on utf8 arrays */
-                                ply_trigger_pull (keystroke_trigger->trigger, keyboard_input);
-                                ply_list_remove_node (state->keystroke_triggers, node);
-                                free (keystroke_trigger);
-                                return;
-                        }
-                }
-                return;
-        }
+        plymouthd_interaction_handle_input (state->interaction,
+                                            state->boot_splash,
+                                            keyboard_input,
+                                            character_size);
 }
 
 static void
 on_backspace (state_t *state)
 {
-        char *bytes;
-        size_t size;
-        size_t capacity;
-        ply_list_node_t *node = ply_list_get_first_node (state->entry_triggers);
-
-        if (!node) return;
-
-        ply_buffer_borrow_bytes (state->entry_buffer, &bytes, &size, &capacity) {
-                ply_utf8_string_remove_last_character (&bytes, &size);
-        }
-
-        update_display (state);
+        plymouthd_interaction_handle_backspace (state->interaction,
+                                                state->boot_splash);
 }
 
 static void
 on_enter (state_t    *state,
           const char *line)
 {
-        ply_list_node_t *node;
-
-        node = ply_list_get_first_node (state->entry_triggers);
-        if (node) {
-                ply_entry_trigger_t *entry_trigger = ply_list_node_get_data (node);
-                const char *reply_text = ply_buffer_get_bytes (state->entry_buffer);
-                if (!validate_input (state, reply_text, "\n"))
-                        return;
-                ply_trigger_pull (entry_trigger->trigger, reply_text);
-                ply_buffer_clear (state->entry_buffer);
-                ply_list_remove_node (state->entry_triggers, node);
-                free (entry_trigger);
-                update_display (state);
-        } else {
-                for (node = ply_list_get_first_node (state->keystroke_triggers); node;
-                     node = ply_list_get_next_node (state->keystroke_triggers, node)) {
-                        ply_keystroke_watch_t *keystroke_trigger = ply_list_node_get_data (node);
-                        if (!keystroke_trigger->keys || strstr (keystroke_trigger->keys, "\n")) { /* assume strstr works on utf8 arrays */
-                                ply_trigger_pull (keystroke_trigger->trigger, line);
-                                ply_list_remove_node (state->keystroke_triggers, node);
-                                free (keystroke_trigger);
-                                return;
-                        }
-                }
-                return;
-        }
+        plymouthd_interaction_handle_enter (state->interaction,
+                                            state->boot_splash,
+                                            line);
 }
 
 static void
@@ -1946,9 +1768,7 @@ initialize_environment (state_t *state)
 
         ply_trace ("source built on %s", __DATE__);
 
-        state->keystroke_triggers = ply_list_new ();
-        state->entry_triggers = ply_list_new ();
-        state->entry_buffer = ply_buffer_new ();
+        state->interaction = plymouthd_interaction_new ();
         state->messages = ply_list_new ();
 
         if (!ply_is_tracing_to_terminal ())
@@ -2402,6 +2222,7 @@ main (int    argc,
 
         ply_buffer_free (state.boot_buffer);
         ply_progress_free (state.progress);
+        plymouthd_interaction_free (state.interaction);
 
         ply_trace ("exiting with code %d", exit_code);
 
