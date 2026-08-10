@@ -22,8 +22,32 @@
 #include "plymouthd-logging-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-state-private.h"
+#include "plymouthd-transition-private.h"
 
 typedef plymouthd_t state_t;
+
+bool
+plymouthd_initialize_session (state_t *state,
+                              bool     should_attach)
+{
+        state->boot_buffer = ply_buffer_new ();
+        state->transition = plymouthd_transition_new ();
+        state->session = plymouthd_session_new (
+                state->loop,
+                (plymouthd_session_output_handler_t)
+                plymouthd_handle_session_output,
+                (plymouthd_session_hangup_handler_t)
+                plymouthd_handle_session_hangup,
+                (plymouthd_session_kmsg_handler_t)
+                plymouthd_handle_kmsg,
+                state);
+
+        if (!should_attach)
+                return true;
+
+        state->should_be_attached = true;
+        return plymouthd_attach_session (state);
+}
 
 void
 plymouthd_handle_session_output (state_t    *state,

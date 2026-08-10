@@ -19,6 +19,8 @@
 
 typedef struct _plymouthd plymouthd_t;
 
+PLY_PRIVATE bool plymouthd_initialize_session (plymouthd_t *daemon,
+                                               bool         should_attach);
 PLY_PRIVATE void plymouthd_handle_session_output (plymouthd_t *daemon,
                                                   const char  *output,
                                                   size_t       size);
