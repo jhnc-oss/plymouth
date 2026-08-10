@@ -204,6 +204,19 @@ plymouthd_commands_dep = declare_dependency(
   link_with: plymouthd_commands,
 )
 
+plymouthd_display = static_library(
+  'plymouthd-display-private',
+  'plymouthd-display.c',
+  dependencies: [libply_dep, libply_splash_core_dep, plymouthd_policy_dep, plymouthd_splash_dep, plymouthd_interaction_dep, plymouthd_messages_dep, plymouthd_progress_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_display_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_display,
+)
+
 plymouthd_sources = files(
   'main.c',
   'plymouthd.c',
@@ -228,6 +241,7 @@ plymouthd_deps = [
   plymouthd_transition_dep,
   plymouthd_options_dep,
   plymouthd_commands_dep,
+  plymouthd_display_dep,
 ]
 
 plymouthd = executable('plymouthd',
