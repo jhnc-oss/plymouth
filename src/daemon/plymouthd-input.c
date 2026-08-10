@@ -57,10 +57,10 @@ plymouthd_handle_escape (plymouthd_t *daemon,
                 plymouthd_toggle_details (daemon);
 }
 
-void
-plymouthd_attach_keyboard (plymouthd_t                     *daemon,
-                           ply_keyboard_t                  *keyboard,
-                           plymouthd_input_escape_handler_t escape_handler)
+static void
+attach_keyboard (plymouthd_t                     *daemon,
+                 ply_keyboard_t                  *keyboard,
+                 plymouthd_input_escape_handler_t escape_handler)
 {
         ply_trace ("listening for keystrokes");
         ply_keyboard_add_input_handler (
@@ -89,9 +89,7 @@ plymouthd_handle_keyboard_added (plymouthd_t                     *daemon,
                                  ply_keyboard_t                  *keyboard,
                                  plymouthd_input_escape_handler_t escape_handler)
 {
-        plymouthd_attach_keyboard (daemon,
-                                   keyboard,
-                                   escape_handler);
+        attach_keyboard (daemon, keyboard, escape_handler);
 
         if (daemon->boot_splash != NULL) {
                 ply_trace ("keyboard set after splash loaded, so attaching to splash");
