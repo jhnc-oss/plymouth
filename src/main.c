@@ -41,7 +41,6 @@
 #include <linux/vt.h>
 
 #include "ply-buffer.h"
-#include "ply-command-parser.h"
 #include "ply-boot-server-private.h"
 #include "ply-boot-splash.h"
 #include "ply-device-manager.h"
@@ -59,6 +58,7 @@
 #include "plymouthd-diagnostics-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
+#include "plymouthd-options-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-session-private.h"
@@ -1498,24 +1498,13 @@ main (int    argc,
 {
         state_t state = { 0 };
         int exit_code;
-        bool should_help = false;
-        bool no_boot_log = false;
-        bool no_daemon = false;
-        bool debug = false;
-        bool ignore_serial_consoles = false;
-        bool graphical_boot = false;
-        bool attach_to_session;
-        char *boot_log_file = NULL;
-        char *debug_path = NULL;
+        bool should_ignore_serial_consoles;
         ply_daemon_handle_t *daemon_handle = NULL;
-        ply_command_parser_t *command_parser;
-        char *mode_string = NULL;
-        char *kernel_command_line = NULL;
-        char *tty = NULL;
+        plymouthd_options_t *options;
         ply_device_manager_flags_t device_manager_flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
 
         state.start_time = ply_get_timestamp ();
-        command_parser = ply_command_parser_new ("plymouthd", "Splash server");
+        options = plymouthd_options_new ();
 
         state.loop = ply_event_loop_get_default ();
 
@@ -1523,53 +1512,22 @@ main (int    argc,
         if (ply_file_exists (PLYMOUTH_LOCALE_DIRECTORY "/nl/LC_MESSAGES/plymouth.mo"))
                 setlocale (LC_ALL, "");
 
-        ply_command_parser_add_options (command_parser,
-                                        "help", "This help message", PLY_COMMAND_OPTION_TYPE_FLAG,
-                                        "attach-to-session", "Redirect console messages from screen to log", PLY_COMMAND_OPTION_TYPE_FLAG,
-                                        "no-daemon", "Do not daemonize", PLY_COMMAND_OPTION_TYPE_FLAG,
-                                        "debug", "Output debugging information", PLY_COMMAND_OPTION_TYPE_FLAG,
-                                        "debug-file", "File to output debugging information to", PLY_COMMAND_OPTION_TYPE_STRING,
-                                        "mode", "Mode is one of: boot-up, shutdown, reboot, updates, "
-                                        "system-upgrade, firmware-upgrade, system-reset", PLY_COMMAND_OPTION_TYPE_STRING,
-                                        "pid-file", "Write the pid of the daemon to a file", PLY_COMMAND_OPTION_TYPE_STRING,
-                                        "kernel-command-line", "Fake kernel command line to use", PLY_COMMAND_OPTION_TYPE_STRING,
-                                        "tty", "TTY to use instead of default", PLY_COMMAND_OPTION_TYPE_STRING,
-                                        "no-boot-log", "Do not write boot log file", PLY_COMMAND_OPTION_TYPE_FLAG,
-                                        "ignore-serial-consoles", "Ignore serial consoles", PLY_COMMAND_OPTION_TYPE_FLAG,
-                                        "graphical-boot", "Use graphical splashes even if the kernel console is not a VT", PLY_COMMAND_OPTION_TYPE_FLAG,
-                                        NULL);
-
-        if (!ply_command_parser_parse_arguments (command_parser, state.loop, argv, argc)) {
+        if (!plymouthd_options_parse (options, state.loop, argv, argc)) {
                 char *help_string;
 
-                help_string = ply_command_parser_get_help_string (command_parser);
+                help_string = plymouthd_options_get_help_string (options);
 
                 ply_error_without_new_line ("%s", help_string);
 
                 free (help_string);
+                plymouthd_options_free (options);
                 return EX_USAGE;
         }
 
-        ply_command_parser_get_options (command_parser,
-                                        "help", &should_help,
-                                        "attach-to-session", &attach_to_session,
-                                        "mode", &mode_string,
-                                        "no-boot-log", &no_boot_log,
-                                        "no-daemon", &no_daemon,
-                                        "debug", &debug,
-                                        "ignore-serial-consoles", &ignore_serial_consoles,
-                                        "graphical-boot", &graphical_boot,
-                                        "debug-file", &debug_path,
-                                        "boot-log", &boot_log_file,
-                                        "pid-file", &pid_file,
-                                        "tty", &tty,
-                                        "kernel-command-line", &kernel_command_line,
-                                        NULL);
-
-        if (should_help) {
+        if (plymouthd_options_should_help (options)) {
                 char *help_string;
 
-                help_string = ply_command_parser_get_help_string (command_parser);
+                help_string = plymouthd_options_get_help_string (options);
 
                 if (argc < 2)
                         fprintf (stderr, "%s", help_string);
@@ -1577,25 +1535,25 @@ main (int    argc,
                         printf ("%s", help_string);
 
                 free (help_string);
+                plymouthd_options_free (options);
                 return 0;
         }
 
-        if (debug && !ply_is_tracing ())
+        if (plymouthd_options_should_debug (options) && !ply_is_tracing ())
                 ply_toggle_tracing ();
 
-        if (mode_string != NULL) {
-                state.mode = plymouthd_mode_from_string (mode_string);
-                if (state.mode == PLY_BOOT_SPLASH_MODE_INVALID)
-                        state.mode = PLY_BOOT_SPLASH_MODE_BOOT_UP;
+        state.mode = plymouthd_options_get_mode (options);
+        should_ignore_serial_consoles =
+                plymouthd_options_should_ignore_serial_consoles (options);
 
-                free (mode_string);
-        }
+        if (plymouthd_options_get_tty (options) != NULL)
+                state.default_tty = plymouthd_options_get_tty (options);
 
-        if (tty != NULL)
-                state.default_tty = tty;
+        if (plymouthd_options_get_kernel_command_line (options) != NULL)
+                ply_kernel_command_line_override (
+                        plymouthd_options_get_kernel_command_line (options));
 
-        if (kernel_command_line != NULL)
-                ply_kernel_command_line_override (kernel_command_line);
+        pid_file = plymouthd_options_take_pid_file (options);
 
         if (geteuid () != 0) {
                 ply_error ("plymouthd must be run as root user");
@@ -1603,13 +1561,13 @@ main (int    argc,
         }
 
         state.logging = plymouthd_logging_new (state.mode,
-                                               boot_log_file,
-                                               no_boot_log);
+                                               plymouthd_options_get_boot_log_path (options),
+                                               !plymouthd_options_should_log_boot (options));
 
         chdir ("/");
         signal (SIGPIPE, SIG_IGN);
 
-        if (!no_daemon) {
+        if (plymouthd_options_should_daemonize (options)) {
                 daemon_handle = ply_create_daemon ();
 
                 if (daemon_handle == NULL) {
@@ -1622,17 +1580,20 @@ main (int    argc,
         signal (SIGSEGV, on_crash);
         signal (SIGFPE, on_crash);
 
-        if (graphical_boot ||
+        if (plymouthd_options_should_use_graphical_boot (options) ||
             ply_kernel_command_line_has_argument ("plymouth.graphical") ||
             plymouthd_kernel_console_is_ttynull ()) {
                 state.should_force_default_splash = true;
-                ignore_serial_consoles = true;
+                should_ignore_serial_consoles = true;
         }
 
         /* before do anything we need to make sure we have a working
          * environment.
          */
-        if (!initialize_environment (&state, debug_path, debug)) {
+        if (!initialize_environment (
+                    &state,
+                    plymouthd_options_get_debug_path (options),
+                    plymouthd_options_should_debug (options))) {
                 if (errno == 0) {
                         if (daemon_handle != NULL)
                                 ply_detach_daemon (daemon_handle, 0);
@@ -1678,11 +1639,11 @@ main (int    argc,
                 (plymouthd_session_kmsg_handler_t) on_new_kmsg_message,
                 &state);
 
-        if (attach_to_session) {
-                state.should_be_attached = attach_to_session;
+        if (plymouthd_options_should_attach_to_session (options)) {
+                state.should_be_attached = true;
                 if (!attach_to_running_session (&state)) {
                         ply_trace ("could not redirect console session: %m");
-                        if (!no_daemon)
+                        if (plymouthd_options_should_daemonize (options))
                                 ply_detach_daemon (daemon_handle, EX_UNAVAILABLE);
                         return EX_UNAVAILABLE;
                 }
@@ -1705,7 +1666,7 @@ main (int    argc,
         plymouthd_settings_load (&state.settings);
 
         if (ply_kernel_command_line_has_argument ("plymouth.ignore-serial-consoles") ||
-            ignore_serial_consoles == true)
+            should_ignore_serial_consoles)
                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_SERIAL_CONSOLES;
 
         if (ply_kernel_command_line_has_argument ("plymouth.ignore-udev") ||
@@ -1744,8 +1705,6 @@ main (int    argc,
         ply_boot_splash_free (state.boot_splash);
         state.boot_splash = NULL;
 
-        ply_command_parser_free (command_parser);
-
         ply_boot_server_free (state.boot_server);
         state.boot_server = NULL;
 
@@ -1767,6 +1726,7 @@ main (int    argc,
         plymouthd_diagnostics_free (diagnostics);
 
         plymouthd_settings_free (&state.settings);
+        plymouthd_options_free (options);
 
         return exit_code;
 }
