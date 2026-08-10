@@ -30,22 +30,20 @@
 #include "plymouthd-settings-private.h"
 #include "plymouthd-state-private.h"
 
-typedef plymouthd_t state_t;
-
 void
-plymouthd_handle_update (state_t    *state,
-                         const char *status)
+plymouthd_handle_update (plymouthd_t *daemon,
+                         const char  *status)
 {
         ply_trace ("updating status to '%s'", status);
-        plymouthd_progress_status_update (state->progress, status);
-        if (state->boot_splash != NULL)
-                ply_boot_splash_update_status (state->boot_splash,
+        plymouthd_progress_status_update (daemon->progress, status);
+        if (daemon->boot_splash != NULL)
+                ply_boot_splash_update_status (daemon->boot_splash,
                                                status);
 }
 
 void
-plymouthd_handle_change_mode (state_t    *state,
-                              const char *mode)
+plymouthd_handle_change_mode (plymouthd_t *daemon,
+                              const char  *mode)
 {
         ply_boot_splash_mode_t new_mode;
 
@@ -54,59 +52,59 @@ plymouthd_handle_change_mode (state_t    *state,
         if (new_mode == PLY_BOOT_SPLASH_MODE_INVALID)
                 return;
 
-        state->mode = new_mode;
-        plymouthd_logging_set_mode (state->logging, new_mode);
-        plymouthd_progress_set_mode (state->progress, new_mode);
+        daemon->mode = new_mode;
+        plymouthd_logging_set_mode (daemon->logging, new_mode);
+        plymouthd_progress_set_mode (daemon->progress, new_mode);
 
-        plymouthd_logging_prepare (state->logging, state->session);
+        plymouthd_logging_prepare (daemon->logging, daemon->session);
 
-        if (state->boot_splash == NULL) {
+        if (daemon->boot_splash == NULL) {
                 ply_trace ("no splash set");
                 return;
         }
 
-        if (!ply_boot_splash_show (state->boot_splash, state->mode)) {
+        if (!ply_boot_splash_show (daemon->boot_splash, daemon->mode)) {
                 ply_trace ("failed to update splash");
                 return;
         }
 }
 
 void
-plymouthd_handle_system_update (state_t *state,
-                                int      progress)
+plymouthd_handle_system_update (plymouthd_t *daemon,
+                                int          progress)
 {
-        if (state->boot_splash == NULL) {
+        if (daemon->boot_splash == NULL) {
                 ply_trace ("no splash set");
                 return;
         }
 
         ply_trace ("setting system update to '%i'", progress);
-        if (!ply_boot_splash_system_update (state->boot_splash, progress)) {
+        if (!ply_boot_splash_system_update (daemon->boot_splash, progress)) {
                 ply_trace ("failed to update splash");
                 return;
         }
 }
 
 void
-plymouthd_handle_ask_for_password (state_t               *state,
+plymouthd_handle_ask_for_password (plymouthd_t           *daemon,
                                    const char            *prompt,
                                    ply_trigger_t         *answer,
                                    ply_boot_connection_t *connection)
 {
-        if (state->boot_splash == NULL) {
+        if (daemon->boot_splash == NULL) {
                 /* Waiting to be shown, boot splash will
                  * arrive shortly so just sit tight
                  */
-                if (state->is_shown) {
+                if (daemon->is_shown) {
                         bool has_displays;
 
-                        plymouthd_cancel_pending_show (state);
+                        plymouthd_cancel_pending_show (daemon);
 
-                        has_displays = plymouthd_has_displays (state);
+                        has_displays = plymouthd_has_displays (daemon);
 
                         if (has_displays) {
                                 ply_trace ("displays available now, showing splash immediately");
-                                plymouthd_show_splash (state);
+                                plymouthd_show_splash (daemon);
                         } else {
                                 ply_trace ("splash still coming up, waiting a bit");
                         }
@@ -118,102 +116,102 @@ plymouthd_handle_ask_for_password (state_t               *state,
                 }
         }
 
-        plymouthd_interaction_queue_password (state->interaction,
-                                              state->boot_splash,
+        plymouthd_interaction_queue_password (daemon->interaction,
+                                              daemon->boot_splash,
                                               prompt,
                                               answer,
                                               connection);
 }
 
 void
-plymouthd_handle_ask_question (state_t               *state,
+plymouthd_handle_ask_question (plymouthd_t           *daemon,
                                const char            *prompt,
                                ply_trigger_t         *answer,
                                ply_boot_connection_t *connection)
 {
-        plymouthd_interaction_queue_question (state->interaction,
-                                              state->boot_splash,
+        plymouthd_interaction_queue_question (daemon->interaction,
+                                              daemon->boot_splash,
                                               prompt,
                                               answer,
                                               connection);
 }
 
 void
-plymouthd_handle_display_message (state_t    *state,
-                                  const char *message)
+plymouthd_handle_display_message (plymouthd_t *daemon,
+                                  const char  *message)
 {
-        plymouthd_messages_display (state->messages,
-                                    state->boot_splash,
+        plymouthd_messages_display (daemon->messages,
+                                    daemon->boot_splash,
                                     message);
 }
 
 void
-plymouthd_handle_hide_message (state_t    *state,
-                               const char *message)
+plymouthd_handle_hide_message (plymouthd_t *daemon,
+                               const char  *message)
 {
-        plymouthd_messages_hide (state->messages,
-                                 state->boot_splash,
+        plymouthd_messages_hide (daemon->messages,
+                                 daemon->boot_splash,
                                  message);
 }
 
 void
-plymouthd_handle_watch_for_keystroke (state_t               *state,
+plymouthd_handle_watch_for_keystroke (plymouthd_t           *daemon,
                                       const char            *keys,
                                       ply_trigger_t         *trigger,
                                       ply_boot_connection_t *connection)
 {
-        plymouthd_interaction_watch_keystroke (state->interaction,
+        plymouthd_interaction_watch_keystroke (daemon->interaction,
                                                keys,
                                                trigger,
                                                connection);
 }
 
 void
-plymouthd_handle_connection_hangup (state_t               *state,
+plymouthd_handle_connection_hangup (plymouthd_t           *daemon,
                                     ply_boot_connection_t *connection)
 {
-        plymouthd_interaction_cancel_connection (state->interaction,
-                                                 state->boot_splash,
+        plymouthd_interaction_cancel_connection (daemon->interaction,
+                                                 daemon->boot_splash,
                                                  connection);
 }
 
 void
-plymouthd_handle_ignore_keystroke (state_t    *state,
-                                   const char *keys)
+plymouthd_handle_ignore_keystroke (plymouthd_t *daemon,
+                                   const char  *keys)
 {
-        plymouthd_interaction_ignore_keystroke (state->interaction, keys);
+        plymouthd_interaction_ignore_keystroke (daemon->interaction, keys);
 }
 
 void
-plymouthd_handle_progress_pause (state_t *state)
+plymouthd_handle_progress_pause (plymouthd_t *daemon)
 {
         ply_trace ("pausing progress");
-        plymouthd_progress_pause (state->progress);
+        plymouthd_progress_pause (daemon->progress);
 }
 
 void
-plymouthd_handle_progress_unpause (state_t *state)
+plymouthd_handle_progress_unpause (plymouthd_t *daemon)
 {
         ply_trace ("unpausing progress");
-        plymouthd_progress_unpause (state->progress);
+        plymouthd_progress_unpause (daemon->progress);
 }
 
 void
-plymouthd_handle_newroot (state_t    *state,
-                          const char *root_dir)
+plymouthd_handle_newroot (plymouthd_t *daemon,
+                          const char  *root_dir)
 {
         if (plymouthd_shell_is_init ()) {
                 ply_trace ("new root mounted at \"%s\", exiting since init= a shell", root_dir);
-                plymouthd_handle_quit (state, false, ply_trigger_new (NULL));
+                plymouthd_handle_quit (daemon, false, ply_trigger_new (NULL));
                 return;
         }
 
         ply_trace ("new root mounted at \"%s\", switching to it", root_dir);
 
         if (!strcmp (root_dir, "/run/initramfs") &&
-            plymouthd_process_has_diagnostics (state->process)) {
+            plymouthd_process_has_diagnostics (daemon->process)) {
                 ply_trace ("switching back to initramfs, dumping debug-buffer now");
-                plymouthd_process_dump_diagnostics (state->process);
+                plymouthd_process_dump_diagnostics (daemon->process);
         }
 
         chdir (root_dir);
@@ -221,61 +219,61 @@ plymouthd_handle_newroot (state_t    *state,
         chdir ("/");
         /* Update local now that we have /usr/share/locale available */
         setlocale (LC_ALL, "");
-        plymouthd_progress_load_cache (state->progress);
-        if (state->boot_splash != NULL)
-                ply_boot_splash_root_mounted (state->boot_splash);
+        plymouthd_progress_load_cache (daemon->progress);
+        if (daemon->boot_splash != NULL)
+                ply_boot_splash_root_mounted (daemon->boot_splash);
 }
 
 void
-plymouthd_handle_system_initialized (state_t *state)
+plymouthd_handle_system_initialized (plymouthd_t *daemon)
 {
         ply_trace ("system now initialized, opening log");
 
-        plymouthd_session_request_details (state->session);
+        plymouthd_session_request_details (daemon->session);
 
-        plymouthd_logging_system_initialized (state->logging, state->session);
+        plymouthd_logging_system_initialized (daemon->logging, daemon->session);
 }
 
 void
-plymouthd_handle_error (state_t *state)
+plymouthd_handle_error (plymouthd_t *daemon)
 {
         ply_trace ("encountered error during boot up");
 
-        plymouthd_logging_record_error (state->logging);
+        plymouthd_logging_record_error (daemon->logging);
 }
 
 void
-plymouthd_handle_reload (state_t *state)
+plymouthd_handle_reload (plymouthd_t *daemon)
 {
         ply_trace ("reloading");
-        if (state->boot_splash != NULL) {
-                ply_boot_splash_hide (state->boot_splash);
-                ply_boot_splash_free (state->boot_splash);
-                state->boot_splash = NULL;
+        if (daemon->boot_splash != NULL) {
+                ply_boot_splash_hide (daemon->boot_splash);
+                ply_boot_splash_free (daemon->boot_splash);
+                daemon->boot_splash = NULL;
         }
 
-        plymouthd_settings_reload_theme_paths (state->settings);
+        plymouthd_settings_reload_theme_paths (daemon->settings);
 
-        if (state->is_inactive) {
+        if (daemon->is_inactive) {
                 ply_trace ("reload while inactive");
                 return;
         }
 
-        if (!state->is_shown) {
+        if (!daemon->is_shown) {
                 ply_trace ("reload while not shown");
                 return;
         }
 
-        if (state->showing_details) {
-                plymouthd_show_detailed_splash (state);
+        if (daemon->showing_details) {
+                plymouthd_show_detailed_splash (daemon);
         } else {
-                plymouthd_show_default_splash (state);
+                plymouthd_show_default_splash (daemon);
         }
 }
 
 
 bool
-plymouthd_handle_has_active_vt (state_t *state)
+plymouthd_handle_has_active_vt (plymouthd_t *daemon)
 {
-        return plymouthd_has_active_vt (state);
+        return plymouthd_has_active_vt (daemon);
 }
