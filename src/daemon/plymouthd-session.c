@@ -155,6 +155,12 @@ plymouthd_session_detach (plymouthd_session_t *session)
         if (session->terminal_session == NULL || !session->attached)
                 return;
 
+#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
+        ply_trace ("telling systemd to stop printing details");
+        if (kill (1, SIGRTMIN + 21) < 0)
+                ply_trace ("could not tell systemd to stop printing details: %m");
+#endif
+
         ply_trace ("stopping kmsg reader");
         ply_kmsg_reader_stop (session->kmsg_reader);
 

@@ -23,7 +23,6 @@
 #include "plymouthd-control-private.h"
 
 #include <assert.h>
-#include <signal.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -52,10 +51,6 @@ typedef plymouthd_t state_t;
 bool plymouthd_attach_session (state_t *state);
 static void detach_from_running_session (state_t *state);
 static void dump_details_and_quit_splash (state_t *state);
-
-#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-static void tell_systemd_to_stop_printing_details (state_t *state);
-#endif
 void
 plymouthd_handle_session_output (state_t    *state,
                                  const char *output,
@@ -372,16 +367,6 @@ plymouthd_handle_kmsg (state_t        *state,
         }
 }
 
-#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-static void
-tell_systemd_to_stop_printing_details (state_t *state)
-{
-        ply_trace ("telling systemd to stop printing details");
-        if (kill (1, SIGRTMIN + 21) < 0)
-                ply_trace ("could not tell systemd to stop printing details: %m");
-}
-#endif
-
 bool
 plymouthd_attach_session (state_t *state)
 {
@@ -401,13 +386,6 @@ plymouthd_attach_session (state_t *state)
 static void
 detach_from_running_session (state_t *state)
 {
-        if (!plymouthd_session_is_attached (state->session))
-                return;
-
-#ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-        tell_systemd_to_stop_printing_details (state);
-#endif
-
         plymouthd_session_detach (state->session);
 }
 
