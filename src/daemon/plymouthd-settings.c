@@ -32,7 +32,7 @@ plymouthd_settings_init (plymouthd_settings_t *settings)
 }
 
 void
-plymouthd_settings_free (plymouthd_settings_t *settings)
+plymouthd_settings_clear (plymouthd_settings_t *settings)
 {
         free (settings->override_splash_path);
         free (settings->system_default_splash_path);
@@ -41,6 +41,12 @@ plymouthd_settings_free (plymouthd_settings_t *settings)
         settings->override_splash_path = NULL;
         settings->system_default_splash_path = NULL;
         settings->distribution_default_splash_path = NULL;
+}
+
+void
+plymouthd_settings_free (plymouthd_settings_t *settings)
+{
+        plymouthd_settings_clear (settings);
 }
 
 bool

@@ -31,6 +31,7 @@ typedef struct
 } plymouthd_settings_t;
 
 PLY_PRIVATE void plymouthd_settings_init (plymouthd_settings_t *settings);
+PLY_PRIVATE void plymouthd_settings_clear (plymouthd_settings_t *settings);
 PLY_PRIVATE void plymouthd_settings_free (plymouthd_settings_t *settings);
 PLY_PRIVATE bool plymouthd_settings_apply_config_file (plymouthd_settings_t *settings,
                                                        const char           *path,
