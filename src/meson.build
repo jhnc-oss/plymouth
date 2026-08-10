@@ -52,6 +52,7 @@ plymouthd_private_sources = files(
   'daemon/plymouthd-control.c',
   'daemon/plymouthd-diagnostics.c',
   'daemon/plymouthd-display.c',
+  'daemon/plymouthd-environment.c',
   'daemon/plymouthd-interaction.c',
   'daemon/plymouthd-logging.c',
   'daemon/plymouthd-messages.c',
