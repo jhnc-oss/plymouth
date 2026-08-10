@@ -40,9 +40,9 @@ attach_pixel_display_to_splash (ply_pixel_display_t *display,
         ply_boot_splash_add_pixel_display (splash, display);
 }
 
-void
-plymouthd_attach_pixel_displays_to_splash (plymouthd_t       *daemon,
-                                           ply_boot_splash_t *splash)
+static void
+attach_pixel_displays_to_splash (plymouthd_t       *daemon,
+                                 ply_boot_splash_t *splash)
 {
         plymouthd_for_each_pixel_display (
                 daemon,
@@ -86,7 +86,7 @@ show_theme (plymouthd_t *daemon,
 
         plymouthd_progress_attach_to_splash (daemon->progress, splash);
         plymouthd_attach_keyboards_to_splash (daemon, splash);
-        plymouthd_attach_pixel_displays_to_splash (daemon, splash);
+        attach_pixel_displays_to_splash (daemon, splash);
         plymouthd_attach_text_displays_to_splash (daemon, splash);
         if (ply_boot_splash_uses_pixel_displays (splash))
                 plymouthd_activate_renderers (daemon);
