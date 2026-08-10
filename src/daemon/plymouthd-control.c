@@ -238,12 +238,7 @@ plymouthd_handle_reactivate (state_t *state)
         if (!state->is_inactive)
                 return;
 
-        if (state->local_console_terminal != NULL) {
-                ply_terminal_open (state->local_console_terminal);
-                ply_terminal_watch_for_vt_changes (state->local_console_terminal);
-                ply_terminal_set_unbuffered_input (state->local_console_terminal);
-                ply_terminal_ignore_mode_changes (state->local_console_terminal, false);
-        }
+        plymouthd_reactivate_console (state);
 
         if (plymouthd_session_has_terminal (state->session) &&
             state->should_be_attached) {
@@ -251,11 +246,11 @@ plymouthd_handle_reactivate (state_t *state)
                 plymouthd_attach_session (state);
         }
 
-        ply_device_manager_activate_keyboards (state->device_manager);
+        plymouthd_activate_keyboards (state);
         if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
-                ply_device_manager_activate_renderers (state->device_manager);
+                plymouthd_activate_renderers (state);
 
-        ply_device_manager_unpause (state->device_manager);
+        plymouthd_unpause_devices (state);
 
         state->is_inactive = false;
 
