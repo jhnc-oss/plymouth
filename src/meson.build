@@ -50,6 +50,19 @@ plymouthd_splash_dep = declare_dependency(
   link_with: plymouthd_splash,
 )
 
+plymouthd_interaction = static_library(
+  'plymouthd-interaction-private',
+  'plymouthd-interaction.c',
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_interaction_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_interaction,
+)
+
 ply_peer_credentials = static_library(
   'ply-peer-credentials-private',
   'ply-peer-credentials.c',
@@ -92,6 +105,7 @@ plymouthd_deps = [
   plymouthd_policy_dep,
   plymouthd_settings_dep,
   plymouthd_splash_dep,
+  plymouthd_interaction_dep,
 ]
 
 plymouthd_cflags = [
