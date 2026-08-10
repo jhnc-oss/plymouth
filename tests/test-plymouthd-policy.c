@@ -170,6 +170,16 @@ test_shell_init_detection_keeps_suffix_behavior (void)
         PLY_TEST_ASSERT (!plymouthd_shell_is_init ());
         return true;
 }
+
+static bool
+test_virtual_kernel_console_detection_is_stable (void)
+{
+        PLY_TEST_ASSERT (plymouthd_console_type_is_virtual ("ttynull"));
+        PLY_TEST_ASSERT (!plymouthd_console_type_is_virtual ("tty0"));
+        PLY_TEST_ASSERT (!plymouthd_console_type_is_virtual ("ttyS0"));
+        return true;
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_mode_names_map_to_splash_modes),
@@ -178,6 +188,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_setting_adds_expected_device_flags),
         PLY_TEST_CASE (test_show_requests_keep_kernel_argument_precedence),
         PLY_TEST_CASE (test_shell_init_detection_keeps_suffix_behavior),
+        PLY_TEST_CASE (test_virtual_kernel_console_detection_is_stable),
 };
 
 PLY_TEST_MAIN (test_cases)
