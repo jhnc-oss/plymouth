@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include "ply-logger.h"
+#include "ply-progress.h"
 #include "ply-utils.h"
 
 #define BOOT_DURATION_FILE     PLYMOUTH_TIME_DIRECTORY "/boot-duration"
@@ -81,12 +82,6 @@ plymouthd_progress_get_cache_file (plymouthd_progress_t *progress)
 
         ply_trace ("returning cache file '%s'", filename);
         return filename;
-}
-
-ply_progress_t *
-plymouthd_progress_get_core (plymouthd_progress_t *progress)
-{
-        return progress->core;
 }
 
 void

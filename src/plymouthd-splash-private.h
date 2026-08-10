@@ -18,7 +18,6 @@ PLY_PRIVATE ply_boot_splash_t *
 plymouthd_load_splash (const char       *theme_path,
                        const char       *plugin_directory,
                        ply_buffer_t     *boot_buffer,
-                       ply_event_loop_t *loop,
-                       ply_progress_t   *progress);
+                       ply_event_loop_t *loop);
 
 #endif /* PLYMOUTHD_SPLASH_PRIVATE_H */

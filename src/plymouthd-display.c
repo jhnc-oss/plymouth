@@ -99,12 +99,12 @@ show_theme (plymouthd_t *daemon,
                 theme_path,
                 PLYMOUTH_PLUGIN_PATH,
                 daemon->boot_buffer,
-                daemon->loop,
-                plymouthd_progress_get_core (daemon->progress));
+                daemon->loop);
 
         if (splash == NULL)
                 return NULL;
 
+        plymouthd_progress_attach_to_splash (daemon->progress, splash);
         attach_splash_to_devices (daemon, splash);
         if (ply_boot_splash_uses_pixel_displays (splash))
                 ply_device_manager_activate_renderers (daemon->device_manager);
