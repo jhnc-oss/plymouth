@@ -59,6 +59,7 @@
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-policy-private.h"
+#include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
 
@@ -72,13 +73,12 @@ typedef struct
         ply_event_loop_t        *loop;
         ply_boot_server_t       *boot_server;
         ply_boot_splash_t       *boot_splash;
-        ply_kmsg_reader_t       *kmsg_reader;
-        ply_terminal_session_t  *session;
         ply_buffer_t            *boot_buffer;
         ply_progress_t          *progress;
         plymouthd_interaction_t *interaction;
         plymouthd_logging_t     *logging;
         plymouthd_messages_t    *messages;
+        plymouthd_session_t     *session;
         ply_command_parser_t    *command_parser;
         ply_boot_splash_mode_t   mode;
         ply_terminal_t          *local_console_terminal;
@@ -86,14 +86,11 @@ typedef struct
 
         ply_trigger_t           *deactivate_trigger;
         ply_trigger_t           *quit_trigger;
-        ply_trigger_t           *kmsg_trigger;
 
         double                   start_time;
         plymouthd_settings_t     settings;
 
         uint32_t                 showing_details : 1;
-        uint32_t                 is_redirected : 1;
-        uint32_t                 is_attached : 1;
         uint32_t                 should_be_attached : 1;
         uint32_t                 should_retain_splash : 1;
         uint32_t                 is_inactive : 1;
@@ -187,8 +184,10 @@ on_change_mode (state_t    *state,
         state->mode = new_mode;
         plymouthd_logging_set_mode (state->logging, new_mode);
 
-        if (state->session != NULL) {
-                plymouthd_logging_prepare (state->logging, state->session);
+        if (plymouthd_session_get_terminal_session (state->session) != NULL) {
+                plymouthd_logging_prepare (
+                        state->logging,
+                        plymouthd_session_get_terminal_session (state->session));
         }
 
         if (state->boot_splash == NULL) {
@@ -485,11 +484,13 @@ on_system_initialized (state_t *state)
         ply_trace ("system now initialized, opening log");
 
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-        if (state->is_attached)
+        if (plymouthd_session_is_attached (state->session))
                 tell_systemd_to_print_details (state);
 #endif
 
-        plymouthd_logging_system_initialized (state->logging, state->session);
+        plymouthd_logging_system_initialized (
+                state->logging,
+                plymouthd_session_get_terminal_session (state->session));
 }
 
 static void
@@ -555,14 +556,15 @@ on_show_splash (state_t *state)
         state->is_shown = true;
         has_displays = ply_device_manager_has_displays (state->device_manager);
 
-        if (!state->is_attached && state->should_be_attached && has_displays)
+        if (!plymouthd_session_is_attached (state->session) &&
+            state->should_be_attached && has_displays)
                 attach_to_running_session (state);
 
         if (state->local_console_terminal != NULL)
                 ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_GRAPHICS);
 
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
-        if (state->is_attached)
+        if (plymouthd_session_is_attached (state->session))
                 tell_systemd_to_print_details (state);
 #endif
 
@@ -955,7 +957,8 @@ on_reactivate (state_t *state)
                 ply_terminal_ignore_mode_changes (state->local_console_terminal, false);
         }
 
-        if ((state->session != NULL) && state->should_be_attached) {
+        if (plymouthd_session_get_terminal_session (state->session) != NULL &&
+            state->should_be_attached) {
                 ply_trace ("reactivating terminal session");
                 attach_to_running_session (state);
         }
@@ -999,8 +1002,9 @@ on_quit (state_t       *state,
         state->should_retain_splash = retain_splash;
 
         ply_trace ("closing log");
-        if (state->session != NULL)
-                ply_terminal_session_close_log (state->session);
+        if (plymouthd_session_get_terminal_session (state->session) != NULL)
+                ply_terminal_session_close_log (
+                        plymouthd_session_get_terminal_session (state->session));
 
         ply_device_manager_deactivate_keyboards (state->device_manager);
 
@@ -1267,63 +1271,19 @@ show_theme (state_t    *state,
 static bool
 attach_to_running_session (state_t *state)
 {
-        ply_terminal_session_t *session;
-        ply_terminal_session_flags_t flags;
         bool should_be_redirected;
-
-        flags = 0;
 
         should_be_redirected = plymouthd_logging_is_enabled (state->logging);
 
-        if (should_be_redirected)
-                flags |= PLY_TERMINAL_SESSION_FLAGS_REDIRECT_CONSOLE;
-
-        if (state->session == NULL) {
-                ply_trace ("creating new terminal session");
-                session = ply_terminal_session_new (NULL);
-
-                ply_terminal_session_attach_to_event_loop (session, state->loop);
-        } else {
-                session = state->session;
-                ply_trace ("session already created");
-        }
-
-        if (!ply_terminal_session_attach (session, flags,
-                                          (ply_terminal_session_output_handler_t)
-                                          on_session_output,
-                                          (ply_terminal_session_hangup_handler_t)
-                                          (should_be_redirected ? on_session_hangup : NULL),
-                                          -1, state)) {
-                ply_save_errno ();
-                ply_terminal_session_free (session);
+        if (!plymouthd_session_attach (state->session, should_be_redirected)) {
                 ply_buffer_free (state->boot_buffer);
                 state->boot_buffer = NULL;
-                ply_restore_errno ();
-
-                state->is_redirected = false;
-                state->is_attached = false;
                 return false;
         }
-
-        if (state->kmsg_reader == NULL) {
-                ply_trace ("Creating new kmsg reader");
-                state->kmsg_reader = ply_kmsg_reader_new ();
-
-                ply_kmsg_reader_watch_for_messages (state->kmsg_reader,
-                                                    (ply_kmsg_reader_message_handler_t)
-                                                    on_new_kmsg_message,
-                                                    state);
-        }
-
-        ply_kmsg_reader_start (state->kmsg_reader);
 
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
         tell_systemd_to_print_details (state);
 #endif
-
-        state->is_redirected = should_be_redirected;
-        state->is_attached = true;
-        state->session = session;
 
         return true;
 }
@@ -1331,23 +1291,14 @@ attach_to_running_session (state_t *state)
 static void
 detach_from_running_session (state_t *state)
 {
-        if (state->session == NULL)
-                return;
-
-        if (!state->is_attached)
+        if (!plymouthd_session_is_attached (state->session))
                 return;
 
 #ifdef PLY_ENABLE_SYSTEMD_INTEGRATION
         tell_systemd_to_stop_printing_details (state);
 #endif
 
-        ply_trace ("stopping kmsg reader");
-        ply_kmsg_reader_stop (state->kmsg_reader);
-
-        ply_trace ("detaching from terminal session");
-        ply_terminal_session_detach (state->session);
-        state->is_redirected = false;
-        state->is_attached = false;
+        plymouthd_session_detach (state->session);
 }
 
 static void
@@ -1879,6 +1830,12 @@ main (int    argc,
         }
 
         state.boot_buffer = ply_buffer_new ();
+        state.session = plymouthd_session_new (
+                state.loop,
+                (plymouthd_session_output_handler_t) on_session_output,
+                (plymouthd_session_hangup_handler_t) on_session_hangup,
+                (plymouthd_session_kmsg_handler_t) on_new_kmsg_message,
+                &state);
 
         if (attach_to_session) {
                 state.should_be_attached = attach_to_session;
@@ -1953,7 +1910,7 @@ main (int    argc,
         state.boot_server = NULL;
 
         ply_trace ("freeing terminal session");
-        ply_terminal_session_free (state.session);
+        plymouthd_session_free (state.session);
 
         ply_buffer_free (state.boot_buffer);
         ply_progress_free (state.progress);
