@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #include "ply-boot-splash-plugin.h"
+#include "ply-private.h"
 #include "plymouthd-settings-private.h"
 
 typedef struct _ply_boot_server ply_boot_server_t;
@@ -29,6 +30,7 @@ typedef struct _plymouthd_process plymouthd_process_t;
 typedef struct _plymouthd_progress plymouthd_progress_t;
 typedef struct _plymouthd_session plymouthd_session_t;
 typedef struct _plymouthd_transition plymouthd_transition_t;
+typedef struct _plymouthd plymouthd_t;
 
 struct _plymouthd
 {
@@ -58,5 +60,8 @@ struct _plymouthd
         uint32_t                 should_force_default_splash : 1;
         const char              *default_tty;
 };
+
+PLY_PRIVATE plymouthd_t *plymouthd_new_state (ply_boot_splash_mode_t mode);
+PLY_PRIVATE void plymouthd_free_state (plymouthd_t *state);
 
 #endif /* PLYMOUTHD_STATE_PRIVATE_H */
