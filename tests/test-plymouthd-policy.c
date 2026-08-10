@@ -139,6 +139,22 @@ test_setting_adds_expected_device_flags (void)
 }
 
 static bool
+test_show_requests_keep_kernel_argument_precedence (void)
+{
+        ply_kernel_command_line_override ("plymouth.ignore-show-splash");
+        PLY_TEST_ASSERT (plymouthd_should_ignore_show_splash_calls (
+                                 PLY_BOOT_SPLASH_MODE_BOOT_UP));
+        PLY_TEST_ASSERT (!plymouthd_should_ignore_show_splash_calls (
+                                 PLY_BOOT_SPLASH_MODE_SHUTDOWN));
+
+        ply_kernel_command_line_override (
+                "plymouth.ignore-show-splash plymouth.force-splash");
+        PLY_TEST_ASSERT (!plymouthd_should_ignore_show_splash_calls (
+                                 PLY_BOOT_SPLASH_MODE_BOOT_UP));
+        return true;
+}
+
+static bool
 test_shell_init_detection_keeps_suffix_behavior (void)
 {
         ply_kernel_command_line_override ("init=/bin/sh");
@@ -160,6 +176,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_configuration_precedence_respects_encryption),
         PLY_TEST_CASE (test_kernel_argument_precedence_is_stable),
         PLY_TEST_CASE (test_setting_adds_expected_device_flags),
+        PLY_TEST_CASE (test_show_requests_keep_kernel_argument_precedence),
         PLY_TEST_CASE (test_shell_init_detection_keeps_suffix_behavior),
 };
 
