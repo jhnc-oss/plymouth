@@ -107,6 +107,22 @@ plymouthd_activate_keyboards (plymouthd_t *daemon)
 }
 
 void
+plymouthd_deactivate_keyboards (plymouthd_t *daemon)
+{
+        ply_device_manager_deactivate_keyboards (daemon->device_manager);
+}
+
+void
+plymouthd_prepare_console (plymouthd_t *daemon)
+{
+        if (daemon->local_console_terminal == NULL)
+                return;
+
+        ply_terminal_set_mode (daemon->local_console_terminal,
+                               PLY_TERMINAL_MODE_GRAPHICS);
+}
+
+void
 plymouthd_restore_text_console (plymouthd_t *daemon)
 {
         if (daemon->local_console_terminal == NULL)
@@ -115,6 +131,62 @@ plymouthd_restore_text_console (plymouthd_t *daemon)
         ply_terminal_set_mode (daemon->local_console_terminal,
                                PLY_TERMINAL_MODE_TEXT);
         ply_terminal_set_buffered_input (daemon->local_console_terminal);
+}
+
+void
+plymouthd_release_console (plymouthd_t *daemon)
+{
+        if (daemon->local_console_terminal == NULL)
+                return;
+
+        ply_trace ("Not retaining splash, so deallocating VT");
+        ply_terminal_deactivate_vt (daemon->local_console_terminal);
+        ply_terminal_close (daemon->local_console_terminal);
+}
+
+void
+plymouthd_deactivate_console (plymouthd_t *daemon)
+{
+        if (daemon->local_console_terminal == NULL)
+                return;
+
+        ply_trace ("deactivating terminal");
+        ply_terminal_stop_watching_for_vt_changes (
+                daemon->local_console_terminal);
+        ply_terminal_set_buffered_input (daemon->local_console_terminal);
+        ply_terminal_close (daemon->local_console_terminal);
+}
+
+void
+plymouthd_reactivate_console (plymouthd_t *daemon)
+{
+        if (daemon->local_console_terminal == NULL)
+                return;
+
+        ply_terminal_open (daemon->local_console_terminal);
+        ply_terminal_watch_for_vt_changes (daemon->local_console_terminal);
+        ply_terminal_set_unbuffered_input (daemon->local_console_terminal);
+        ply_terminal_ignore_mode_changes (daemon->local_console_terminal,
+                                          false);
+}
+
+void
+plymouthd_pause_devices (plymouthd_t *daemon)
+{
+        ply_device_manager_pause (daemon->device_manager);
+}
+
+void
+plymouthd_unpause_devices (plymouthd_t *daemon)
+{
+        ply_device_manager_unpause (daemon->device_manager);
+}
+
+void
+plymouthd_free_devices (plymouthd_t *daemon)
+{
+        ply_device_manager_free (daemon->device_manager);
+        daemon->device_manager = NULL;
 }
 
 static void

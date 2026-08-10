@@ -27,6 +27,14 @@ PLY_PRIVATE void plymouthd_attach_splash_to_devices (plymouthd_t       *daemon,
 PLY_PRIVATE void plymouthd_activate_renderers (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_deactivate_renderers (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_activate_keyboards (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_deactivate_keyboards (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_prepare_console (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_restore_text_console (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_release_console (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_deactivate_console (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_reactivate_console (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_pause_devices (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_unpause_devices (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_free_devices (plymouthd_t *daemon);
 
 #endif /* PLYMOUTHD_DEVICES_PRIVATE_H */
