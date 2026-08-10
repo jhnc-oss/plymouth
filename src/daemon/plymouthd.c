@@ -18,8 +18,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "ply-boot-server.h"
-#include "ply-boot-splash.h"
 #include "ply-buffer.h"
 #include "ply-device-manager.h"
 #include "ply-event-loop.h"
@@ -145,11 +143,7 @@ plymouthd_new (plymouthd_options_t *options,
         ply_device_manager_flags_t device_manager_flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
         bool should_ignore_serial_consoles;
 
-        daemon = calloc (1, sizeof(plymouthd_t));
-        daemon->start_time = ply_get_timestamp ();
-        daemon->loop = ply_event_loop_get_default ();
-        daemon->mode = plymouthd_options_get_mode (options);
-        plymouthd_settings_init (&daemon->settings);
+        daemon = plymouthd_new_state (plymouthd_options_get_mode (options));
 
         should_ignore_serial_consoles =
                 plymouthd_options_should_ignore_serial_consoles (options);
@@ -320,23 +314,5 @@ plymouthd_run (plymouthd_t *daemon)
 void
 plymouthd_free (plymouthd_t *daemon)
 {
-        if (daemon == NULL)
-                return;
-
-        ply_boot_splash_free (daemon->boot_splash);
-        ply_boot_server_free (daemon->boot_server);
-        ply_device_manager_free (daemon->device_manager);
-
-        ply_trace ("freeing terminal session");
-        plymouthd_session_free (daemon->session);
-        plymouthd_transition_free (daemon->transition);
-        ply_buffer_free (daemon->boot_buffer);
-        plymouthd_progress_free (daemon->progress);
-        plymouthd_interaction_free (daemon->interaction);
-        plymouthd_logging_free (daemon->logging);
-        plymouthd_messages_free (daemon->messages);
-        plymouthd_settings_free (&daemon->settings);
-        plymouthd_process_free (daemon->process);
-
-        free (daemon);
+        plymouthd_free_state (daemon);
 }
