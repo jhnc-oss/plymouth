@@ -180,6 +180,28 @@ test_virtual_kernel_console_detection_is_stable (void)
         return true;
 }
 
+static bool
+test_default_splash_selection_keeps_argument_precedence (void)
+{
+        ply_kernel_command_line_override ("rhgb");
+        PLY_TEST_ASSERT (!plymouthd_should_show_default_splash (true, true));
+        PLY_TEST_ASSERT (plymouthd_should_show_default_splash (false, false));
+
+        ply_kernel_command_line_override ("single rhgb");
+        PLY_TEST_ASSERT (!plymouthd_should_show_default_splash (false, false));
+
+        ply_kernel_command_line_override ("splash=verbose splash");
+        PLY_TEST_ASSERT (!plymouthd_should_show_default_splash (false, false));
+
+        ply_kernel_command_line_override ("splash=silent");
+        PLY_TEST_ASSERT (plymouthd_should_show_default_splash (false, false));
+
+        ply_kernel_command_line_override ("");
+        PLY_TEST_ASSERT (plymouthd_should_show_default_splash (false, true));
+        PLY_TEST_ASSERT (!plymouthd_should_show_default_splash (false, false));
+        return true;
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_mode_names_map_to_splash_modes),
@@ -189,6 +211,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_show_requests_keep_kernel_argument_precedence),
         PLY_TEST_CASE (test_shell_init_detection_keeps_suffix_behavior),
         PLY_TEST_CASE (test_virtual_kernel_console_detection_is_stable),
+        PLY_TEST_CASE (test_default_splash_selection_keeps_argument_precedence),
 };
 
 PLY_TEST_MAIN (test_cases)
