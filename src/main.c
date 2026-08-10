@@ -622,19 +622,6 @@ on_error (state_t *state)
         state->number_of_errors++;
 }
 
-static bool
-plymouth_should_ignore_show_splash_calls (state_t *state)
-{
-        ply_trace ("checking if plymouth should be running");
-        if (state->mode != PLY_BOOT_SPLASH_MODE_BOOT_UP || ply_kernel_command_line_has_argument ("plymouth.force-splash"))
-                return false;
-
-        if (ply_kernel_command_line_has_argument ("plymouth.ignore-show-splash"))
-                return true;
-
-        return false;
-}
-
 
 static bool
 kernel_console_is_ttynull (void)
@@ -743,7 +730,7 @@ on_show_splash (state_t *state)
                 return;
         }
 
-        if (plymouth_should_ignore_show_splash_calls (state)) {
+        if (plymouthd_should_ignore_show_splash_calls (state->mode)) {
                 ply_trace ("show splash called while ignoring show splash calls");
                 state->should_retain_splash = true;
                 dump_details_and_quit_splash (state);
