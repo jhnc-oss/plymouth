@@ -31,6 +31,15 @@ plymouthd_has_displays (plymouthd_t *daemon)
         return ply_device_manager_has_displays (daemon->device_manager);
 }
 
+bool
+plymouthd_has_active_vt (plymouthd_t *daemon)
+{
+        if (daemon->local_console_terminal == NULL)
+                return false;
+
+        return ply_terminal_is_active (daemon->local_console_terminal);
+}
+
 void
 plymouthd_attach_splash_to_devices (plymouthd_t       *daemon,
                                     ply_boot_splash_t *splash)
