@@ -21,6 +21,24 @@
 typedef void (*plymouthd_input_escape_handler_t)(plymouthd_t *daemon);
 
 static void
+attach_keyboard_to_splash (ply_keyboard_t *keyboard,
+                           void           *user_data)
+{
+        ply_boot_splash_t *splash = user_data;
+
+        ply_boot_splash_set_keyboard (splash, keyboard);
+}
+
+void
+plymouthd_attach_keyboards_to_splash (plymouthd_t       *daemon,
+                                      ply_boot_splash_t *splash)
+{
+        plymouthd_for_each_keyboard (daemon,
+                                     attach_keyboard_to_splash,
+                                     splash);
+}
+
+static void
 on_keyboard_input (plymouthd_t *daemon,
                    const char  *keyboard_input,
                    size_t       character_size)
