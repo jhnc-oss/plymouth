@@ -15,10 +15,10 @@
 #include "ply-boot-server.h"
 #include "ply-boot-splash.h"
 #include "ply-buffer.h"
-#include "ply-device-manager.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
+#include "plymouthd-devices-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
@@ -50,7 +50,7 @@ plymouthd_free_state (plymouthd_t *state)
 
         ply_boot_splash_free (state->boot_splash);
         ply_boot_server_free (state->boot_server);
-        ply_device_manager_free (state->device_manager);
+        plymouthd_free_devices (state);
 
         ply_trace ("freeing terminal session");
         plymouthd_session_free (state->session);
