@@ -22,6 +22,7 @@ PLY_PRIVATE void plymouthd_initialize_devices (plymouthd_t *daemon,
                                                bool         should_ignore_serial_consoles);
 PLY_PRIVATE bool plymouthd_has_displays (plymouthd_t *daemon);
 PLY_PRIVATE bool plymouthd_has_active_vt (plymouthd_t *daemon);
+PLY_PRIVATE bool plymouthd_has_vt_console (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_attach_splash_to_devices (plymouthd_t       *daemon,
                                                      ply_boot_splash_t *splash);
 PLY_PRIVATE void plymouthd_activate_renderers (plymouthd_t *daemon);
