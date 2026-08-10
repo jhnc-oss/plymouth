@@ -37,7 +37,6 @@ plymouthd_free_state (plymouthd_t *state)
         if (state == NULL)
                 return;
 
-        plymouthd_settings_free (&state->settings);
         plymouthd_process_free (state->process);
 
         free (state);

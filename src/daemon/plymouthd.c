@@ -220,5 +220,6 @@ plymouthd_free (plymouthd_t *daemon)
         plymouthd_interaction_free (daemon->interaction);
         plymouthd_logging_free (daemon->logging);
         plymouthd_messages_free (daemon->messages);
+        plymouthd_settings_free (&daemon->settings);
         plymouthd_free_state (daemon);
 }
