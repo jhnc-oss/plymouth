@@ -29,5 +29,6 @@ PLY_PRIVATE int plymouthd_select_simpledrm_command_line (int  current_setting,
 PLY_PRIVATE ply_device_manager_flags_t
 plymouthd_add_simpledrm_flags (ply_device_manager_flags_t flags,
                                int                        setting);
+PLY_PRIVATE bool plymouthd_shell_is_init (void);
 
 #endif /* PLYMOUTHD_POLICY_PRIVATE_H */

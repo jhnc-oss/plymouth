@@ -10,8 +10,10 @@
 
 #include "plymouthd-policy-private.h"
 
+#include <stdlib.h>
 #include <string.h>
 
+#include "ply-utils.h"
 ply_boot_splash_mode_t
 plymouthd_mode_from_string (const char *mode)
 {
@@ -86,4 +88,23 @@ plymouthd_add_simpledrm_flags (ply_device_manager_flags_t flags,
                 flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_OPEN;
 
         return flags;
+}
+bool
+plymouthd_shell_is_init (void)
+{
+        char *init_string;
+        bool result = false;
+        size_t length;
+
+        init_string = ply_kernel_command_line_get_key_value ("init=");
+        if (init_string != NULL) {
+                length = strlen (init_string);
+                if (length > 2 && init_string[length - 2] == 's' &&
+                    init_string[length - 1] == 'h')
+                        result = true;
+
+                free (init_string);
+        }
+
+        return result;
 }
