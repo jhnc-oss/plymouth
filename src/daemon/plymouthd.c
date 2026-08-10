@@ -15,6 +15,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include "ply-boot-server.h"
 #include "ply-boot-splash.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
@@ -204,5 +205,6 @@ plymouthd_free (plymouthd_t *daemon)
                 return;
 
         ply_boot_splash_free (daemon->boot_splash);
+        ply_boot_server_free (daemon->boot_server);
         plymouthd_free_state (daemon);
 }
