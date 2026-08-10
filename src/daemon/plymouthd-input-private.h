@@ -11,6 +11,8 @@
 #ifndef PLYMOUTHD_INPUT_PRIVATE_H
 #define PLYMOUTHD_INPUT_PRIVATE_H
 
+#include <stdbool.h>
+
 #include "ply-private.h"
 
 typedef struct _ply_boot_splash ply_boot_splash_t;
@@ -19,6 +21,7 @@ typedef struct _plymouthd plymouthd_t;
 
 PLY_PRIVATE void plymouthd_attach_keyboards_to_splash (plymouthd_t       *daemon,
                                                        ply_boot_splash_t *splash);
+PLY_PRIVATE bool plymouthd_handle_escape (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_handle_keyboard_added (plymouthd_t    *daemon,
                                                   ply_keyboard_t *keyboard);
 PLY_PRIVATE void plymouthd_handle_keyboard_removed (plymouthd_t    *daemon,

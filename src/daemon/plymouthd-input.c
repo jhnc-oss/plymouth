@@ -65,25 +65,25 @@ on_enter (plymouthd_t *daemon,
                                             line);
 }
 
-static void
-handle_escape (plymouthd_t *daemon,
-               bool         has_vt_console)
+bool
+plymouthd_handle_escape (plymouthd_t *daemon)
 {
-        ply_trace ("escape key pressed");
+        bool has_vt_console;
 
-        if (plymouthd_validate_prompt_input (daemon->boot_splash,
-                                             "",
-                                             "\e") &&
-            has_vt_console)
-                plymouthd_toggle_details (daemon);
+        ply_trace ("escape key pressed");
+        has_vt_console = plymouthd_has_vt_console (daemon);
+
+        return plymouthd_validate_prompt_input (daemon->boot_splash,
+                                                "",
+                                                "\e") &&
+               has_vt_console;
 }
 
 static void
 on_escape_pressed (plymouthd_t *daemon)
 {
-        handle_escape (
-                daemon,
-                plymouthd_has_vt_console (daemon));
+        if (plymouthd_handle_escape (daemon))
+                plymouthd_toggle_details (daemon);
 }
 
 static void
