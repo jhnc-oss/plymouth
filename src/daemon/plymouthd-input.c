@@ -18,6 +18,8 @@
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-state-private.h"
 
+typedef void (*plymouthd_input_escape_handler_t)(plymouthd_t *daemon);
+
 static void
 on_keyboard_input (plymouthd_t *daemon,
                    const char  *keyboard_input,
@@ -135,10 +137,10 @@ detach_keyboard (ply_keyboard_t                  *keyboard,
                 (ply_keyboard_enter_handler_t) on_enter);
 }
 
-void
-plymouthd_handle_keyboard_removed (plymouthd_t                     *daemon,
-                                   ply_keyboard_t                  *keyboard,
-                                   plymouthd_input_escape_handler_t escape_handler)
+static void
+keyboard_removed (plymouthd_t                     *daemon,
+                  ply_keyboard_t                  *keyboard,
+                  plymouthd_input_escape_handler_t escape_handler)
 {
         detach_keyboard (keyboard, escape_handler);
 
@@ -150,5 +152,5 @@ void
 plymouthd_handle_keyboard_removed (plymouthd_t    *daemon,
                                    ply_keyboard_t *keyboard)
 {
-        plymouthd_handle_keyboard_removed (daemon, keyboard, on_escape_pressed);
+        keyboard_removed (daemon, keyboard, on_escape_pressed);
 }
