@@ -11,6 +11,7 @@
 #include "plymouthd-private.h"
 
 #include <errno.h>
+#include <math.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sysexits.h>
@@ -105,6 +106,57 @@ static const plymouthd_devices_event_handlers_t device_event_handlers = {
         .text_display_added    = on_text_display_added,
         .text_display_removed  = on_text_display_removed,
 };
+
+static void
+create_devices (plymouthd_t *daemon,
+                bool         should_ignore_serial_consoles)
+{
+        ply_device_manager_flags_t flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
+
+        if (ply_kernel_command_line_has_argument (
+                    "plymouth.ignore-serial-consoles") ||
+            should_ignore_serial_consoles) {
+                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_SERIAL_CONSOLES;
+        }
+
+        if (ply_kernel_command_line_has_argument ("plymouth.ignore-udev") ||
+            getenv ("DISPLAY") != NULL) {
+                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
+        }
+
+        if (ply_kernel_command_line_has_argument (
+                    "plymouth.force-frame-buffer-on-boot") &&
+            daemon->mode != PLY_BOOT_SPLASH_MODE_SHUTDOWN &&
+            daemon->mode != PLY_BOOT_SPLASH_MODE_REBOOT) {
+                flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER;
+        }
+
+        if (!plymouthd_should_show_default_splash (
+                    daemon->should_force_details,
+                    daemon->should_force_default_splash)) {
+                flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
+                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
+                daemon->settings->splash_delay = NAN;
+        }
+
+        if (daemon->settings->device_scale != -1)
+                ply_set_device_scale (daemon->settings->device_scale);
+
+        flags = plymouthd_add_simpledrm_flags (
+                flags,
+                daemon->settings->use_simpledrm);
+
+        daemon->devices = plymouthd_devices_new (
+                daemon->default_tty,
+                flags,
+                daemon->settings->extra_esc_key,
+                daemon->settings->device_timeout,
+                &device_event_handlers,
+                daemon);
+
+        if (plymouthd_devices_has_serial_consoles (daemon->devices))
+                daemon->should_force_details = true;
+}
 
 plymouthd_t *
 plymouthd_new (plymouthd_options_t *options,
@@ -215,9 +267,7 @@ plymouthd_new (plymouthd_options_t *options,
         }
 
         plymouthd_settings_load (daemon->settings);
-        plymouthd_initialize_devices (daemon,
-                                      should_ignore_serial_consoles,
-                                      &device_event_handlers);
+        create_devices (daemon, should_ignore_serial_consoles);
 
         *exit_code = EX_OK;
         return daemon;
