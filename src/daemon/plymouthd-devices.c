@@ -242,32 +242,6 @@ on_keyboard_removed (plymouthd_t    *daemon,
 }
 
 static void
-on_text_display_added (plymouthd_t        *daemon,
-                       ply_text_display_t *display)
-{
-        if (!daemon->is_shown)
-                return;
-
-        if (daemon->boot_splash == NULL) {
-                ply_trace ("text display added before splash loaded, so loading splash now");
-                plymouthd_show_splash (daemon);
-        } else {
-                ply_trace ("text display added after splash loaded, so attaching to splash");
-                ply_boot_splash_add_text_display (daemon->boot_splash, display);
-                plymouthd_update_display (daemon);
-        }
-}
-
-static void
-on_text_display_removed (plymouthd_t        *daemon,
-                         ply_text_display_t *display)
-{
-        if (daemon->boot_splash != NULL)
-                ply_boot_splash_remove_text_display (daemon->boot_splash,
-                                                     display);
-}
-
-static void
 load_devices (plymouthd_t               *daemon,
               ply_device_manager_flags_t flags)
 {
@@ -288,8 +262,10 @@ load_devices (plymouthd_t               *daemon,
                 plymouthd_handle_pixel_display_added,
                 (ply_pixel_display_removed_handler_t)
                 plymouthd_handle_pixel_display_removed,
-                (ply_text_display_added_handler_t) on_text_display_added,
-                (ply_text_display_removed_handler_t) on_text_display_removed,
+                (ply_text_display_added_handler_t)
+                plymouthd_handle_text_display_added,
+                (ply_text_display_removed_handler_t)
+                plymouthd_handle_text_display_removed,
                 daemon);
 
         if (ply_device_manager_has_serial_consoles (daemon->devices->device_manager))
