@@ -23,15 +23,10 @@
 #include "plymouthd-control-private.h"
 
 #include <assert.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "ply-boot-splash.h"
-#include "ply-buffer.h"
 #include "ply-device-manager.h"
 #include "ply-event-loop.h"
-#include "ply-kmsg-reader.h"
 #include "ply-logger.h"
 #include "ply-terminal.h"
 #include "ply-trigger.h"
@@ -48,26 +43,8 @@
 
 typedef plymouthd_t state_t;
 
-bool plymouthd_attach_session (state_t *state);
 static void detach_from_running_session (state_t *state);
 static void dump_details_and_quit_splash (state_t *state);
-void
-plymouthd_handle_session_output (state_t    *state,
-                                 const char *output,
-                                 size_t      size)
-{
-        ply_buffer_append_bytes (state->boot_buffer, output, size);
-        if (state->boot_splash != NULL)
-                ply_boot_splash_update_output (state->boot_splash,
-                                               output, size);
-}
-
-void
-plymouthd_handle_session_hangup (state_t *state)
-{
-        ply_trace ("got hang up on terminal session fd");
-}
-
 void
 plymouthd_handle_show_splash (state_t *state)
 {
@@ -345,75 +322,8 @@ plymouthd_handle_quit (state_t       *state,
         }
 }
 
-void
-plymouthd_handle_kmsg (state_t        *state,
-                       kmsg_message_t *kmsg_message)
-{
-        ply_buffer_append (state->boot_buffer, "%s\n", kmsg_message->message);
-
-        if (state->boot_splash != NULL) {
-                ply_boot_splash_update_output (state->boot_splash, kmsg_message->message, strlen (kmsg_message->message));
-                ply_boot_splash_update_output (state->boot_splash, "\n", 1);
-        }
-}
-
-bool
-plymouthd_attach_session (state_t *state)
-{
-        bool should_be_redirected;
-
-        should_be_redirected = plymouthd_logging_is_enabled (state->logging);
-
-        if (!plymouthd_session_attach (state->session, should_be_redirected)) {
-                ply_buffer_free (state->boot_buffer);
-                state->boot_buffer = NULL;
-                return false;
-        }
-
-        return true;
-}
-
 static void
 detach_from_running_session (state_t *state)
 {
         plymouthd_session_detach (state->session);
-}
-
-static void
-start_plymouthd_fd_escrow (void)
-{
-        pid_t pid;
-
-        pid = fork ();
-        if (pid == 0) {
-                const char *argv[] = { PLYMOUTH_DRM_ESCROW_DIRECTORY "/plymouthd-fd-escrow", NULL };
-
-                execve (argv[0], (char * const *) argv, NULL);
-                ply_trace ("could not launch fd escrow process: %m");
-                _exit (1);
-        }
-}
-
-void
-plymouthd_handle_term_signal (state_t *state)
-{
-        bool retain_splash = false;
-
-        ply_trace ("received SIGTERM");
-
-        /*
-         * On shutdown/reboot with pixel-displays active, start the plymouthd-fd-escrow
-         * helper to hold on to the pixel-displays fds until the end.
-         */
-        if ((state->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
-             state->mode == PLY_BOOT_SPLASH_MODE_REBOOT) &&
-            !state->is_inactive && state->boot_splash &&
-            ply_boot_splash_uses_pixel_displays (state->boot_splash)) {
-                start_plymouthd_fd_escrow ();
-                retain_splash = true;
-        }
-
-        plymouthd_handle_quit (state,
-                               retain_splash,
-                               ply_trigger_new (NULL));
 }
