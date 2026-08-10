@@ -13,20 +13,22 @@
 
 #include <stdint.h>
 
-#include "ply-boot-server.h"
-#include "ply-boot-splash.h"
-#include "ply-buffer.h"
-#include "ply-device-manager.h"
-#include "ply-event-loop.h"
-#include "ply-terminal.h"
-#include "plymouthd-interaction-private.h"
-#include "plymouthd-logging-private.h"
-#include "plymouthd-messages-private.h"
-#include "plymouthd-process-private.h"
-#include "plymouthd-progress-private.h"
-#include "plymouthd-session-private.h"
+#include "ply-boot-splash-plugin.h"
 #include "plymouthd-settings-private.h"
-#include "plymouthd-transition-private.h"
+
+typedef struct _ply_boot_server ply_boot_server_t;
+typedef struct _ply_boot_splash ply_boot_splash_t;
+typedef struct _ply_buffer ply_buffer_t;
+typedef struct _ply_device_manager ply_device_manager_t;
+typedef struct _ply_event_loop ply_event_loop_t;
+typedef struct _ply_terminal ply_terminal_t;
+typedef struct _plymouthd_interaction plymouthd_interaction_t;
+typedef struct _plymouthd_logging plymouthd_logging_t;
+typedef struct _plymouthd_messages plymouthd_messages_t;
+typedef struct _plymouthd_process plymouthd_process_t;
+typedef struct _plymouthd_progress plymouthd_progress_t;
+typedef struct _plymouthd_session plymouthd_session_t;
+typedef struct _plymouthd_transition plymouthd_transition_t;
 
 struct _plymouthd
 {
