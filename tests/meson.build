@@ -227,6 +227,23 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_diagnostics_test_executable = executable(
+  'test-plymouthd-diagnostics',
+  'test-plymouthd-diagnostics.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_diagnostics_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-diagnostics',
+  plymouthd_diagnostics_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 plymouthd_settings_test_executable = executable(
   'test-plymouthd-settings',
   'test-plymouthd-settings.c',
