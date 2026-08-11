@@ -71,7 +71,6 @@ struct _ply_input_device
         struct libevdev          *dev;
 
         uint32_t                  kernel_has_vts : 1;
-        uint32_t                  leds_state_invalid : 1;
 };
 
 static bool
@@ -279,7 +278,6 @@ on_input (ply_input_device_t *input_device)
 
                         if ((updated_state & XKB_STATE_LOCKED) != 0) {
                                 ply_trace ("Keyboard indicator lights need update");
-                                input_device->leds_state_invalid = true;
                                 ply_trigger_pull (input_device->leds_changed_trigger, input_device);
                         }
                 }
@@ -393,6 +391,8 @@ ply_input_device_open (struct xkb_context *xkb_context,
 
         input_device->kernel_has_vts = ply_character_device_exists ("/dev/tty0");
 
+        ply_input_device_update_leds (input_device);
+
         return input_device;
 
 error:
@@ -446,11 +446,10 @@ ply_input_device_get_path (ply_input_device_t *input_device)
 }
 
 /*
- * from libinput's evdev_device_led_update and Weston's weston_keyboard_set_locks
+ * from libinput's evdev_device_led_update
  */
 void
-ply_input_device_set_state (ply_input_device_t       *input_device,
-                            ply_xkb_keyboard_state_t *xkb_state)
+ply_input_device_update_leds (ply_input_device_t *input_device)
 {
         static struct
         {
@@ -463,37 +462,7 @@ ply_input_device_set_state (ply_input_device_t       *input_device,
                 { PLY_LED_SCROLL_LOCK, LED_SCROLLL, false },
         };
         struct input_event ev[PLY_NUMBER_OF_ELEMENTS (map) + 1];
-        xkb_mod_mask_t mods_depressed, mods_latched, mods_locked, group;
         unsigned int i;
-
-        mods_depressed = xkb_state_serialize_mods (input_device->keyboard_state,
-                                                   XKB_STATE_DEPRESSED);
-        mods_latched = xkb_state_serialize_mods (input_device->keyboard_state,
-                                                 XKB_STATE_LATCHED);
-        mods_locked = xkb_state_serialize_mods (input_device->keyboard_state,
-                                                XKB_STATE_LOCKED);
-        group = xkb_state_serialize_group (input_device->keyboard_state,
-                                           XKB_STATE_EFFECTIVE);
-
-        if (mods_depressed == xkb_state->mods_depressed &&
-            mods_latched == xkb_state->mods_latched &&
-            mods_locked == xkb_state->mods_locked &&
-            group == xkb_state->group &&
-            !input_device->leds_state_invalid)
-                return;
-
-        mods_depressed = xkb_state->mods_depressed;
-        mods_latched = xkb_state->mods_latched;
-        mods_locked = xkb_state->mods_locked;
-        group = xkb_state->group;
-
-        xkb_state_update_mask (input_device->keyboard_state,
-                               mods_depressed,
-                               mods_latched,
-                               mods_locked,
-                               0,
-                               0,
-                               group);
 
         map[LED_NUML].status =
                 ply_input_device_get_locked_modifier_state (input_device, PLY_XKB_MOD_NAME_NUM);
@@ -510,7 +479,46 @@ ply_input_device_set_state (ply_input_device_t       *input_device,
         ev[i].code = SYN_REPORT;
 
         ply_write (input_device->fd, ev, sizeof(ev));
-        input_device->leds_state_invalid = false;
+}
+
+/*
+ * from Weston's weston_keyboard_set_locks
+ */
+void
+ply_input_device_set_state (ply_input_device_t       *input_device,
+                            ply_xkb_keyboard_state_t *xkb_state)
+{
+        xkb_mod_mask_t mods_depressed, mods_latched, mods_locked, group;
+
+        mods_depressed = xkb_state_serialize_mods (input_device->keyboard_state,
+                                                   XKB_STATE_DEPRESSED);
+        mods_latched = xkb_state_serialize_mods (input_device->keyboard_state,
+                                                 XKB_STATE_LATCHED);
+        mods_locked = xkb_state_serialize_mods (input_device->keyboard_state,
+                                                XKB_STATE_LOCKED);
+        group = xkb_state_serialize_group (input_device->keyboard_state,
+                                           XKB_STATE_EFFECTIVE);
+
+        if (mods_depressed == xkb_state->mods_depressed &&
+            mods_latched == xkb_state->mods_latched &&
+            mods_locked == xkb_state->mods_locked &&
+            group == xkb_state->group)
+                return;
+
+        mods_depressed = xkb_state->mods_depressed;
+        mods_latched = xkb_state->mods_latched;
+        mods_locked = xkb_state->mods_locked;
+        group = xkb_state->group;
+
+        xkb_state_update_mask (input_device->keyboard_state,
+                               mods_depressed,
+                               mods_latched,
+                               mods_locked,
+                               0,
+                               0,
+                               group);
+
+        ply_input_device_update_leds (input_device);
 }
 
 ply_xkb_keyboard_state_t
