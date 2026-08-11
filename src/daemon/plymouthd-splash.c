@@ -11,14 +11,21 @@
 #include "plymouthd-splash-private.h"
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "ply-logger.h"
 #include "ply-utils.h"
+#include "plymouthd-policy-private.h"
 
 struct _plymouthd_splash
 {
         ply_boot_splash_t *boot_splash;
+
+        uint32_t           is_shown : 1;
+        uint32_t           is_showing_details : 1;
+        uint32_t           should_force_details : 1;
+        uint32_t           should_force_default : 1;
 };
 
 plymouthd_splash_t *
@@ -58,6 +65,52 @@ plymouthd_splash_clear (plymouthd_splash_t *splash)
 {
         ply_boot_splash_free (splash->boot_splash);
         splash->boot_splash = NULL;
+}
+
+bool
+plymouthd_splash_is_shown (const plymouthd_splash_t *splash)
+{
+        return splash->is_shown;
+}
+
+void
+plymouthd_splash_set_shown (plymouthd_splash_t *splash,
+                            bool                is_shown)
+{
+        splash->is_shown = is_shown;
+}
+
+bool
+plymouthd_splash_is_showing_details (const plymouthd_splash_t *splash)
+{
+        return splash->is_showing_details;
+}
+
+void
+plymouthd_splash_set_showing_details (plymouthd_splash_t *splash,
+                                      bool                is_showing_details)
+{
+        splash->is_showing_details = is_showing_details;
+}
+
+void
+plymouthd_splash_force_details (plymouthd_splash_t *splash)
+{
+        splash->should_force_details = true;
+}
+
+void
+plymouthd_splash_force_default (plymouthd_splash_t *splash)
+{
+        splash->should_force_default = true;
+}
+
+bool
+plymouthd_splash_should_show_default (const plymouthd_splash_t *splash)
+{
+        return plymouthd_should_show_default_splash (
+                splash->should_force_details,
+                splash->should_force_default);
 }
 
 ply_boot_splash_t *
