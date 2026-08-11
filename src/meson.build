@@ -59,6 +59,7 @@ plymouthd_private_sources = files(
   'daemon/plymouthd-logging.c',
   'daemon/plymouthd-messages.c',
   'daemon/plymouthd-options.c',
+  'daemon/plymouthd-output.c',
   'daemon/plymouthd-policy.c',
   'daemon/plymouthd-process.c',
   'daemon/plymouthd-progress.c',
@@ -96,6 +97,7 @@ plymouthd_progress_dep = plymouthd_private_dep
 plymouthd_diagnostics_dep = plymouthd_private_dep
 plymouthd_transition_dep = plymouthd_private_dep
 plymouthd_options_dep = plymouthd_private_dep
+plymouthd_output_dep = plymouthd_private_dep
 plymouthd_commands_dep = plymouthd_private_dep
 plymouthd_display_dep = plymouthd_private_dep
 
