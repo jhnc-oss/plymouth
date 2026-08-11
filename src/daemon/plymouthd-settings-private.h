@@ -32,6 +32,14 @@ typedef struct _plymouthd_settings
 
 PLY_PRIVATE plymouthd_settings_t *plymouthd_settings_new (void);
 PLY_PRIVATE void plymouthd_settings_free (plymouthd_settings_t *settings);
+PLY_PRIVATE double plymouthd_settings_get_splash_delay (const plymouthd_settings_t *settings);
+PLY_PRIVATE double plymouthd_settings_get_device_timeout (const plymouthd_settings_t *settings);
+PLY_PRIVATE int plymouthd_settings_get_device_scale (const plymouthd_settings_t *settings);
+PLY_PRIVATE xkb_keysym_t plymouthd_settings_get_extra_escape_key (const plymouthd_settings_t *settings);
+PLY_PRIVATE int plymouthd_settings_get_use_simpledrm (const plymouthd_settings_t *settings);
+PLY_PRIVATE const char *plymouthd_settings_get_override_splash_path (const plymouthd_settings_t *settings);
+PLY_PRIVATE const char *plymouthd_settings_get_system_default_splash_path (const plymouthd_settings_t *settings);
+PLY_PRIVATE const char *plymouthd_settings_get_distribution_default_splash_path (const plymouthd_settings_t *settings);
 PLY_PRIVATE bool plymouthd_settings_apply_config_file (plymouthd_settings_t *settings,
                                                        const char           *path,
                                                        char                **theme_path);
