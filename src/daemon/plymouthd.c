@@ -16,7 +16,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "ply-boot-splash.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -36,6 +35,7 @@
 #include "plymouthd-runtime-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
+#include "plymouthd-splash-private.h"
 #include "plymouthd-splash-delay-private.h"
 #include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
@@ -180,6 +180,7 @@ plymouthd_new (plymouthd_options_t *options,
         daemon->loop = ply_event_loop_get_default ();
         daemon->mode = plymouthd_options_get_mode (options);
         daemon->settings = plymouthd_settings_new ();
+        daemon->splash = plymouthd_splash_new ();
 
         should_ignore_serial_consoles =
                 plymouthd_options_should_ignore_serial_consoles (options);
@@ -317,7 +318,7 @@ plymouthd_free (plymouthd_t *daemon)
         if (daemon == NULL)
                 return;
 
-        ply_boot_splash_free (daemon->boot_splash);
+        plymouthd_splash_free (daemon->splash);
         plymouthd_commands_free (daemon->commands);
         plymouthd_devices_free (daemon->devices);
         ply_trace ("freeing terminal session");

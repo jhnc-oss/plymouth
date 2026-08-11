@@ -21,6 +21,7 @@
 #include "plymouthd-logging-private.h"
 #include "plymouthd-output-private.h"
 #include "plymouthd-session-private.h"
+#include "plymouthd-splash-private.h"
 #include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
 
@@ -53,7 +54,7 @@ plymouthd_handle_session_output (plymouthd_t *daemon,
                                  size_t       size)
 {
         plymouthd_output_append (daemon->output,
-                                 daemon->boot_splash,
+                                 plymouthd_splash_get (daemon->splash),
                                  output,
                                  size);
 }
@@ -69,11 +70,11 @@ plymouthd_handle_kmsg (plymouthd_t    *daemon,
                        kmsg_message_t *kmsg_message)
 {
         plymouthd_output_append (daemon->output,
-                                 daemon->boot_splash,
+                                 plymouthd_splash_get (daemon->splash),
                                  kmsg_message->message,
                                  strlen (kmsg_message->message));
         plymouthd_output_append (daemon->output,
-                                 daemon->boot_splash,
+                                 plymouthd_splash_get (daemon->splash),
                                  "\n",
                                  1);
 }
@@ -122,8 +123,10 @@ plymouthd_handle_term_signal (plymouthd_t *daemon)
          */
         if ((daemon->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
              daemon->mode == PLY_BOOT_SPLASH_MODE_REBOOT) &&
-            !daemon->is_inactive && daemon->boot_splash &&
-            ply_boot_splash_uses_pixel_displays (daemon->boot_splash)) {
+            !daemon->is_inactive &&
+            plymouthd_splash_get (daemon->splash) != NULL &&
+            ply_boot_splash_uses_pixel_displays (
+                    plymouthd_splash_get (daemon->splash))) {
                 start_plymouthd_fd_escrow ();
                 retain_splash = true;
         }
