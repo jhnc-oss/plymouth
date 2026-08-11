@@ -20,7 +20,9 @@
 #include "ply-utils.h"
 #include "plymouthd-commands-private.h"
 #include "plymouthd-devices-private.h"
+#include "plymouthd-display-private.h"
 #include "plymouthd-environment-private.h"
+#include "plymouthd-input-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-options-private.h"
 #include "plymouthd-policy-private.h"
@@ -29,6 +31,40 @@
 #include "plymouthd-runtime-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-state-private.h"
+
+static void
+on_escape_pressed (plymouthd_t *daemon)
+{
+        if (plymouthd_handle_escape (daemon))
+                plymouthd_toggle_details (daemon);
+}
+
+static void
+on_keyboard_added (plymouthd_t    *daemon,
+                   ply_keyboard_t *keyboard)
+{
+        plymouthd_handle_keyboard_added (daemon,
+                                         keyboard,
+                                         on_escape_pressed);
+}
+
+static void
+on_keyboard_removed (plymouthd_t    *daemon,
+                     ply_keyboard_t *keyboard)
+{
+        plymouthd_handle_keyboard_removed (daemon,
+                                           keyboard,
+                                           on_escape_pressed);
+}
+
+static const plymouthd_devices_event_handlers_t device_event_handlers = {
+        .keyboard_added        = on_keyboard_added,
+        .keyboard_removed      = on_keyboard_removed,
+        .pixel_display_added   = plymouthd_handle_pixel_display_added,
+        .pixel_display_removed = plymouthd_handle_pixel_display_removed,
+        .text_display_added    = plymouthd_handle_text_display_added,
+        .text_display_removed  = plymouthd_handle_text_display_removed,
+};
 
 plymouthd_t *
 plymouthd_new (plymouthd_options_t *options,
@@ -136,7 +172,8 @@ plymouthd_new (plymouthd_options_t *options,
 
         plymouthd_settings_load (&daemon->settings);
         plymouthd_initialize_devices (daemon,
-                                      should_ignore_serial_consoles);
+                                      should_ignore_serial_consoles,
+                                      &device_event_handlers);
 
         *exit_code = EX_OK;
         return daemon;

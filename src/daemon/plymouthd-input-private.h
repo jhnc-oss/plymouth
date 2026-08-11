@@ -1,0 +1,34 @@
+/* plymouthd-input-private.h - internal keyboard input routing
+ *
+ * Copyright (C) 2026 Red Hat, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ */
+
+#ifndef PLYMOUTHD_INPUT_PRIVATE_H
+#define PLYMOUTHD_INPUT_PRIVATE_H
+
+#include <stdbool.h>
+
+#include "ply-private.h"
+
+typedef struct _ply_boot_splash ply_boot_splash_t;
+typedef struct _ply_keyboard ply_keyboard_t;
+typedef struct _plymouthd plymouthd_t;
+
+typedef void (*plymouthd_input_escape_handler_t)(plymouthd_t *daemon);
+
+PLY_PRIVATE void plymouthd_attach_keyboards_to_splash (plymouthd_t       *daemon,
+                                                       ply_boot_splash_t *splash);
+PLY_PRIVATE bool plymouthd_handle_escape (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_handle_keyboard_added (plymouthd_t                     *daemon,
+                                                  ply_keyboard_t                  *keyboard,
+                                                  plymouthd_input_escape_handler_t escape_handler);
+PLY_PRIVATE void plymouthd_handle_keyboard_removed (plymouthd_t                     *daemon,
+                                                    ply_keyboard_t                  *keyboard,
+                                                    plymouthd_input_escape_handler_t escape_handler);
+
+#endif /* PLYMOUTHD_INPUT_PRIVATE_H */

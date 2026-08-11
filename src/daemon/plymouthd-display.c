@@ -17,6 +17,7 @@
 #include "ply-logger.h"
 #include "ply-utils.h"
 #include "plymouthd-devices-private.h"
+#include "plymouthd-input-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-policy-private.h"
@@ -28,6 +29,44 @@ static void
 show_messages (plymouthd_t *daemon)
 {
         plymouthd_messages_replay (daemon->messages, daemon->boot_splash);
+}
+
+static void
+attach_pixel_display_to_splash (ply_pixel_display_t *display,
+                                void                *user_data)
+{
+        ply_boot_splash_t *splash = user_data;
+
+        ply_boot_splash_add_pixel_display (splash, display);
+}
+
+static void
+attach_pixel_displays_to_splash (plymouthd_t       *daemon,
+                                 ply_boot_splash_t *splash)
+{
+        plymouthd_for_each_pixel_display (
+                daemon,
+                attach_pixel_display_to_splash,
+                splash);
+}
+
+static void
+attach_text_display_to_splash (ply_text_display_t *display,
+                               void               *user_data)
+{
+        ply_boot_splash_t *splash = user_data;
+
+        ply_boot_splash_add_text_display (splash, display);
+}
+
+static void
+attach_text_displays_to_splash (plymouthd_t       *daemon,
+                                ply_boot_splash_t *splash)
+{
+        plymouthd_for_each_text_display (
+                daemon,
+                attach_text_display_to_splash,
+                splash);
 }
 
 static ply_boot_splash_t *
@@ -46,7 +85,9 @@ show_theme (plymouthd_t *daemon,
                 return NULL;
 
         plymouthd_progress_attach_to_splash (daemon->progress, splash);
-        plymouthd_attach_splash_to_devices (daemon, splash);
+        plymouthd_attach_keyboards_to_splash (daemon, splash);
+        attach_pixel_displays_to_splash (daemon, splash);
+        attach_text_displays_to_splash (daemon, splash);
         if (ply_boot_splash_uses_pixel_displays (splash))
                 plymouthd_activate_renderers (daemon);
 
@@ -66,6 +107,58 @@ plymouthd_update_display (plymouthd_t *daemon)
 {
         plymouthd_interaction_update_display (daemon->interaction,
                                               daemon->boot_splash);
+}
+
+void
+plymouthd_handle_pixel_display_added (plymouthd_t         *daemon,
+                                      ply_pixel_display_t *display)
+{
+        if (!daemon->is_shown)
+                return;
+
+        if (daemon->boot_splash == NULL) {
+                ply_trace ("pixel display added before splash loaded, so loading splash now");
+                plymouthd_show_splash (daemon);
+        } else {
+                ply_trace ("pixel display added after splash loaded, so attaching to splash");
+                ply_boot_splash_add_pixel_display (daemon->boot_splash, display);
+                plymouthd_update_display (daemon);
+        }
+}
+
+void
+plymouthd_handle_pixel_display_removed (plymouthd_t         *daemon,
+                                        ply_pixel_display_t *display)
+{
+        if (daemon->boot_splash != NULL)
+                ply_boot_splash_remove_pixel_display (daemon->boot_splash,
+                                                      display);
+}
+
+void
+plymouthd_handle_text_display_added (plymouthd_t        *daemon,
+                                     ply_text_display_t *display)
+{
+        if (!daemon->is_shown)
+                return;
+
+        if (daemon->boot_splash == NULL) {
+                ply_trace ("text display added before splash loaded, so loading splash now");
+                plymouthd_show_splash (daemon);
+        } else {
+                ply_trace ("text display added after splash loaded, so attaching to splash");
+                ply_boot_splash_add_text_display (daemon->boot_splash, display);
+                plymouthd_update_display (daemon);
+        }
+}
+
+void
+plymouthd_handle_text_display_removed (plymouthd_t        *daemon,
+                                       ply_text_display_t *display)
+{
+        if (daemon->boot_splash != NULL)
+                ply_boot_splash_remove_text_display (daemon->boot_splash,
+                                                     display);
 }
 
 void
