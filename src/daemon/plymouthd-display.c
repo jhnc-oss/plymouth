@@ -20,6 +20,7 @@
 #include "plymouthd-input-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-messages-private.h"
+#include "plymouthd-output-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-settings-private.h"
@@ -79,7 +80,7 @@ show_theme (plymouthd_t *daemon,
         splash = plymouthd_load_splash (
                 theme_path,
                 PLYMOUTH_PLUGIN_PATH,
-                daemon->boot_buffer,
+                plymouthd_output_get_buffer (daemon->output),
                 daemon->loop);
 
         if (splash == NULL)

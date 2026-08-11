@@ -19,7 +19,6 @@
 
 #include "ply-boot-server.h"
 #include "ply-boot-splash.h"
-#include "ply-buffer.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -32,6 +31,7 @@
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-options-private.h"
+#include "plymouthd-output-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
@@ -302,7 +302,7 @@ plymouthd_free (plymouthd_t *daemon)
         ply_trace ("freeing terminal session");
         plymouthd_session_free (daemon->session);
         plymouthd_transition_free (daemon->transition);
-        ply_buffer_free (daemon->boot_buffer);
+        plymouthd_output_free (daemon->output);
         plymouthd_progress_free (daemon->progress);
         plymouthd_interaction_free (daemon->interaction);
         plymouthd_logging_free (daemon->logging);

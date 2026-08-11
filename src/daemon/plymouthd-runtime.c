@@ -15,11 +15,11 @@
 #include <unistd.h>
 
 #include "ply-boot-splash.h"
-#include "ply-buffer.h"
 #include "ply-logger.h"
 #include "ply-trigger.h"
 #include "plymouthd-control-private.h"
 #include "plymouthd-logging-private.h"
+#include "plymouthd-output-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
@@ -28,7 +28,7 @@ bool
 plymouthd_initialize_session (plymouthd_t *daemon,
                               bool         should_attach)
 {
-        daemon->boot_buffer = ply_buffer_new ();
+        daemon->output = plymouthd_output_new ();
         daemon->transition = plymouthd_transition_new ();
         daemon->session = plymouthd_session_new (
                 daemon->loop,
@@ -52,10 +52,10 @@ plymouthd_handle_session_output (plymouthd_t *daemon,
                                  const char  *output,
                                  size_t       size)
 {
-        ply_buffer_append_bytes (daemon->boot_buffer, output, size);
-        if (daemon->boot_splash != NULL)
-                ply_boot_splash_update_output (daemon->boot_splash,
-                                               output, size);
+        plymouthd_output_append (daemon->output,
+                                 daemon->boot_splash,
+                                 output,
+                                 size);
 }
 
 void
@@ -68,12 +68,14 @@ void
 plymouthd_handle_kmsg (plymouthd_t    *daemon,
                        kmsg_message_t *kmsg_message)
 {
-        ply_buffer_append (daemon->boot_buffer, "%s\n", kmsg_message->message);
-
-        if (daemon->boot_splash != NULL) {
-                ply_boot_splash_update_output (daemon->boot_splash, kmsg_message->message, strlen (kmsg_message->message));
-                ply_boot_splash_update_output (daemon->boot_splash, "\n", 1);
-        }
+        plymouthd_output_append (daemon->output,
+                                 daemon->boot_splash,
+                                 kmsg_message->message,
+                                 strlen (kmsg_message->message));
+        plymouthd_output_append (daemon->output,
+                                 daemon->boot_splash,
+                                 "\n",
+                                 1);
 }
 
 bool
@@ -84,8 +86,8 @@ plymouthd_attach_session (plymouthd_t *daemon)
         should_be_redirected = plymouthd_logging_is_enabled (daemon->logging);
 
         if (!plymouthd_session_attach (daemon->session, should_be_redirected)) {
-                ply_buffer_free (daemon->boot_buffer);
-                daemon->boot_buffer = NULL;
+                plymouthd_output_free (daemon->output);
+                daemon->output = NULL;
                 return false;
         }
 
