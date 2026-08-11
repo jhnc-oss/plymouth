@@ -10,8 +10,55 @@
 
 #include "plymouthd-splash-private.h"
 
+#include <assert.h>
+#include <stdlib.h>
+
 #include "ply-logger.h"
 #include "ply-utils.h"
+
+struct _plymouthd_splash
+{
+        ply_boot_splash_t *boot_splash;
+};
+
+plymouthd_splash_t *
+plymouthd_splash_new (void)
+{
+        return calloc (1, sizeof(plymouthd_splash_t));
+}
+
+void
+plymouthd_splash_free (plymouthd_splash_t *splash)
+{
+        if (splash == NULL)
+                return;
+
+        plymouthd_splash_clear (splash);
+        free (splash);
+}
+
+ply_boot_splash_t *
+plymouthd_splash_get (const plymouthd_splash_t *splash)
+{
+        return splash->boot_splash;
+}
+
+void
+plymouthd_splash_take (plymouthd_splash_t *splash,
+                       ply_boot_splash_t  *boot_splash)
+{
+        assert (splash->boot_splash == NULL);
+        assert (boot_splash != NULL);
+
+        splash->boot_splash = boot_splash;
+}
+
+void
+plymouthd_splash_clear (plymouthd_splash_t *splash)
+{
+        ply_boot_splash_free (splash->boot_splash);
+        splash->boot_splash = NULL;
+}
 
 ply_boot_splash_t *
 plymouthd_load_splash (const char       *theme_path,

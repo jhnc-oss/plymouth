@@ -14,6 +14,14 @@
 #include "ply-boot-splash.h"
 #include "ply-private.h"
 
+typedef struct _plymouthd_splash plymouthd_splash_t;
+
+PLY_PRIVATE plymouthd_splash_t *plymouthd_splash_new (void);
+PLY_PRIVATE void plymouthd_splash_free (plymouthd_splash_t *splash);
+PLY_PRIVATE ply_boot_splash_t *plymouthd_splash_get (const plymouthd_splash_t *splash);
+PLY_PRIVATE void plymouthd_splash_take (plymouthd_splash_t *splash,
+                                        ply_boot_splash_t  *boot_splash);
+PLY_PRIVATE void plymouthd_splash_clear (plymouthd_splash_t *splash);
 PLY_PRIVATE ply_boot_splash_t *
 plymouthd_load_splash (const char       *theme_path,
                        const char       *plugin_directory,
