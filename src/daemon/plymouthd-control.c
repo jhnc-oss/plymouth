@@ -69,7 +69,7 @@ plymouthd_handle_show_splash (plymouthd_t *daemon)
         has_displays = plymouthd_devices_has_displays (daemon->devices);
 
         if (!plymouthd_session_is_attached (daemon->session) &&
-            daemon->should_be_attached && has_displays)
+            plymouthd_session_should_attach (daemon->session) && has_displays)
                 plymouthd_attach_session (daemon);
 
         plymouthd_devices_prepare_console (daemon->devices);
@@ -238,7 +238,7 @@ plymouthd_handle_reactivate (plymouthd_t *daemon)
         plymouthd_devices_reactivate_console (daemon->devices);
 
         if (plymouthd_session_has_terminal (daemon->session) &&
-            daemon->should_be_attached) {
+            plymouthd_session_should_attach (daemon->session)) {
                 ply_trace ("reactivating terminal session");
                 plymouthd_attach_session (daemon);
         }

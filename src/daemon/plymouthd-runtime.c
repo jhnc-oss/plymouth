@@ -39,11 +39,11 @@ plymouthd_initialize_session (plymouthd_t *daemon,
                 (plymouthd_session_kmsg_handler_t)
                 plymouthd_handle_kmsg,
                 daemon);
+        plymouthd_session_set_should_attach (daemon->session, should_attach);
 
-        if (!should_attach)
+        if (!plymouthd_session_should_attach (daemon->session))
                 return true;
 
-        daemon->should_be_attached = true;
         return plymouthd_attach_session (daemon);
 }
 

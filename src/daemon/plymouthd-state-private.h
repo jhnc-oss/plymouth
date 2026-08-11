@@ -51,7 +51,6 @@ struct _plymouthd
         plymouthd_settings_t    *settings;
 
         uint32_t                 showing_details : 1;
-        uint32_t                 should_be_attached : 1;
         uint32_t                 is_inactive : 1;
         uint32_t                 is_shown : 1;
         uint32_t                 should_force_details : 1;
