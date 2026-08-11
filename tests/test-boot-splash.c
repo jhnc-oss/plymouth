@@ -189,6 +189,36 @@ test_current_splash_owner_releases_instances (void)
 }
 
 static bool
+test_current_splash_owner_tracks_presentation_state (void)
+{
+        plymouthd_splash_t *current_splash;
+
+        current_splash = plymouthd_splash_new ();
+        PLY_TEST_ASSERT (!plymouthd_splash_is_shown (current_splash));
+        PLY_TEST_ASSERT (!plymouthd_splash_is_showing_details (current_splash));
+
+        plymouthd_splash_set_shown (current_splash, true);
+        plymouthd_splash_set_showing_details (current_splash, true);
+        PLY_TEST_ASSERT (plymouthd_splash_is_shown (current_splash));
+        PLY_TEST_ASSERT (plymouthd_splash_is_showing_details (current_splash));
+
+        plymouthd_splash_set_shown (current_splash, false);
+        plymouthd_splash_set_showing_details (current_splash, false);
+        PLY_TEST_ASSERT (!plymouthd_splash_is_shown (current_splash));
+        PLY_TEST_ASSERT (!plymouthd_splash_is_showing_details (current_splash));
+
+        ply_kernel_command_line_override ("");
+        PLY_TEST_ASSERT (!plymouthd_splash_should_show_default (current_splash));
+        plymouthd_splash_force_default (current_splash);
+        PLY_TEST_ASSERT (plymouthd_splash_should_show_default (current_splash));
+        plymouthd_splash_force_details (current_splash);
+        PLY_TEST_ASSERT (!plymouthd_splash_should_show_default (current_splash));
+
+        plymouthd_splash_free (current_splash);
+        return true;
+}
+
+static bool
 test_daemon_loader_attaches_runtime_dependencies (void)
 {
         const test_splash_plugin_state_t *state;
@@ -374,6 +404,7 @@ static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_theme_loads_and_attached_devices_are_removed),
         PLY_TEST_CASE (test_current_splash_owner_releases_instances),
+        PLY_TEST_CASE (test_current_splash_owner_tracks_presentation_state),
         PLY_TEST_CASE (test_daemon_loader_attaches_runtime_dependencies),
         PLY_TEST_CASE (test_runtime_operations_reach_splash_plugin),
         PLY_TEST_CASE (test_plugin_idle_completion_reaches_caller),
