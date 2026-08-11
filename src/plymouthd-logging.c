@@ -9,6 +9,7 @@
  */
 
 #include "plymouthd-logging-private.h"
+#include "plymouthd-session-private.h"
 
 #include <paths.h>
 #include <stdint.h>
@@ -160,8 +161,8 @@ plymouthd_logging_get_spool_file (plymouthd_logging_t *logging)
 }
 
 void
-plymouthd_logging_prepare (plymouthd_logging_t    *logging,
-                           ply_terminal_session_t *session)
+plymouthd_logging_prepare (plymouthd_logging_t *logging,
+                           plymouthd_session_t *session)
 {
         const char *log_file;
 
@@ -170,19 +171,19 @@ plymouthd_logging_prepare (plymouthd_logging_t    *logging,
                 return;
         }
 
-        if (session == NULL) {
+        if (session == NULL || !plymouthd_session_has_terminal (session)) {
                 ply_trace ("not preparing logging, no session");
                 return;
         }
 
-        ply_terminal_session_close_log (session);
+        plymouthd_session_close_log (session);
 
         log_file = plymouthd_logging_get_log_file (logging);
         if (log_file != NULL) {
                 bool log_opened;
 
                 ply_trace ("opening log '%s'", log_file);
-                log_opened = ply_terminal_session_open_log (session, log_file);
+                log_opened = plymouthd_session_open_log (session, log_file);
 
                 if (!log_opened)
                         ply_trace ("failed to open log: %m");
@@ -193,8 +194,8 @@ plymouthd_logging_prepare (plymouthd_logging_t    *logging,
 }
 
 void
-plymouthd_logging_system_initialized (plymouthd_logging_t    *logging,
-                                      ply_terminal_session_t *session)
+plymouthd_logging_system_initialized (plymouthd_logging_t *logging,
+                                      plymouthd_session_t *session)
 {
         logging->initialized = true;
         plymouthd_logging_prepare (logging, session);

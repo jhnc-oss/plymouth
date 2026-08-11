@@ -244,6 +244,57 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_process_test_executable = executable(
+  'test-plymouthd-process',
+  'test-plymouthd-process.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_private_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-process',
+  plymouthd_process_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
+plymouthd_transition_test_executable = executable(
+  'test-plymouthd-transition',
+  'test-plymouthd-transition.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_transition_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-transition',
+  plymouthd_transition_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
+plymouthd_options_test_executable = executable(
+  'test-plymouthd-options',
+  'test-plymouthd-options.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_options_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-options',
+  plymouthd_options_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 plymouthd_settings_test_executable = executable(
   'test-plymouthd-settings',
   'test-plymouthd-settings.c',

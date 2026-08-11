@@ -14,6 +14,7 @@
 #include <stdlib.h>
 
 #include "ply-logger.h"
+#include "ply-terminal-session.h"
 
 struct _plymouthd_session
 {
@@ -172,8 +173,27 @@ plymouthd_session_is_redirected (plymouthd_session_t *session)
         return session->redirected;
 }
 
-ply_terminal_session_t *
-plymouthd_session_get_terminal_session (plymouthd_session_t *session)
+bool
+plymouthd_session_has_terminal (plymouthd_session_t *session)
 {
-        return session->terminal_session;
+        return session->terminal_session != NULL;
+}
+
+bool
+plymouthd_session_open_log (plymouthd_session_t *session,
+                            const char          *path)
+{
+        if (session->terminal_session == NULL)
+                return false;
+
+        return ply_terminal_session_open_log (session->terminal_session, path);
+}
+
+void
+plymouthd_session_close_log (plymouthd_session_t *session)
+{
+        if (session->terminal_session == NULL)
+                return;
+
+        ply_terminal_session_close_log (session->terminal_session);
 }

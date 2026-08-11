@@ -159,20 +159,17 @@ test_daemon_loader_attaches_runtime_dependencies (void)
         ply_event_loop_t *loop;
         ply_boot_splash_t *splash;
         ply_buffer_t *boot_buffer;
-        ply_progress_t *progress;
 
         module = ply_open_module (TEST_SPLASH_PLUGIN_PATH);
         PLY_TEST_ASSERT (module != NULL);
         loop = ply_event_loop_new ();
         PLY_TEST_ASSERT (loop != NULL);
         boot_buffer = ply_buffer_new ();
-        progress = ply_progress_new ();
 
         splash = plymouthd_load_splash (TEST_SPLASH_THEME_PATH,
                                         TEST_SPLASH_PLUGIN_DIR,
                                         boot_buffer,
-                                        loop,
-                                        progress);
+                                        loop);
         PLY_TEST_ASSERT (splash != NULL);
         PLY_TEST_ASSERT (ply_boot_splash_show (
                                  splash,
@@ -186,7 +183,6 @@ test_daemon_loader_attaches_runtime_dependencies (void)
         PLY_TEST_ASSERT (state->boot_buffer == boot_buffer);
 
         ply_boot_splash_free (splash);
-        ply_progress_free (progress);
         ply_buffer_free (boot_buffer);
         ply_event_loop_free (loop);
         ply_close_module (module);

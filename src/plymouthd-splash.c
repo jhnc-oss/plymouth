@@ -17,8 +17,7 @@ ply_boot_splash_t *
 plymouthd_load_splash (const char       *theme_path,
                        const char       *plugin_directory,
                        ply_buffer_t     *boot_buffer,
-                       ply_event_loop_t *loop,
-                       ply_progress_t   *progress)
+                       ply_event_loop_t *loop)
 {
         ply_boot_splash_t *splash;
         bool is_loaded;
@@ -46,9 +45,6 @@ plymouthd_load_splash (const char       *theme_path,
 
         ply_trace ("attaching plugin to event loop");
         ply_boot_splash_attach_to_event_loop (splash, loop);
-
-        ply_trace ("attaching progress to plugin");
-        ply_boot_splash_attach_progress (splash, progress);
 
         return splash;
 }

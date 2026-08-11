@@ -1,0 +1,29 @@
+/* plymouthd-display-private.h - internal display coordination
+ *
+ * Copyright (C) 2026 Red Hat, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ */
+
+#ifndef PLYMOUTHD_DISPLAY_PRIVATE_H
+#define PLYMOUTHD_DISPLAY_PRIVATE_H
+
+#include "ply-device-manager.h"
+#include "ply-private.h"
+
+typedef struct _plymouthd plymouthd_t;
+
+PLY_PRIVATE void plymouthd_show_detailed_splash (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_show_default_splash (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_cancel_pending_show (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_show_splash (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_load_devices (plymouthd_t               *daemon,
+                                         ply_device_manager_flags_t flags);
+PLY_PRIVATE void plymouthd_update_display (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_toggle_details (plymouthd_t *daemon);
+PLY_PRIVATE void plymouthd_hide_splash (plymouthd_t *daemon);
+
+#endif /* PLYMOUTHD_DISPLAY_PRIVATE_H */
