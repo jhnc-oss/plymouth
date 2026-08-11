@@ -10,8 +10,6 @@
 
 #include "plymouthd-display-private.h"
 
-#include <math.h>
-
 #include "ply-boot-splash.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
@@ -25,6 +23,7 @@
 #include "plymouthd-progress-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
+#include "plymouthd-splash-delay-private.h"
 #include "plymouthd-state-private.h"
 
 static void
@@ -166,14 +165,7 @@ plymouthd_handle_text_display_removed (plymouthd_t        *daemon,
 void
 plymouthd_cancel_pending_show (plymouthd_t *daemon)
 {
-        if (isnan (daemon->settings->splash_delay))
-                return;
-
-        ply_event_loop_stop_watching_for_timeout (
-                daemon->loop,
-                (ply_event_loop_timeout_handler_t) plymouthd_show_splash,
-                daemon);
-        daemon->settings->splash_delay = NAN;
+        plymouthd_splash_delay_cancel (daemon->splash_delay);
 }
 
 void
@@ -202,32 +194,39 @@ plymouthd_show_detailed_splash (plymouthd_t *daemon)
 void
 plymouthd_show_default_splash (plymouthd_t *daemon)
 {
+        const char *override_splash_path;
+        const char *system_default_splash_path;
+        const char *distribution_default_splash_path;
+
         if (daemon->boot_splash != NULL)
                 return;
 
+        override_splash_path =
+                daemon->settings->override_splash_path;
+        system_default_splash_path =
+                daemon->settings->system_default_splash_path;
+        distribution_default_splash_path =
+                daemon->settings->distribution_default_splash_path;
+
         ply_trace ("Showing splash screen");
-        if (daemon->settings->override_splash_path != NULL) {
-                ply_trace ("Trying override splash at '%s'",
-                           daemon->settings->override_splash_path);
+        if (override_splash_path != NULL) {
+                ply_trace ("Trying override splash at '%s'", override_splash_path);
                 daemon->boot_splash =
-                        show_theme (daemon,
-                                    daemon->settings->override_splash_path);
+                        show_theme (daemon, override_splash_path);
         }
 
         if (daemon->boot_splash == NULL &&
-            daemon->settings->system_default_splash_path != NULL) {
+            system_default_splash_path != NULL) {
                 ply_trace ("Trying system default splash");
                 daemon->boot_splash =
-                        show_theme (daemon,
-                                    daemon->settings->system_default_splash_path);
+                        show_theme (daemon, system_default_splash_path);
         }
 
         if (daemon->boot_splash == NULL &&
-            daemon->settings->distribution_default_splash_path != NULL) {
+            distribution_default_splash_path != NULL) {
                 ply_trace ("Trying distribution default splash");
-                daemon->boot_splash = show_theme (
-                        daemon,
-                        daemon->settings->distribution_default_splash_path);
+                daemon->boot_splash =
+                        show_theme (daemon, distribution_default_splash_path);
         }
 
         if (daemon->boot_splash == NULL) {
@@ -263,34 +262,15 @@ plymouthd_show_default_splash (plymouthd_t *daemon)
 void
 plymouthd_show_splash (plymouthd_t *daemon)
 {
+        double time_left;
+
         if (daemon->boot_splash != NULL)
                 return;
 
-        if (!isnan (daemon->settings->splash_delay)) {
-                double now, running_time;
-
-                now = ply_get_timestamp ();
-                running_time = now - daemon->start_time;
-                if (daemon->settings->splash_delay > running_time) {
-                        double time_left;
-
-                        time_left = daemon->settings->splash_delay - running_time;
-                        ply_trace ("delaying show splash for %lf seconds",
-                                   time_left);
-                        ply_event_loop_stop_watching_for_timeout (
-                                daemon->loop,
-                                (ply_event_loop_timeout_handler_t)
-                                plymouthd_show_splash,
-                                daemon);
-                        ply_event_loop_watch_for_timeout (
-                                daemon->loop,
-                                time_left,
-                                (ply_event_loop_timeout_handler_t)
-                                plymouthd_show_splash,
-                                daemon);
-                        plymouthd_devices_activate_keyboards (daemon->devices);
-                        return;
-                }
+        if (plymouthd_splash_delay_defer (daemon->splash_delay, &time_left)) {
+                ply_trace ("delaying show splash for %lf seconds", time_left);
+                plymouthd_devices_activate_keyboards (daemon->devices);
+                return;
         }
 
         if (plymouthd_should_show_default_splash (
