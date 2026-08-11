@@ -19,6 +19,19 @@
 #include "plymouthd-policy-private.h"
 #include "plymouthd-theme-resolver-private.h"
 
+struct _plymouthd_settings
+{
+        double       splash_delay;
+        double       device_timeout;
+        int          device_scale;
+        xkb_keysym_t extra_esc_key;
+        int          use_simpledrm;
+
+        char        *override_splash_path;
+        char        *system_default_splash_path;
+        char        *distribution_default_splash_path;
+};
+
 static void initialize_settings (plymouthd_settings_t *settings);
 static void clear_settings (plymouthd_settings_t *settings);
 
@@ -71,12 +84,6 @@ double
 plymouthd_settings_get_splash_delay (const plymouthd_settings_t *settings)
 {
         return settings->splash_delay;
-}
-
-void
-plymouthd_settings_disable_splash_delay (plymouthd_settings_t *settings)
-{
-        settings->splash_delay = NAN;
 }
 
 double

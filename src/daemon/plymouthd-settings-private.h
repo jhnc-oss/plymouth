@@ -17,18 +17,7 @@
 
 #include "ply-private.h"
 
-typedef struct _plymouthd_settings
-{
-        double       splash_delay;
-        double       device_timeout;
-        int          device_scale;
-        xkb_keysym_t extra_esc_key;
-        int          use_simpledrm;
-
-        char        *override_splash_path;
-        char        *system_default_splash_path;
-        char        *distribution_default_splash_path;
-} plymouthd_settings_t;
+typedef struct _plymouthd_settings plymouthd_settings_t;
 
 PLY_PRIVATE plymouthd_settings_t *plymouthd_settings_new (void);
 PLY_PRIVATE void plymouthd_settings_free (plymouthd_settings_t *settings);

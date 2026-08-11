@@ -202,11 +202,11 @@ plymouthd_show_default_splash (plymouthd_t *daemon)
                 return;
 
         override_splash_path =
-                daemon->settings->override_splash_path;
+                plymouthd_settings_get_override_splash_path (daemon->settings);
         system_default_splash_path =
-                daemon->settings->system_default_splash_path;
+                plymouthd_settings_get_system_default_splash_path (daemon->settings);
         distribution_default_splash_path =
-                daemon->settings->distribution_default_splash_path;
+                plymouthd_settings_get_distribution_default_splash_path (daemon->settings);
 
         ply_trace ("Showing splash screen");
         if (override_splash_path != NULL) {

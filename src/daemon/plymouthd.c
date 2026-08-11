@@ -144,19 +144,19 @@ create_devices (plymouthd_t *daemon,
                 flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
         }
 
-        device_scale = daemon->settings->device_scale;
+        device_scale = plymouthd_settings_get_device_scale (daemon->settings);
         if (device_scale != -1)
                 ply_set_device_scale (device_scale);
 
         flags = plymouthd_add_simpledrm_flags (
                 flags,
-                daemon->settings->use_simpledrm);
+                plymouthd_settings_get_use_simpledrm (daemon->settings));
 
         daemon->devices = plymouthd_devices_new (
                 daemon->default_tty,
                 flags,
-                daemon->settings->extra_esc_key,
-                daemon->settings->device_timeout,
+                plymouthd_settings_get_extra_escape_key (daemon->settings),
+                plymouthd_settings_get_device_timeout (daemon->settings),
                 &device_event_handlers,
                 daemon);
 
