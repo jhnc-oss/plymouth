@@ -99,7 +99,7 @@ plymouthd_handle_ask_for_password (plymouthd_t           *daemon,
                 /* Waiting to be shown, boot splash will
                  * arrive shortly so just sit tight
                  */
-                if (daemon->is_shown) {
+                if (plymouthd_splash_is_shown (daemon->splash)) {
                         bool has_displays;
 
                         plymouthd_cancel_pending_show (daemon);
@@ -263,12 +263,12 @@ plymouthd_handle_reload (plymouthd_t *daemon)
                 return;
         }
 
-        if (!daemon->is_shown) {
+        if (!plymouthd_splash_is_shown (daemon->splash)) {
                 ply_trace ("reload while not shown");
                 return;
         }
 
-        if (daemon->showing_details) {
+        if (plymouthd_splash_is_showing_details (daemon->splash)) {
                 plymouthd_show_detailed_splash (daemon);
         } else {
                 plymouthd_show_default_splash (daemon);

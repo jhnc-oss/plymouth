@@ -19,7 +19,6 @@
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-output-private.h"
-#include "plymouthd-policy-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
@@ -115,7 +114,7 @@ void
 plymouthd_handle_pixel_display_added (plymouthd_t         *daemon,
                                       ply_pixel_display_t *display)
 {
-        if (!daemon->is_shown)
+        if (!plymouthd_splash_is_shown (daemon->splash))
                 return;
 
         if (plymouthd_splash_get (daemon->splash) == NULL) {
@@ -144,7 +143,7 @@ void
 plymouthd_handle_text_display_added (plymouthd_t        *daemon,
                                      ply_text_display_t *display)
 {
-        if (!daemon->is_shown)
+        if (!plymouthd_splash_is_shown (daemon->splash))
                 return;
 
         if (plymouthd_splash_get (daemon->splash) == NULL) {
@@ -279,14 +278,12 @@ plymouthd_show_splash (plymouthd_t *daemon)
                 return;
         }
 
-        if (plymouthd_should_show_default_splash (
-                    daemon->should_force_details,
-                    daemon->should_force_default_splash)) {
+        if (plymouthd_splash_should_show_default (daemon->splash)) {
                 plymouthd_show_default_splash (daemon);
-                daemon->showing_details = false;
+                plymouthd_splash_set_showing_details (daemon->splash, false);
         } else {
                 plymouthd_show_detailed_splash (daemon);
-                daemon->showing_details = true;
+                plymouthd_splash_set_showing_details (daemon->splash, true);
         }
 }
 
@@ -300,7 +297,7 @@ plymouthd_hide_splash (plymouthd_t *daemon)
             ply_boot_splash_uses_pixel_displays (boot_splash))
                 plymouthd_devices_deactivate_renderers (daemon->devices);
 
-        daemon->is_shown = false;
+        plymouthd_splash_set_shown (daemon->splash, false);
         plymouthd_cancel_pending_show (daemon);
 
         if (boot_splash != NULL)
@@ -319,11 +316,11 @@ plymouthd_toggle_details (plymouthd_t *daemon)
                 plymouthd_splash_clear (daemon->splash);
         }
 
-        if (!daemon->showing_details) {
+        if (!plymouthd_splash_is_showing_details (daemon->splash)) {
                 plymouthd_show_detailed_splash (daemon);
-                daemon->showing_details = true;
+                plymouthd_splash_set_showing_details (daemon->splash, true);
         } else {
                 plymouthd_show_default_splash (daemon);
-                daemon->showing_details = false;
+                plymouthd_splash_set_showing_details (daemon->splash, false);
         }
 }

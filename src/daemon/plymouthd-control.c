@@ -48,7 +48,7 @@ plymouthd_handle_show_splash (plymouthd_t *daemon)
 {
         bool has_displays;
 
-        if (daemon->is_shown) {
+        if (plymouthd_splash_is_shown (daemon->splash)) {
                 ply_trace ("show splash called while already shown");
                 return;
         }
@@ -66,7 +66,7 @@ plymouthd_handle_show_splash (plymouthd_t *daemon)
                 return;
         }
 
-        daemon->is_shown = true;
+        plymouthd_splash_set_shown (daemon->splash, true);
         has_displays = plymouthd_devices_has_displays (daemon->devices);
 
         if (!plymouthd_session_is_attached (daemon->session) &&
@@ -105,7 +105,7 @@ quit_splash (plymouthd_t *daemon)
 static void
 dump_details_and_quit_splash (plymouthd_t *daemon)
 {
-        daemon->showing_details = false;
+        plymouthd_splash_set_showing_details (daemon->splash, false);
         plymouthd_toggle_details (daemon);
 
         plymouthd_hide_splash (daemon);

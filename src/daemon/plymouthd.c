@@ -161,7 +161,7 @@ create_devices (plymouthd_t *daemon,
                 daemon);
 
         if (plymouthd_devices_has_serial_consoles (daemon->devices))
-                daemon->should_force_details = true;
+                plymouthd_splash_force_details (daemon->splash);
 }
 
 plymouthd_t *
@@ -173,6 +173,7 @@ plymouthd_new (plymouthd_options_t *options,
         ply_daemon_handle_t *daemon_handle = NULL;
         double start_time;
         bool should_ignore_serial_consoles;
+        bool should_force_default_splash = false;
         bool should_show_default_splash;
 
         start_time = ply_get_timestamp ();
@@ -209,7 +210,8 @@ plymouthd_new (plymouthd_options_t *options,
         if (plymouthd_options_should_use_graphical_boot (options) ||
             ply_kernel_command_line_has_argument ("plymouth.graphical") ||
             plymouthd_kernel_console_is_ttynull ()) {
-                daemon->should_force_default_splash = true;
+                should_force_default_splash = true;
+                plymouthd_splash_force_default (daemon->splash);
                 should_ignore_serial_consoles = true;
         }
 
@@ -217,6 +219,7 @@ plymouthd_new (plymouthd_options_t *options,
                     daemon,
                     plymouthd_options_get_debug_path (options),
                     plymouthd_options_should_debug (options),
+                    should_force_default_splash,
                     plymouthd_options_take_pid_file (options))) {
                 if (errno == 0) {
                         *exit_code = EX_OK;
@@ -276,9 +279,8 @@ plymouthd_new (plymouthd_options_t *options,
         }
 
         plymouthd_settings_load (daemon->settings);
-        should_show_default_splash = plymouthd_should_show_default_splash (
-                daemon->should_force_details,
-                daemon->should_force_default_splash);
+        should_show_default_splash =
+                plymouthd_splash_should_show_default (daemon->splash);
         daemon->splash_delay = plymouthd_splash_delay_new (
                 daemon->loop,
                 start_time,

@@ -19,6 +19,7 @@
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-process-private.h"
+#include "plymouthd-splash-private.h"
 #include "plymouthd-state-private.h"
 
 static bool
@@ -64,6 +65,7 @@ bool
 plymouthd_initialize_environment (plymouthd_t *daemon,
                                   const char  *debug_path,
                                   bool         capture_debug,
+                                  bool         should_force_default_splash,
                                   char        *pid_file)
 {
         ply_trace ("initializing minimal work environment");
@@ -83,9 +85,9 @@ plymouthd_initialize_environment (plymouthd_t *daemon,
 
                 ply_trace ("checking if '%s' exists", daemon->default_tty);
                 if (!ply_character_device_exists (daemon->default_tty)) {
-                        if (!daemon->should_force_default_splash) {
+                        if (!should_force_default_splash) {
                                 ply_trace ("nope, forcing details mode");
-                                daemon->should_force_details = true;
+                                plymouthd_splash_force_details (daemon->splash);
                         }
 
                         daemon->default_tty = find_fallback_tty (daemon);
