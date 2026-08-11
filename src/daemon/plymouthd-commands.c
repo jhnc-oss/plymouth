@@ -10,14 +10,21 @@
 
 #include "plymouthd-commands-private.h"
 
+#include <stdlib.h>
+
 #include "ply-boot-server-private.h"
 #include "ply-utils.h"
 #include "plymouthd-actions-private.h"
 #include "plymouthd-control-private.h"
 
-ply_boot_server_t *
-plymouthd_start_commands (ply_event_loop_t *loop,
-                          plymouthd_t      *daemon)
+struct _plymouthd_commands
+{
+        ply_boot_server_t *server;
+};
+
+plymouthd_commands_t *
+plymouthd_commands_new (ply_event_loop_t *loop,
+                        plymouthd_t      *daemon)
 {
         const ply_boot_server_handlers_t handlers = {
                 .update              = (ply_boot_server_update_handler_t) plymouthd_handle_update,
@@ -43,17 +50,29 @@ plymouthd_start_commands (ply_event_loop_t *loop,
                 .reload              = (ply_boot_server_reload_handler_t) plymouthd_handle_reload,
                 .connection_hangup   = (ply_boot_server_connection_hangup_handler_t) plymouthd_handle_connection_hangup,
         };
-        ply_boot_server_t *server;
+        plymouthd_commands_t *commands;
 
-        server = ply_boot_server_new_with_handlers (&handlers, daemon);
+        commands = calloc (1, sizeof(plymouthd_commands_t));
+        commands->server = ply_boot_server_new_with_handlers (&handlers,
+                                                              daemon);
 
-        if (!ply_boot_server_listen (server)) {
+        if (!ply_boot_server_listen (commands->server)) {
                 ply_save_errno ();
-                ply_boot_server_free (server);
+                plymouthd_commands_free (commands);
                 ply_restore_errno ();
                 return NULL;
         }
 
-        ply_boot_server_attach_to_event_loop (server, loop);
-        return server;
+        ply_boot_server_attach_to_event_loop (commands->server, loop);
+        return commands;
+}
+
+void
+plymouthd_commands_free (plymouthd_commands_t *commands)
+{
+        if (commands == NULL)
+                return;
+
+        ply_boot_server_free (commands->server);
+        free (commands);
 }

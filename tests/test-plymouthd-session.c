@@ -35,6 +35,29 @@ test_new_session_starts_detached (void)
 }
 
 static bool
+test_session_tracks_attachment_preference (void)
+{
+        plymouthd_session_t *session;
+
+        session = plymouthd_session_new (ply_event_loop_get_default (),
+                                         NULL,
+                                         NULL,
+                                         NULL,
+                                         NULL);
+
+        PLY_TEST_ASSERT (!plymouthd_session_should_attach (session));
+
+        plymouthd_session_set_should_attach (session, true);
+        PLY_TEST_ASSERT (plymouthd_session_should_attach (session));
+
+        plymouthd_session_set_should_attach (session, false);
+        PLY_TEST_ASSERT (!plymouthd_session_should_attach (session));
+
+        plymouthd_session_free (session);
+        return true;
+}
+
+static bool
 test_detaching_pristine_session_is_idempotent (void)
 {
         plymouthd_session_t *session;
@@ -59,6 +82,7 @@ test_detaching_pristine_session_is_idempotent (void)
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_new_session_starts_detached),
+        PLY_TEST_CASE (test_session_tracks_attachment_preference),
         PLY_TEST_CASE (test_detaching_pristine_session_is_idempotent),
 };
 

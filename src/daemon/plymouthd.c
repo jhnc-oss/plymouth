@@ -11,14 +11,13 @@
 #include "plymouthd-private.h"
 
 #include <errno.h>
+#include <math.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "ply-boot-server.h"
 #include "ply-boot-splash.h"
-#include "ply-buffer.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -31,6 +30,7 @@
 #include "plymouthd-logging-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-options-private.h"
+#include "plymouthd-output-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
@@ -48,31 +48,114 @@ on_escape_pressed (plymouthd_t *daemon)
 }
 
 static void
-on_keyboard_added (plymouthd_t    *daemon,
+on_keyboard_added (void           *user_data,
                    ply_keyboard_t *keyboard)
 {
+        plymouthd_t *daemon = user_data;
+
         plymouthd_handle_keyboard_added (daemon,
                                          keyboard,
                                          on_escape_pressed);
 }
 
 static void
-on_keyboard_removed (plymouthd_t    *daemon,
+on_keyboard_removed (void           *user_data,
                      ply_keyboard_t *keyboard)
 {
+        plymouthd_t *daemon = user_data;
+
         plymouthd_handle_keyboard_removed (daemon,
                                            keyboard,
                                            on_escape_pressed);
 }
 
+static void
+on_pixel_display_added (void                *user_data,
+                        ply_pixel_display_t *display)
+{
+        plymouthd_handle_pixel_display_added (user_data, display);
+}
+
+static void
+on_pixel_display_removed (void                *user_data,
+                          ply_pixel_display_t *display)
+{
+        plymouthd_handle_pixel_display_removed (user_data, display);
+}
+
+static void
+on_text_display_added (void               *user_data,
+                       ply_text_display_t *display)
+{
+        plymouthd_handle_text_display_added (user_data, display);
+}
+
+static void
+on_text_display_removed (void               *user_data,
+                         ply_text_display_t *display)
+{
+        plymouthd_handle_text_display_removed (user_data, display);
+}
+
 static const plymouthd_devices_event_handlers_t device_event_handlers = {
         .keyboard_added        = on_keyboard_added,
         .keyboard_removed      = on_keyboard_removed,
-        .pixel_display_added   = plymouthd_handle_pixel_display_added,
-        .pixel_display_removed = plymouthd_handle_pixel_display_removed,
-        .text_display_added    = plymouthd_handle_text_display_added,
-        .text_display_removed  = plymouthd_handle_text_display_removed,
+        .pixel_display_added   = on_pixel_display_added,
+        .pixel_display_removed = on_pixel_display_removed,
+        .text_display_added    = on_text_display_added,
+        .text_display_removed  = on_text_display_removed,
 };
+
+static void
+create_devices (plymouthd_t *daemon,
+                bool         should_ignore_serial_consoles)
+{
+        ply_device_manager_flags_t flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
+
+        if (ply_kernel_command_line_has_argument (
+                    "plymouth.ignore-serial-consoles") ||
+            should_ignore_serial_consoles) {
+                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_SERIAL_CONSOLES;
+        }
+
+        if (ply_kernel_command_line_has_argument ("plymouth.ignore-udev") ||
+            getenv ("DISPLAY") != NULL) {
+                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
+        }
+
+        if (ply_kernel_command_line_has_argument (
+                    "plymouth.force-frame-buffer-on-boot") &&
+            daemon->mode != PLY_BOOT_SPLASH_MODE_SHUTDOWN &&
+            daemon->mode != PLY_BOOT_SPLASH_MODE_REBOOT) {
+                flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER;
+        }
+
+        if (!plymouthd_should_show_default_splash (
+                    daemon->should_force_details,
+                    daemon->should_force_default_splash)) {
+                flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
+                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
+                daemon->settings->splash_delay = NAN;
+        }
+
+        if (daemon->settings->device_scale != -1)
+                ply_set_device_scale (daemon->settings->device_scale);
+
+        flags = plymouthd_add_simpledrm_flags (
+                flags,
+                daemon->settings->use_simpledrm);
+
+        daemon->devices = plymouthd_devices_new (
+                daemon->default_tty,
+                flags,
+                daemon->settings->extra_esc_key,
+                daemon->settings->device_timeout,
+                &device_event_handlers,
+                daemon);
+
+        if (plymouthd_devices_has_serial_consoles (daemon->devices))
+                daemon->should_force_details = true;
+}
 
 plymouthd_t *
 plymouthd_new (plymouthd_options_t *options,
@@ -152,8 +235,8 @@ plymouthd_new (plymouthd_options_t *options,
                 (ply_event_handler_t) plymouthd_handle_term_signal,
                 daemon);
 
-        daemon->boot_server = plymouthd_start_commands (daemon->loop, daemon);
-        if (daemon->boot_server == NULL) {
+        daemon->commands = plymouthd_commands_new (daemon->loop, daemon);
+        if (daemon->commands == NULL) {
                 ply_trace ("plymouthd is already running");
                 if (daemon_handle != NULL)
                         ply_detach_daemon (daemon_handle, EX_OK);
@@ -183,9 +266,7 @@ plymouthd_new (plymouthd_options_t *options,
         }
 
         plymouthd_settings_load (daemon->settings);
-        plymouthd_initialize_devices (daemon,
-                                      should_ignore_serial_consoles,
-                                      &device_event_handlers);
+        create_devices (daemon, should_ignore_serial_consoles);
 
         *exit_code = EX_OK;
         return daemon;
@@ -215,12 +296,12 @@ plymouthd_free (plymouthd_t *daemon)
                 return;
 
         ply_boot_splash_free (daemon->boot_splash);
-        ply_boot_server_free (daemon->boot_server);
-        plymouthd_free_devices (daemon);
+        plymouthd_commands_free (daemon->commands);
+        plymouthd_devices_free (daemon->devices);
         ply_trace ("freeing terminal session");
         plymouthd_session_free (daemon->session);
         plymouthd_transition_free (daemon->transition);
-        ply_buffer_free (daemon->boot_buffer);
+        plymouthd_output_free (daemon->output);
         plymouthd_progress_free (daemon->progress);
         plymouthd_interaction_free (daemon->interaction);
         plymouthd_logging_free (daemon->logging);

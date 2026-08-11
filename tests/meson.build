@@ -716,6 +716,27 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_output_test_executable = executable(
+  'test-plymouthd-output',
+  'test-plymouthd-output.c',
+  c_args: boot_splash_test_c_args,
+  dependencies: [libply_dep, libply_splash_core_dep, plymouthd_output_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'plymouthd-output',
+  plymouthd_output_test_executable,
+  depends: fake_splash_plugin,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 boot_splash_test_executable = executable(
   'test-boot-splash',
   'test-boot-splash.c',

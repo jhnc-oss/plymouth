@@ -20,6 +20,7 @@
 #include "plymouthd-input-private.h"
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-messages-private.h"
+#include "plymouthd-output-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-settings-private.h"
@@ -45,8 +46,8 @@ static void
 attach_pixel_displays_to_splash (plymouthd_t       *daemon,
                                  ply_boot_splash_t *splash)
 {
-        plymouthd_for_each_pixel_display (
-                daemon,
+        plymouthd_devices_for_each_pixel_display (
+                daemon->devices,
                 attach_pixel_display_to_splash,
                 splash);
 }
@@ -64,8 +65,8 @@ static void
 attach_text_displays_to_splash (plymouthd_t       *daemon,
                                 ply_boot_splash_t *splash)
 {
-        plymouthd_for_each_text_display (
-                daemon,
+        plymouthd_devices_for_each_text_display (
+                daemon->devices,
                 attach_text_display_to_splash,
                 splash);
 }
@@ -79,7 +80,7 @@ show_theme (plymouthd_t *daemon,
         splash = plymouthd_load_splash (
                 theme_path,
                 PLYMOUTH_PLUGIN_PATH,
-                daemon->boot_buffer,
+                plymouthd_output_get_buffer (daemon->output),
                 daemon->loop);
 
         if (splash == NULL)
@@ -90,7 +91,7 @@ show_theme (plymouthd_t *daemon,
         attach_pixel_displays_to_splash (daemon, splash);
         attach_text_displays_to_splash (daemon, splash);
         if (ply_boot_splash_uses_pixel_displays (splash))
-                plymouthd_activate_renderers (daemon);
+                plymouthd_devices_activate_renderers (daemon->devices);
 
         if (!ply_boot_splash_show (splash, daemon->mode)) {
                 ply_save_errno ();
@@ -99,7 +100,7 @@ show_theme (plymouthd_t *daemon,
                 return NULL;
         }
 
-        plymouthd_activate_keyboards (daemon);
+        plymouthd_devices_activate_keyboards (daemon->devices);
         return splash;
 }
 
@@ -287,7 +288,7 @@ plymouthd_show_splash (plymouthd_t *daemon)
                                 (ply_event_loop_timeout_handler_t)
                                 plymouthd_show_splash,
                                 daemon);
-                        plymouthd_activate_keyboards (daemon);
+                        plymouthd_devices_activate_keyboards (daemon->devices);
                         return;
                 }
         }
@@ -308,7 +309,7 @@ plymouthd_hide_splash (plymouthd_t *daemon)
 {
         if (daemon->boot_splash != NULL &&
             ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
-                plymouthd_deactivate_renderers (daemon);
+                plymouthd_devices_deactivate_renderers (daemon->devices);
 
         daemon->is_shown = false;
         plymouthd_cancel_pending_show (daemon);
@@ -316,7 +317,7 @@ plymouthd_hide_splash (plymouthd_t *daemon)
         if (daemon->boot_splash != NULL)
                 ply_boot_splash_hide (daemon->boot_splash);
 
-        plymouthd_restore_text_console (daemon);
+        plymouthd_devices_restore_text_console (daemon->devices);
 }
 
 void

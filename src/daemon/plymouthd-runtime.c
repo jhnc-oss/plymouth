@@ -15,79 +15,79 @@
 #include <unistd.h>
 
 #include "ply-boot-splash.h"
-#include "ply-buffer.h"
 #include "ply-logger.h"
 #include "ply-trigger.h"
 #include "plymouthd-control-private.h"
 #include "plymouthd-logging-private.h"
+#include "plymouthd-output-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
 
-typedef plymouthd_t state_t;
-
 bool
-plymouthd_initialize_session (state_t *state,
-                              bool     should_attach)
+plymouthd_initialize_session (plymouthd_t *daemon,
+                              bool         should_attach)
 {
-        state->boot_buffer = ply_buffer_new ();
-        state->transition = plymouthd_transition_new ();
-        state->session = plymouthd_session_new (
-                state->loop,
+        daemon->output = plymouthd_output_new ();
+        daemon->transition = plymouthd_transition_new ();
+        daemon->session = plymouthd_session_new (
+                daemon->loop,
                 (plymouthd_session_output_handler_t)
                 plymouthd_handle_session_output,
                 (plymouthd_session_hangup_handler_t)
                 plymouthd_handle_session_hangup,
                 (plymouthd_session_kmsg_handler_t)
                 plymouthd_handle_kmsg,
-                state);
+                daemon);
+        plymouthd_session_set_should_attach (daemon->session, should_attach);
 
-        if (!should_attach)
+        if (!plymouthd_session_should_attach (daemon->session))
                 return true;
 
-        state->should_be_attached = true;
-        return plymouthd_attach_session (state);
+        return plymouthd_attach_session (daemon);
 }
 
 void
-plymouthd_handle_session_output (state_t    *state,
-                                 const char *output,
-                                 size_t      size)
+plymouthd_handle_session_output (plymouthd_t *daemon,
+                                 const char  *output,
+                                 size_t       size)
 {
-        ply_buffer_append_bytes (state->boot_buffer, output, size);
-        if (state->boot_splash != NULL)
-                ply_boot_splash_update_output (state->boot_splash,
-                                               output, size);
+        plymouthd_output_append (daemon->output,
+                                 daemon->boot_splash,
+                                 output,
+                                 size);
 }
 
 void
-plymouthd_handle_session_hangup (state_t *state)
+plymouthd_handle_session_hangup (plymouthd_t *daemon)
 {
         ply_trace ("got hang up on terminal session fd");
 }
 
 void
-plymouthd_handle_kmsg (state_t        *state,
+plymouthd_handle_kmsg (plymouthd_t    *daemon,
                        kmsg_message_t *kmsg_message)
 {
-        ply_buffer_append (state->boot_buffer, "%s\n", kmsg_message->message);
-
-        if (state->boot_splash != NULL) {
-                ply_boot_splash_update_output (state->boot_splash, kmsg_message->message, strlen (kmsg_message->message));
-                ply_boot_splash_update_output (state->boot_splash, "\n", 1);
-        }
+        plymouthd_output_append (daemon->output,
+                                 daemon->boot_splash,
+                                 kmsg_message->message,
+                                 strlen (kmsg_message->message));
+        plymouthd_output_append (daemon->output,
+                                 daemon->boot_splash,
+                                 "\n",
+                                 1);
 }
 
 bool
-plymouthd_attach_session (state_t *state)
+plymouthd_attach_session (plymouthd_t *daemon)
 {
         bool should_be_redirected;
 
-        should_be_redirected = plymouthd_logging_is_enabled (state->logging);
+        should_be_redirected = plymouthd_logging_is_enabled (daemon->logging);
 
-        if (!plymouthd_session_attach (state->session, should_be_redirected)) {
-                ply_buffer_free (state->boot_buffer);
-                state->boot_buffer = NULL;
+        if (!plymouthd_session_attach (daemon->session, should_be_redirected)) {
+                plymouthd_output_free (daemon->output);
+                daemon->output = NULL;
                 return false;
         }
 
@@ -110,7 +110,7 @@ start_plymouthd_fd_escrow (void)
 }
 
 void
-plymouthd_handle_term_signal (state_t *state)
+plymouthd_handle_term_signal (plymouthd_t *daemon)
 {
         bool retain_splash = false;
 
@@ -120,15 +120,15 @@ plymouthd_handle_term_signal (state_t *state)
          * On shutdown/reboot with pixel-displays active, start the plymouthd-fd-escrow
          * helper to hold on to the pixel-displays fds until the end.
          */
-        if ((state->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
-             state->mode == PLY_BOOT_SPLASH_MODE_REBOOT) &&
-            !state->is_inactive && state->boot_splash &&
-            ply_boot_splash_uses_pixel_displays (state->boot_splash)) {
+        if ((daemon->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
+             daemon->mode == PLY_BOOT_SPLASH_MODE_REBOOT) &&
+            !daemon->is_inactive && daemon->boot_splash &&
+            ply_boot_splash_uses_pixel_displays (daemon->boot_splash)) {
                 start_plymouthd_fd_escrow ();
                 retain_splash = true;
         }
 
-        plymouthd_handle_quit (state,
+        plymouthd_handle_quit (daemon,
                                retain_splash,
                                ply_trigger_new (NULL));
 }

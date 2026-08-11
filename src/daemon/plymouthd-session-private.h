@@ -37,6 +37,9 @@ PLY_PRIVATE void plymouthd_session_free (plymouthd_session_t *session);
 PLY_PRIVATE bool plymouthd_session_attach (plymouthd_session_t *session,
                                            bool                 redirect_console);
 PLY_PRIVATE void plymouthd_session_detach (plymouthd_session_t *session);
+PLY_PRIVATE void plymouthd_session_set_should_attach (plymouthd_session_t *session,
+                                                      bool                 should_attach);
+PLY_PRIVATE bool plymouthd_session_should_attach (plymouthd_session_t *session);
 PLY_PRIVATE bool plymouthd_session_is_attached (plymouthd_session_t *session);
 PLY_PRIVATE bool plymouthd_session_is_redirected (plymouthd_session_t *session);
 PLY_PRIVATE bool plymouthd_session_has_terminal (plymouthd_session_t *session);

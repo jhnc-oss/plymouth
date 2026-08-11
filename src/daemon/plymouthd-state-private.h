@@ -16,14 +16,14 @@
 #include "ply-boot-splash-plugin.h"
 #include "ply-private.h"
 
-typedef struct _ply_boot_server ply_boot_server_t;
 typedef struct _ply_boot_splash ply_boot_splash_t;
-typedef struct _ply_buffer ply_buffer_t;
 typedef struct _ply_event_loop ply_event_loop_t;
+typedef struct _plymouthd_commands plymouthd_commands_t;
 typedef struct _plymouthd_devices plymouthd_devices_t;
 typedef struct _plymouthd_interaction plymouthd_interaction_t;
 typedef struct _plymouthd_logging plymouthd_logging_t;
 typedef struct _plymouthd_messages plymouthd_messages_t;
+typedef struct _plymouthd_output plymouthd_output_t;
 typedef struct _plymouthd_process plymouthd_process_t;
 typedef struct _plymouthd_progress plymouthd_progress_t;
 typedef struct _plymouthd_session plymouthd_session_t;
@@ -34,13 +34,13 @@ typedef struct _plymouthd plymouthd_t;
 struct _plymouthd
 {
         ply_event_loop_t        *loop;
-        ply_boot_server_t       *boot_server;
         ply_boot_splash_t       *boot_splash;
-        ply_buffer_t            *boot_buffer;
+        plymouthd_commands_t    *commands;
         plymouthd_devices_t     *devices;
         plymouthd_interaction_t *interaction;
         plymouthd_logging_t     *logging;
         plymouthd_messages_t    *messages;
+        plymouthd_output_t      *output;
         plymouthd_process_t     *process;
         plymouthd_progress_t    *progress;
         plymouthd_session_t     *session;
@@ -51,7 +51,6 @@ struct _plymouthd
         plymouthd_settings_t    *settings;
 
         uint32_t                 showing_details : 1;
-        uint32_t                 should_be_attached : 1;
         uint32_t                 is_inactive : 1;
         uint32_t                 is_shown : 1;
         uint32_t                 should_force_details : 1;

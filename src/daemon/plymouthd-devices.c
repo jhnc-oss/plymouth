@@ -10,7 +10,6 @@
 
 #include "plymouthd-devices-private.h"
 
-#include <math.h>
 #include <stdlib.h>
 
 #include "ply-device-manager.h"
@@ -18,52 +17,55 @@
 #include "ply-list.h"
 #include "ply-logger.h"
 #include "ply-terminal.h"
-#include "ply-utils.h"
-#include "plymouthd-policy-private.h"
-#include "plymouthd-settings-private.h"
-#include "plymouthd-state-private.h"
 
 struct _plymouthd_devices
 {
         ply_device_manager_t              *device_manager;
         ply_terminal_t                    *local_console_terminal;
         plymouthd_devices_event_handlers_t event_handlers;
+        void                              *event_user_data;
 };
 
 bool
-plymouthd_has_displays (plymouthd_t *daemon)
+plymouthd_devices_has_displays (plymouthd_devices_t *devices)
 {
-        return ply_device_manager_has_displays (daemon->devices->device_manager);
+        return ply_device_manager_has_displays (devices->device_manager);
 }
 
 bool
-plymouthd_has_active_vt (plymouthd_t *daemon)
+plymouthd_devices_has_serial_consoles (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
-                return false;
-
-        return ply_terminal_is_active (daemon->devices->local_console_terminal);
+        return ply_device_manager_has_serial_consoles (devices->device_manager);
 }
 
 bool
-plymouthd_has_vt_console (plymouthd_t *daemon)
+plymouthd_devices_has_active_vt (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return false;
 
-        return ply_terminal_is_vt (daemon->devices->local_console_terminal);
+        return ply_terminal_is_active (devices->local_console_terminal);
+}
+
+bool
+plymouthd_devices_has_vt_console (plymouthd_devices_t *devices)
+{
+        if (devices->local_console_terminal == NULL)
+                return false;
+
+        return ply_terminal_is_vt (devices->local_console_terminal);
 }
 
 void
-plymouthd_for_each_keyboard (
-        plymouthd_t                         *daemon,
+plymouthd_devices_for_each_keyboard (
+        plymouthd_devices_t                 *devices,
         plymouthd_devices_keyboard_handler_t handler,
         void                                *user_data)
 {
         ply_list_t *keyboards;
         ply_list_node_t *node;
 
-        keyboards = ply_device_manager_get_keyboards (daemon->devices->device_manager);
+        keyboards = ply_device_manager_get_keyboards (devices->device_manager);
         node = ply_list_get_first_node (keyboards);
         while (node != NULL) {
                 ply_keyboard_t *keyboard;
@@ -77,8 +79,8 @@ plymouthd_for_each_keyboard (
 }
 
 void
-plymouthd_for_each_pixel_display (
-        plymouthd_t                              *daemon,
+plymouthd_devices_for_each_pixel_display (
+        plymouthd_devices_t                      *devices,
         plymouthd_devices_pixel_display_handler_t handler,
         void                                     *user_data)
 {
@@ -86,7 +88,7 @@ plymouthd_for_each_pixel_display (
         ply_list_node_t *node;
 
         pixel_displays =
-                ply_device_manager_get_pixel_displays (daemon->devices->device_manager);
+                ply_device_manager_get_pixel_displays (devices->device_manager);
         node = ply_list_get_first_node (pixel_displays);
         while (node != NULL) {
                 ply_pixel_display_t *pixel_display;
@@ -100,8 +102,8 @@ plymouthd_for_each_pixel_display (
 }
 
 void
-plymouthd_for_each_text_display (
-        plymouthd_t                             *daemon,
+plymouthd_devices_for_each_text_display (
+        plymouthd_devices_t                     *devices,
         plymouthd_devices_text_display_handler_t handler,
         void                                    *user_data)
 {
@@ -109,7 +111,7 @@ plymouthd_for_each_text_display (
         ply_list_node_t *node;
 
         text_displays =
-                ply_device_manager_get_text_displays (daemon->devices->device_manager);
+                ply_device_manager_get_text_displays (devices->device_manager);
         node = ply_list_get_first_node (text_displays);
         while (node != NULL) {
                 ply_text_display_t *text_display;
@@ -123,232 +125,198 @@ plymouthd_for_each_text_display (
 }
 
 void
-plymouthd_activate_renderers (plymouthd_t *daemon)
+plymouthd_devices_activate_renderers (plymouthd_devices_t *devices)
 {
-        ply_device_manager_activate_renderers (daemon->devices->device_manager);
+        ply_device_manager_activate_renderers (devices->device_manager);
 }
 
 void
-plymouthd_deactivate_renderers (plymouthd_t *daemon)
+plymouthd_devices_deactivate_renderers (plymouthd_devices_t *devices)
 {
-        ply_device_manager_deactivate_renderers (daemon->devices->device_manager);
+        ply_device_manager_deactivate_renderers (devices->device_manager);
 }
 
 void
-plymouthd_activate_keyboards (plymouthd_t *daemon)
+plymouthd_devices_activate_keyboards (plymouthd_devices_t *devices)
 {
-        ply_device_manager_activate_keyboards (daemon->devices->device_manager);
+        ply_device_manager_activate_keyboards (devices->device_manager);
 }
 
 void
-plymouthd_deactivate_keyboards (plymouthd_t *daemon)
+plymouthd_devices_deactivate_keyboards (plymouthd_devices_t *devices)
 {
-        ply_device_manager_deactivate_keyboards (daemon->devices->device_manager);
+        ply_device_manager_deactivate_keyboards (devices->device_manager);
 }
 
 void
-plymouthd_prepare_console (plymouthd_t *daemon)
+plymouthd_devices_prepare_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
-        ply_terminal_set_mode (daemon->devices->local_console_terminal,
+        ply_terminal_set_mode (devices->local_console_terminal,
                                PLY_TERMINAL_MODE_GRAPHICS);
 }
 
 void
-plymouthd_restore_text_console (plymouthd_t *daemon)
+plymouthd_devices_restore_text_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
-        ply_terminal_set_mode (daemon->devices->local_console_terminal,
+        ply_terminal_set_mode (devices->local_console_terminal,
                                PLY_TERMINAL_MODE_TEXT);
-        ply_terminal_set_buffered_input (daemon->devices->local_console_terminal);
+        ply_terminal_set_buffered_input (devices->local_console_terminal);
 }
 
 void
-plymouthd_release_console (plymouthd_t *daemon)
+plymouthd_devices_release_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
         ply_trace ("Not retaining splash, so deallocating VT");
-        ply_terminal_deactivate_vt (daemon->devices->local_console_terminal);
-        ply_terminal_close (daemon->devices->local_console_terminal);
+        ply_terminal_deactivate_vt (devices->local_console_terminal);
+        ply_terminal_close (devices->local_console_terminal);
 }
 
 void
-plymouthd_deactivate_console (plymouthd_t *daemon)
+plymouthd_devices_deactivate_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
         ply_trace ("deactivating terminal");
         ply_terminal_stop_watching_for_vt_changes (
-                daemon->devices->local_console_terminal);
-        ply_terminal_set_buffered_input (daemon->devices->local_console_terminal);
-        ply_terminal_close (daemon->devices->local_console_terminal);
+                devices->local_console_terminal);
+        ply_terminal_set_buffered_input (devices->local_console_terminal);
+        ply_terminal_close (devices->local_console_terminal);
 }
 
 void
-plymouthd_reactivate_console (plymouthd_t *daemon)
+plymouthd_devices_reactivate_console (plymouthd_devices_t *devices)
 {
-        if (daemon->devices->local_console_terminal == NULL)
+        if (devices->local_console_terminal == NULL)
                 return;
 
-        ply_terminal_open (daemon->devices->local_console_terminal);
-        ply_terminal_watch_for_vt_changes (daemon->devices->local_console_terminal);
-        ply_terminal_set_unbuffered_input (daemon->devices->local_console_terminal);
-        ply_terminal_ignore_mode_changes (daemon->devices->local_console_terminal,
+        ply_terminal_open (devices->local_console_terminal);
+        ply_terminal_watch_for_vt_changes (devices->local_console_terminal);
+        ply_terminal_set_unbuffered_input (devices->local_console_terminal);
+        ply_terminal_ignore_mode_changes (devices->local_console_terminal,
                                           false);
 }
 
 void
-plymouthd_pause_devices (plymouthd_t *daemon)
+plymouthd_devices_pause (plymouthd_devices_t *devices)
 {
-        ply_device_manager_pause (daemon->devices->device_manager);
+        ply_device_manager_pause (devices->device_manager);
 }
 
 void
-plymouthd_unpause_devices (plymouthd_t *daemon)
+plymouthd_devices_unpause (plymouthd_devices_t *devices)
 {
-        ply_device_manager_unpause (daemon->devices->device_manager);
+        ply_device_manager_unpause (devices->device_manager);
 }
 
 void
-plymouthd_free_devices (plymouthd_t *daemon)
+plymouthd_devices_free (plymouthd_devices_t *devices)
 {
-        if (daemon->devices == NULL)
+        if (devices == NULL)
                 return;
 
-        ply_device_manager_free (daemon->devices->device_manager);
-        free (daemon->devices);
-        daemon->devices = NULL;
+        ply_device_manager_free (devices->device_manager);
+        free (devices);
 }
 
 static void
 on_keyboard_added (void           *user_data,
                    ply_keyboard_t *keyboard)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.keyboard_added (daemon, keyboard);
+        devices->event_handlers.keyboard_added (devices->event_user_data,
+                                                keyboard);
 }
 
 static void
 on_keyboard_removed (void           *user_data,
                      ply_keyboard_t *keyboard)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.keyboard_removed (daemon, keyboard);
+        devices->event_handlers.keyboard_removed (devices->event_user_data,
+                                                  keyboard);
 }
 
 static void
 on_pixel_display_added (void                *user_data,
                         ply_pixel_display_t *display)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.pixel_display_added (daemon, display);
+        devices->event_handlers.pixel_display_added (devices->event_user_data,
+                                                     display);
 }
 
 static void
 on_pixel_display_removed (void                *user_data,
                           ply_pixel_display_t *display)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.pixel_display_removed (daemon, display);
+        devices->event_handlers.pixel_display_removed (devices->event_user_data,
+                                                       display);
 }
 
 static void
 on_text_display_added (void               *user_data,
                        ply_text_display_t *display)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.text_display_added (daemon, display);
+        devices->event_handlers.text_display_added (devices->event_user_data,
+                                                    display);
 }
 
 static void
 on_text_display_removed (void               *user_data,
                          ply_text_display_t *display)
 {
-        plymouthd_t *daemon = user_data;
+        plymouthd_devices_t *devices = user_data;
 
-        daemon->devices->event_handlers.text_display_removed (daemon, display);
+        devices->event_handlers.text_display_removed (devices->event_user_data,
+                                                      display);
 }
 
-static void
-load_devices (plymouthd_t                              *daemon,
-              ply_device_manager_flags_t                flags,
-              const plymouthd_devices_event_handlers_t *event_handlers)
+plymouthd_devices_t *
+plymouthd_devices_new (const char                               *default_tty,
+                       ply_device_manager_flags_t                flags,
+                       xkb_keysym_t                              extra_escape_key,
+                       double                                    device_timeout,
+                       const plymouthd_devices_event_handlers_t *event_handlers,
+                       void                                     *event_user_data)
 {
-        daemon->devices = calloc (1, sizeof(plymouthd_devices_t));
-        daemon->devices->event_handlers = *event_handlers;
-        daemon->devices->device_manager =
-                ply_device_manager_new (daemon->default_tty,
-                                        flags,
-                                        daemon->settings->extra_esc_key);
-        daemon->devices->local_console_terminal =
-                ply_device_manager_get_default_terminal (daemon->devices->device_manager);
+        plymouthd_devices_t *devices;
+
+        devices = calloc (1, sizeof(plymouthd_devices_t));
+        devices->event_handlers = *event_handlers;
+        devices->event_user_data = event_user_data;
+        devices->device_manager = ply_device_manager_new (default_tty,
+                                                          flags,
+                                                          extra_escape_key);
+        devices->local_console_terminal =
+                ply_device_manager_get_default_terminal (devices->device_manager);
 
         ply_device_manager_watch_devices (
-                daemon->devices->device_manager,
-                daemon->settings->device_timeout,
+                devices->device_manager,
+                device_timeout,
                 on_keyboard_added,
                 on_keyboard_removed,
                 on_pixel_display_added,
                 on_pixel_display_removed,
                 on_text_display_added,
                 on_text_display_removed,
-                daemon);
+                devices);
 
-        if (ply_device_manager_has_serial_consoles (daemon->devices->device_manager))
-                daemon->should_force_details = true;
-}
-
-void
-plymouthd_initialize_devices (
-        plymouthd_t                              *daemon,
-        bool                                      should_ignore_serial_consoles,
-        const plymouthd_devices_event_handlers_t *event_handlers)
-{
-        ply_device_manager_flags_t flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
-
-        if (ply_kernel_command_line_has_argument (
-                    "plymouth.ignore-serial-consoles") ||
-            should_ignore_serial_consoles) {
-                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_SERIAL_CONSOLES;
-        }
-
-        if (ply_kernel_command_line_has_argument ("plymouth.ignore-udev") ||
-            getenv ("DISPLAY") != NULL) {
-                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
-        }
-
-        if (ply_kernel_command_line_has_argument (
-                    "plymouth.force-frame-buffer-on-boot") &&
-            daemon->mode != PLY_BOOT_SPLASH_MODE_SHUTDOWN &&
-            daemon->mode != PLY_BOOT_SPLASH_MODE_REBOOT) {
-                flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER;
-        }
-
-        if (!plymouthd_should_show_default_splash (
-                    daemon->should_force_details,
-                    daemon->should_force_default_splash)) {
-                flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
-                flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
-                daemon->settings->splash_delay = NAN;
-        }
-
-        if (daemon->settings->device_scale != -1)
-                ply_set_device_scale (daemon->settings->device_scale);
-
-        flags = plymouthd_add_simpledrm_flags (
-                flags,
-                daemon->settings->use_simpledrm);
-        load_devices (daemon, flags, event_handlers);
+        return devices;
 }

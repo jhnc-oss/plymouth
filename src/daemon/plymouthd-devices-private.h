@@ -13,12 +13,15 @@
 
 #include <stdbool.h>
 
+#include <xkbcommon/xkbcommon.h>
+
+#include "ply-device-manager.h"
 #include "ply-private.h"
 
 typedef struct _ply_keyboard ply_keyboard_t;
 typedef struct _ply_pixel_display ply_pixel_display_t;
 typedef struct _ply_text_display ply_text_display_t;
-typedef struct _plymouthd plymouthd_t;
+typedef struct _plymouthd_devices plymouthd_devices_t;
 
 typedef void (*plymouthd_devices_keyboard_handler_t)(ply_keyboard_t *keyboard,
                                                      void           *user_data);
@@ -29,46 +32,50 @@ typedef void (*plymouthd_devices_text_display_handler_t)(ply_text_display_t *dis
 
 typedef struct
 {
-        void (*keyboard_added)(plymouthd_t    *daemon,
+        void (*keyboard_added)(void           *user_data,
                                ply_keyboard_t *keyboard);
-        void (*keyboard_removed)(plymouthd_t    *daemon,
+        void (*keyboard_removed)(void           *user_data,
                                  ply_keyboard_t *keyboard);
-        void (*pixel_display_added)(plymouthd_t         *daemon,
+        void (*pixel_display_added)(void                *user_data,
                                     ply_pixel_display_t *display);
-        void (*pixel_display_removed)(plymouthd_t         *daemon,
+        void (*pixel_display_removed)(void                *user_data,
                                       ply_pixel_display_t *display);
-        void (*text_display_added)(plymouthd_t        *daemon,
+        void (*text_display_added)(void               *user_data,
                                    ply_text_display_t *display);
-        void (*text_display_removed)(plymouthd_t        *daemon,
+        void (*text_display_removed)(void               *user_data,
                                      ply_text_display_t *display);
 } plymouthd_devices_event_handlers_t;
 
-PLY_PRIVATE void plymouthd_initialize_devices (plymouthd_t                              *daemon,
-                                               bool                                      should_ignore_serial_consoles,
-                                               const plymouthd_devices_event_handlers_t *event_handlers);
-PLY_PRIVATE bool plymouthd_has_displays (plymouthd_t *daemon);
-PLY_PRIVATE bool plymouthd_has_active_vt (plymouthd_t *daemon);
-PLY_PRIVATE bool plymouthd_has_vt_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_for_each_keyboard (plymouthd_t                         *daemon,
-                                              plymouthd_devices_keyboard_handler_t handler,
-                                              void                                *user_data);
-PLY_PRIVATE void plymouthd_for_each_pixel_display (plymouthd_t                              *daemon,
-                                                   plymouthd_devices_pixel_display_handler_t handler,
-                                                   void                                     *user_data);
-PLY_PRIVATE void plymouthd_for_each_text_display (plymouthd_t                             *daemon,
-                                                  plymouthd_devices_text_display_handler_t handler,
-                                                  void                                    *user_data);
-PLY_PRIVATE void plymouthd_activate_renderers (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_deactivate_renderers (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_activate_keyboards (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_deactivate_keyboards (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_prepare_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_restore_text_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_release_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_deactivate_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_reactivate_console (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_pause_devices (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_unpause_devices (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_free_devices (plymouthd_t *daemon);
+PLY_PRIVATE plymouthd_devices_t *plymouthd_devices_new (const char                               *default_tty,
+                                                        ply_device_manager_flags_t                flags,
+                                                        xkb_keysym_t                              extra_escape_key,
+                                                        double                                    device_timeout,
+                                                        const plymouthd_devices_event_handlers_t *event_handlers,
+                                                        void                                     *event_user_data);
+PLY_PRIVATE bool plymouthd_devices_has_displays (plymouthd_devices_t *devices);
+PLY_PRIVATE bool plymouthd_devices_has_serial_consoles (plymouthd_devices_t *devices);
+PLY_PRIVATE bool plymouthd_devices_has_active_vt (plymouthd_devices_t *devices);
+PLY_PRIVATE bool plymouthd_devices_has_vt_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_for_each_keyboard (plymouthd_devices_t                 *devices,
+                                                      plymouthd_devices_keyboard_handler_t handler,
+                                                      void                                *user_data);
+PLY_PRIVATE void plymouthd_devices_for_each_pixel_display (plymouthd_devices_t                      *devices,
+                                                           plymouthd_devices_pixel_display_handler_t handler,
+                                                           void                                     *user_data);
+PLY_PRIVATE void plymouthd_devices_for_each_text_display (plymouthd_devices_t                     *devices,
+                                                          plymouthd_devices_text_display_handler_t handler,
+                                                          void                                    *user_data);
+PLY_PRIVATE void plymouthd_devices_activate_renderers (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_deactivate_renderers (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_activate_keyboards (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_deactivate_keyboards (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_prepare_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_restore_text_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_release_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_deactivate_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_reactivate_console (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_pause (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_unpause (plymouthd_devices_t *devices);
+PLY_PRIVATE void plymouthd_devices_free (plymouthd_devices_t *devices);
 
 #endif /* PLYMOUTHD_DEVICES_PRIVATE_H */
