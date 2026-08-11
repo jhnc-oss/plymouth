@@ -12,9 +12,13 @@
 
 #include <errno.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
+#include "ply-boot-server.h"
+#include "ply-boot-splash.h"
+#include "ply-buffer.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -23,14 +27,18 @@
 #include "plymouthd-display-private.h"
 #include "plymouthd-environment-private.h"
 #include "plymouthd-input-private.h"
+#include "plymouthd-interaction-private.h"
 #include "plymouthd-logging-private.h"
+#include "plymouthd-messages-private.h"
 #include "plymouthd-options-private.h"
 #include "plymouthd-policy-private.h"
 #include "plymouthd-process-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-runtime-private.h"
+#include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-state-private.h"
+#include "plymouthd-transition-private.h"
 
 static void
 on_escape_pressed (plymouthd_t *daemon)
@@ -75,7 +83,11 @@ plymouthd_new (plymouthd_options_t *options,
         ply_daemon_handle_t *daemon_handle = NULL;
         bool should_ignore_serial_consoles;
 
-        daemon = plymouthd_new_state (plymouthd_options_get_mode (options));
+        daemon = calloc (1, sizeof(plymouthd_t));
+        daemon->start_time = ply_get_timestamp ();
+        daemon->loop = ply_event_loop_get_default ();
+        daemon->mode = plymouthd_options_get_mode (options);
+        daemon->settings = plymouthd_settings_new ();
 
         should_ignore_serial_consoles =
                 plymouthd_options_should_ignore_serial_consoles (options);
@@ -170,7 +182,7 @@ plymouthd_new (plymouthd_options_t *options,
                 goto failed;
         }
 
-        plymouthd_settings_load (&daemon->settings);
+        plymouthd_settings_load (daemon->settings);
         plymouthd_initialize_devices (daemon,
                                       should_ignore_serial_consoles,
                                       &device_event_handlers);
@@ -199,5 +211,21 @@ plymouthd_run (plymouthd_t *daemon)
 void
 plymouthd_free (plymouthd_t *daemon)
 {
-        plymouthd_free_state (daemon);
+        if (daemon == NULL)
+                return;
+
+        ply_boot_splash_free (daemon->boot_splash);
+        ply_boot_server_free (daemon->boot_server);
+        plymouthd_free_devices (daemon);
+        ply_trace ("freeing terminal session");
+        plymouthd_session_free (daemon->session);
+        plymouthd_transition_free (daemon->transition);
+        ply_buffer_free (daemon->boot_buffer);
+        plymouthd_progress_free (daemon->progress);
+        plymouthd_interaction_free (daemon->interaction);
+        plymouthd_logging_free (daemon->logging);
+        plymouthd_messages_free (daemon->messages);
+        plymouthd_settings_free (daemon->settings);
+        plymouthd_process_free (daemon->process);
+        free (daemon);
 }

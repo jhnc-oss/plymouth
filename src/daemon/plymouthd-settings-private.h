@@ -17,7 +17,7 @@
 
 #include "ply-private.h"
 
-typedef struct
+typedef struct _plymouthd_settings
 {
         double       splash_delay;
         double       device_timeout;
@@ -30,7 +30,7 @@ typedef struct
         char        *distribution_default_splash_path;
 } plymouthd_settings_t;
 
-PLY_PRIVATE void plymouthd_settings_init (plymouthd_settings_t *settings);
+PLY_PRIVATE plymouthd_settings_t *plymouthd_settings_new (void);
 PLY_PRIVATE void plymouthd_settings_free (plymouthd_settings_t *settings);
 PLY_PRIVATE bool plymouthd_settings_apply_config_file (plymouthd_settings_t *settings,
                                                        const char           *path,

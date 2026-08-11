@@ -19,8 +19,22 @@
 #include "plymouthd-policy-private.h"
 #include "plymouthd-theme-resolver-private.h"
 
-void
-plymouthd_settings_init (plymouthd_settings_t *settings)
+static void initialize_settings (plymouthd_settings_t *settings);
+static void clear_settings (plymouthd_settings_t *settings);
+
+plymouthd_settings_t *
+plymouthd_settings_new (void)
+{
+        plymouthd_settings_t *settings;
+
+        settings = calloc (1, sizeof(plymouthd_settings_t));
+        initialize_settings (settings);
+
+        return settings;
+}
+
+static void
+initialize_settings (plymouthd_settings_t *settings)
 {
         *settings = (plymouthd_settings_t) {
                 .splash_delay = NAN,
@@ -31,8 +45,8 @@ plymouthd_settings_init (plymouthd_settings_t *settings)
         };
 }
 
-void
-plymouthd_settings_free (plymouthd_settings_t *settings)
+static void
+clear_settings (plymouthd_settings_t *settings)
 {
         free (settings->override_splash_path);
         free (settings->system_default_splash_path);
@@ -41,6 +55,16 @@ plymouthd_settings_free (plymouthd_settings_t *settings)
         settings->override_splash_path = NULL;
         settings->system_default_splash_path = NULL;
         settings->distribution_default_splash_path = NULL;
+}
+
+void
+plymouthd_settings_free (plymouthd_settings_t *settings)
+{
+        if (settings == NULL)
+                return;
+
+        clear_settings (settings);
+        free (settings);
 }
 
 bool

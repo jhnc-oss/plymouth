@@ -20,6 +20,7 @@
 #include "ply-terminal.h"
 #include "ply-utils.h"
 #include "plymouthd-policy-private.h"
+#include "plymouthd-settings-private.h"
 #include "plymouthd-state-private.h"
 
 struct _plymouthd_devices
@@ -290,13 +291,13 @@ load_devices (plymouthd_t                              *daemon,
         daemon->devices->device_manager =
                 ply_device_manager_new (daemon->default_tty,
                                         flags,
-                                        daemon->settings.extra_esc_key);
+                                        daemon->settings->extra_esc_key);
         daemon->devices->local_console_terminal =
                 ply_device_manager_get_default_terminal (daemon->devices->device_manager);
 
         ply_device_manager_watch_devices (
                 daemon->devices->device_manager,
-                daemon->settings.device_timeout,
+                daemon->settings->device_timeout,
                 on_keyboard_added,
                 on_keyboard_removed,
                 on_pixel_display_added,
@@ -340,14 +341,14 @@ plymouthd_initialize_devices (
                     daemon->should_force_default_splash)) {
                 flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
                 flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
-                daemon->settings.splash_delay = NAN;
+                daemon->settings->splash_delay = NAN;
         }
 
-        if (daemon->settings.device_scale != -1)
-                ply_set_device_scale (daemon->settings.device_scale);
+        if (daemon->settings->device_scale != -1)
+                ply_set_device_scale (daemon->settings->device_scale);
 
         flags = plymouthd_add_simpledrm_flags (
                 flags,
-                daemon->settings.use_simpledrm);
+                daemon->settings->use_simpledrm);
         load_devices (daemon, flags, event_handlers);
 }
