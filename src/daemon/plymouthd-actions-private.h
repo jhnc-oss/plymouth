@@ -1,4 +1,4 @@
-/* plymouthd-private.h - internal daemon application
+/* plymouthd-actions-private.h - daemon command actions
  *
  * Copyright (C) 2026 Red Hat, Inc.
  *
@@ -8,20 +8,16 @@
  * any later version.
  */
 
-#ifndef PLYMOUTHD_PRIVATE_H
-#define PLYMOUTHD_PRIVATE_H
+#ifndef PLYMOUTHD_ACTIONS_PRIVATE_H
+#define PLYMOUTHD_ACTIONS_PRIVATE_H
+
+#include <stdbool.h>
 
 #include "ply-private.h"
-#include "ply-boot-server.h"
 
+typedef struct _ply_boot_connection ply_boot_connection_t;
+typedef struct _ply_trigger ply_trigger_t;
 typedef struct _plymouthd plymouthd_t;
-typedef struct _plymouthd_options plymouthd_options_t;
-
-PLY_PRIVATE plymouthd_t *plymouthd_new (plymouthd_options_t *options,
-                                        char                *program_name,
-                                        int                 *exit_code);
-PLY_PRIVATE int plymouthd_run (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_free (plymouthd_t *daemon);
 
 PLY_PRIVATE void plymouthd_handle_update (plymouthd_t *daemon,
                                           const char  *status);
@@ -56,14 +52,6 @@ PLY_PRIVATE void plymouthd_handle_newroot (plymouthd_t *daemon,
 PLY_PRIVATE void plymouthd_handle_system_initialized (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_handle_error (plymouthd_t *daemon);
 PLY_PRIVATE void plymouthd_handle_reload (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_handle_show_splash (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_handle_hide_splash (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_handle_deactivate (plymouthd_t   *daemon,
-                                              ply_trigger_t *trigger);
-PLY_PRIVATE void plymouthd_handle_reactivate (plymouthd_t *daemon);
-PLY_PRIVATE void plymouthd_handle_quit (plymouthd_t   *daemon,
-                                        bool           retain_splash,
-                                        ply_trigger_t *trigger);
 PLY_PRIVATE bool plymouthd_handle_has_active_vt (plymouthd_t *daemon);
 
-#endif /* PLYMOUTHD_PRIVATE_H */
+#endif /* PLYMOUTHD_ACTIONS_PRIVATE_H */

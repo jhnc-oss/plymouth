@@ -12,7 +12,8 @@
 
 #include "ply-boot-server-private.h"
 #include "ply-utils.h"
-#include "plymouthd-private.h"
+#include "plymouthd-actions-private.h"
+#include "plymouthd-control-private.h"
 
 ply_boot_server_t *
 plymouthd_start_commands (ply_event_loop_t *loop,
