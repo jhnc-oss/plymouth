@@ -77,6 +77,7 @@ struct _ply_device_manager
 
         struct xkb_context                 *xkb_context;
         struct xkb_keymap                  *xkb_keymap;
+        struct xkb_state                   *xkb_state;
         xkb_keysym_t                        extra_esc_key;
 
         ply_keyboard_added_handler_t        keyboard_added_handler;
@@ -407,8 +408,14 @@ create_devices_for_udev_device (ply_device_manager_t *manager,
                                 ply_trace ("found input device %s", device_path);
 
                                 assert (manager->xkb_keymap != NULL);
+                                assert (manager->xkb_state != NULL);
 
-                                ply_input_device_t *input_device = ply_input_device_open (manager->xkb_context, manager->xkb_keymap, device_path, manager->extra_esc_key);
+                                ply_input_device_t *input_device = ply_input_device_open (manager->xkb_context,
+                                                                                          manager->xkb_keymap,
+                                                                                          manager->xkb_state,
+                                                                                          device_path,
+                                                                                          manager->extra_esc_key);
+
                                 if (input_device != NULL) {
                                         ply_input_device_set_disconnect_handler (input_device, (ply_input_device_disconnect_handler_t) remove_input_device_from_renderers, manager);
                                         if (ply_input_device_is_keyboard (input_device)) {
@@ -455,6 +462,11 @@ create_devices_for_subsystem (ply_device_manager_t *manager,
 
                 if (manager->xkb_keymap == NULL) {
                         ply_trace ("Not creating devices for subsystem " SUBSYSTEM_INPUT " because there is no configure XKB layout");
+                        return;
+                }
+
+                if (manager->xkb_state == NULL) {
+                        ply_trace ("Not creating devices for subsystem " SUBSYSTEM_INPUT " because the XKB state failed to be created");
                         return;
                 }
         }
@@ -853,6 +865,10 @@ ply_device_manager_new (const char                *default_tty,
 
         parse_vconsole_conf (manager);
 
+        manager->xkb_state = xkb_state_new (manager->xkb_keymap);
+        if (manager->xkb_state == NULL)
+                ply_trace ("Could not allocate xkb state: %m");
+
         manager->terminals = ply_hashtable_new (ply_hashtable_string_hash, ply_hashtable_string_compare);
         manager->renderers = ply_hashtable_new (ply_hashtable_string_hash, ply_hashtable_string_compare);
 
@@ -902,6 +918,9 @@ ply_device_manager_free (ply_device_manager_t *manager)
 
         if (manager->xkb_context)
                 xkb_context_unref (manager->xkb_context);
+
+        if (manager->xkb_state)
+                xkb_state_unref (manager->xkb_state);
 
 #ifdef HAVE_UDEV
         ply_event_loop_stop_watching_for_timeout (manager->loop,

@@ -64,6 +64,7 @@ typedef struct
 
 ply_input_device_t *ply_input_device_open (struct xkb_context *xkb_context,
                                            struct xkb_keymap  *xkb_keymap,
+                                           struct xkb_state   *xkb_state,
                                            const char         *path,
                                            xkb_keysym_t        extra_esc_key);
 void ply_input_device_free (ply_input_device_t *input_device);

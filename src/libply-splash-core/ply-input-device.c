@@ -333,6 +333,7 @@ ply_input_device_set_disconnect_handler (ply_input_device_t                   *i
 ply_input_device_t *
 ply_input_device_open (struct xkb_context *xkb_context,
                        struct xkb_keymap  *xkb_keymap,
+                       struct xkb_state   *xkb_state,
                        const char         *path,
                        xkb_keysym_t        extra_esc_key)
 {
@@ -380,7 +381,7 @@ ply_input_device_open (struct xkb_context *xkb_context,
                 input_device);
 
         input_device->keymap = xkb_keymap_ref (xkb_keymap);
-        input_device->keyboard_state = xkb_state_new (input_device->keymap);
+        input_device->keyboard_state = xkb_state_ref (xkb_state);
         if (input_device->keyboard_state == NULL) {
                 ply_error ("Failed to initialize input device \"%s\" keyboard_state", path);
                 goto error;
