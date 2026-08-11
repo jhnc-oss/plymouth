@@ -11,13 +11,14 @@
 #ifndef PLYMOUTHD_COMMANDS_PRIVATE_H
 #define PLYMOUTHD_COMMANDS_PRIVATE_H
 
-#include "ply-boot-server.h"
 #include "ply-event-loop.h"
 #include "ply-private.h"
 
 typedef struct _plymouthd plymouthd_t;
+typedef struct _plymouthd_commands plymouthd_commands_t;
 
-PLY_PRIVATE ply_boot_server_t *plymouthd_start_commands (ply_event_loop_t *loop,
-                                                         plymouthd_t      *daemon);
+PLY_PRIVATE plymouthd_commands_t *plymouthd_commands_new (ply_event_loop_t *loop,
+                                                          plymouthd_t      *daemon);
+PLY_PRIVATE void plymouthd_commands_free (plymouthd_commands_t *commands);
 
 #endif /* PLYMOUTHD_COMMANDS_PRIVATE_H */

@@ -17,7 +17,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "ply-boot-server.h"
 #include "ply-boot-splash.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
@@ -236,8 +235,8 @@ plymouthd_new (plymouthd_options_t *options,
                 (ply_event_handler_t) plymouthd_handle_term_signal,
                 daemon);
 
-        daemon->boot_server = plymouthd_start_commands (daemon->loop, daemon);
-        if (daemon->boot_server == NULL) {
+        daemon->commands = plymouthd_commands_new (daemon->loop, daemon);
+        if (daemon->commands == NULL) {
                 ply_trace ("plymouthd is already running");
                 if (daemon_handle != NULL)
                         ply_detach_daemon (daemon_handle, EX_OK);
@@ -297,7 +296,7 @@ plymouthd_free (plymouthd_t *daemon)
                 return;
 
         ply_boot_splash_free (daemon->boot_splash);
-        ply_boot_server_free (daemon->boot_server);
+        plymouthd_commands_free (daemon->commands);
         plymouthd_devices_free (daemon->devices);
         ply_trace ("freeing terminal session");
         plymouthd_session_free (daemon->session);
