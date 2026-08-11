@@ -312,6 +312,23 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_splash_delay_test_executable = executable(
+  'test-plymouthd-splash-delay',
+  'test-plymouthd-splash-delay.c',
+  c_args: test_c_args,
+  dependencies: [libply_dep, plymouthd_splash_delay_dep],
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-splash-delay',
+  plymouthd_splash_delay_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 script_source_dir = meson.project_source_root() / 'src/plugins/splash/script'
 
 script_scan_test_executable = executable(

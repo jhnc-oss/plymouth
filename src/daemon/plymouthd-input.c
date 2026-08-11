@@ -15,6 +15,7 @@
 #include "ply-logger.h"
 #include "plymouthd-devices-private.h"
 #include "plymouthd-interaction-private.h"
+#include "plymouthd-splash-private.h"
 #include "plymouthd-state-private.h"
 
 static void
@@ -41,7 +42,7 @@ on_keyboard_input (plymouthd_t *daemon,
                    size_t       character_size)
 {
         plymouthd_interaction_handle_input (daemon->interaction,
-                                            daemon->boot_splash,
+                                            plymouthd_splash_get (daemon->splash),
                                             keyboard_input,
                                             character_size);
 }
@@ -50,7 +51,7 @@ static void
 on_backspace (plymouthd_t *daemon)
 {
         plymouthd_interaction_handle_backspace (daemon->interaction,
-                                                daemon->boot_splash);
+                                                plymouthd_splash_get (daemon->splash));
 }
 
 static void
@@ -58,7 +59,7 @@ on_enter (plymouthd_t *daemon,
           const char  *line)
 {
         plymouthd_interaction_handle_enter (daemon->interaction,
-                                            daemon->boot_splash,
+                                            plymouthd_splash_get (daemon->splash),
                                             line);
 }
 
@@ -70,7 +71,7 @@ plymouthd_handle_escape (plymouthd_t *daemon)
         ply_trace ("escape key pressed");
         has_vt_console = plymouthd_devices_has_vt_console (daemon->devices);
 
-        return plymouthd_validate_prompt_input (daemon->boot_splash,
+        return plymouthd_validate_prompt_input (plymouthd_splash_get (daemon->splash),
                                                 "",
                                                 "\e") &&
                has_vt_console;
@@ -110,9 +111,11 @@ keyboard_added (plymouthd_t                     *daemon,
 {
         attach_keyboard (daemon, keyboard, escape_handler);
 
-        if (daemon->boot_splash != NULL) {
+        if (plymouthd_splash_get (daemon->splash) != NULL) {
                 ply_trace ("keyboard set after splash loaded, so attaching to splash");
-                ply_boot_splash_set_keyboard (daemon->boot_splash, keyboard);
+                ply_boot_splash_set_keyboard (
+                        plymouthd_splash_get (daemon->splash),
+                        keyboard);
         }
 }
 
@@ -154,8 +157,9 @@ keyboard_removed (plymouthd_t                     *daemon,
 {
         detach_keyboard (keyboard, escape_handler);
 
-        if (daemon->boot_splash != NULL)
-                ply_boot_splash_unset_keyboard (daemon->boot_splash);
+        if (plymouthd_splash_get (daemon->splash) != NULL)
+                ply_boot_splash_unset_keyboard (
+                        plymouthd_splash_get (daemon->splash));
 }
 
 void

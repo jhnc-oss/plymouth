@@ -37,6 +37,7 @@
 #include "plymouthd-progress-private.h"
 #include "plymouthd-runtime-private.h"
 #include "plymouthd-session-private.h"
+#include "plymouthd-splash-private.h"
 #include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
 
@@ -47,12 +48,12 @@ plymouthd_handle_show_splash (plymouthd_t *daemon)
 {
         bool has_displays;
 
-        if (daemon->is_shown) {
+        if (plymouthd_splash_is_shown (daemon->splash)) {
                 ply_trace ("show splash called while already shown");
                 return;
         }
 
-        if (daemon->is_inactive) {
+        if (plymouthd_transition_is_inactive (daemon->transition)) {
                 ply_trace ("show splash called while inactive");
                 return;
         }
@@ -65,7 +66,7 @@ plymouthd_handle_show_splash (plymouthd_t *daemon)
                 return;
         }
 
-        daemon->is_shown = true;
+        plymouthd_splash_set_shown (daemon->splash, true);
         has_displays = plymouthd_devices_has_displays (daemon->devices);
 
         if (!plymouthd_session_is_attached (daemon->session) &&
@@ -88,10 +89,9 @@ static void
 quit_splash (plymouthd_t *daemon)
 {
         ply_trace ("quitting splash");
-        if (daemon->boot_splash != NULL) {
+        if (plymouthd_splash_get (daemon->splash) != NULL) {
                 ply_trace ("freeing splash");
-                ply_boot_splash_free (daemon->boot_splash);
-                daemon->boot_splash = NULL;
+                plymouthd_splash_clear (daemon->splash);
         }
 
         plymouthd_devices_deactivate_keyboards (daemon->devices);
@@ -105,7 +105,7 @@ quit_splash (plymouthd_t *daemon)
 static void
 dump_details_and_quit_splash (plymouthd_t *daemon)
 {
-        daemon->showing_details = false;
+        plymouthd_splash_set_showing_details (daemon->splash, false);
         plymouthd_toggle_details (daemon);
 
         plymouthd_hide_splash (daemon);
@@ -115,10 +115,10 @@ dump_details_and_quit_splash (plymouthd_t *daemon)
 void
 plymouthd_handle_hide_splash (plymouthd_t *daemon)
 {
-        if (daemon->is_inactive)
+        if (plymouthd_transition_is_inactive (daemon->transition))
                 return;
 
-        if (daemon->boot_splash == NULL)
+        if (plymouthd_splash_get (daemon->splash) == NULL)
                 return;
 
         ply_trace ("hiding boot splash");
@@ -156,14 +156,14 @@ deactivate_console (plymouthd_t *daemon)
 static void
 deactivate_splash (plymouthd_t *daemon)
 {
-        assert (!daemon->is_inactive);
+        assert (!plymouthd_transition_is_inactive (daemon->transition));
 
-        if (daemon->boot_splash && ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
+        if (plymouthd_splash_get (daemon->splash) != NULL &&
+            ply_boot_splash_uses_pixel_displays (
+                    plymouthd_splash_get (daemon->splash)))
                 plymouthd_devices_deactivate_renderers (daemon->devices);
 
         deactivate_console (daemon);
-
-        daemon->is_inactive = true;
 
         plymouthd_transition_complete_deactivate (daemon->transition);
 }
@@ -199,7 +199,7 @@ void
 plymouthd_handle_deactivate (plymouthd_t   *daemon,
                              ply_trigger_t *deactivate_trigger)
 {
-        if (daemon->is_inactive) {
+        if (plymouthd_transition_is_inactive (daemon->transition)) {
                 deactivate_console (daemon);
                 ply_trigger_pull (deactivate_trigger, NULL);
                 return;
@@ -216,12 +216,13 @@ plymouthd_handle_deactivate (plymouthd_t   *daemon,
         plymouthd_devices_pause (daemon->devices);
         plymouthd_devices_deactivate_keyboards (daemon->devices);
 
-        if (daemon->boot_splash != NULL) {
+        if (plymouthd_splash_get (daemon->splash) != NULL) {
                 if (plymouthd_transition_begin_idle (daemon->transition)) {
-                        ply_boot_splash_become_idle (daemon->boot_splash,
-                                                     (ply_boot_splash_on_idle_handler_t)
-                                                     on_boot_splash_idle,
-                                                     daemon);
+                        ply_boot_splash_become_idle (
+                                plymouthd_splash_get (daemon->splash),
+                                (ply_boot_splash_on_idle_handler_t)
+                                on_boot_splash_idle,
+                                daemon);
                 }
         } else {
                 ply_trace ("deactivating splash");
@@ -232,7 +233,7 @@ plymouthd_handle_deactivate (plymouthd_t   *daemon,
 void
 plymouthd_handle_reactivate (plymouthd_t *daemon)
 {
-        if (!daemon->is_inactive)
+        if (!plymouthd_transition_is_inactive (daemon->transition))
                 return;
 
         plymouthd_devices_reactivate_console (daemon->devices);
@@ -244,12 +245,14 @@ plymouthd_handle_reactivate (plymouthd_t *daemon)
         }
 
         plymouthd_devices_activate_keyboards (daemon->devices);
-        if (daemon->boot_splash && ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
+        if (plymouthd_splash_get (daemon->splash) != NULL &&
+            ply_boot_splash_uses_pixel_displays (
+                    plymouthd_splash_get (daemon->splash)))
                 plymouthd_devices_activate_renderers (daemon->devices);
 
         plymouthd_devices_unpause (daemon->devices);
 
-        daemon->is_inactive = false;
+        plymouthd_transition_activate (daemon->transition);
 
         plymouthd_update_display (daemon);
 }
@@ -280,17 +283,19 @@ plymouthd_handle_quit (plymouthd_t   *daemon,
         plymouthd_devices_deactivate_keyboards (daemon->devices);
 
         ply_trace ("unloading splash");
-        if (daemon->is_inactive && !retain_splash) {
+        if (plymouthd_transition_is_inactive (daemon->transition) &&
+            !retain_splash) {
                 /* We've been deactivated and X failed to start
                  */
                 dump_details_and_quit_splash (daemon);
                 quit_program (daemon);
-        } else if (daemon->boot_splash != NULL) {
+        } else if (plymouthd_splash_get (daemon->splash) != NULL) {
                 if (plymouthd_transition_begin_idle (daemon->transition)) {
-                        ply_boot_splash_become_idle (daemon->boot_splash,
-                                                     (ply_boot_splash_on_idle_handler_t)
-                                                     on_boot_splash_idle,
-                                                     daemon);
+                        ply_boot_splash_become_idle (
+                                plymouthd_splash_get (daemon->splash),
+                                (ply_boot_splash_on_idle_handler_t)
+                                on_boot_splash_idle,
+                                daemon);
                 }
         } else {
                 if (!plymouthd_transition_should_retain_splash (

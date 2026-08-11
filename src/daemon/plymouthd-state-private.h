@@ -11,12 +11,9 @@
 #ifndef PLYMOUTHD_STATE_PRIVATE_H
 #define PLYMOUTHD_STATE_PRIVATE_H
 
-#include <stdint.h>
-
 #include "ply-boot-splash-plugin.h"
 #include "ply-private.h"
 
-typedef struct _ply_boot_splash ply_boot_splash_t;
 typedef struct _ply_event_loop ply_event_loop_t;
 typedef struct _plymouthd_commands plymouthd_commands_t;
 typedef struct _plymouthd_devices plymouthd_devices_t;
@@ -28,34 +25,31 @@ typedef struct _plymouthd_process plymouthd_process_t;
 typedef struct _plymouthd_progress plymouthd_progress_t;
 typedef struct _plymouthd_session plymouthd_session_t;
 typedef struct _plymouthd_settings plymouthd_settings_t;
+typedef struct _plymouthd_splash plymouthd_splash_t;
+typedef struct _plymouthd_splash_delay plymouthd_splash_delay_t;
 typedef struct _plymouthd_transition plymouthd_transition_t;
 typedef struct _plymouthd plymouthd_t;
 
 struct _plymouthd
 {
-        ply_event_loop_t        *loop;
-        ply_boot_splash_t       *boot_splash;
-        plymouthd_commands_t    *commands;
-        plymouthd_devices_t     *devices;
-        plymouthd_interaction_t *interaction;
-        plymouthd_logging_t     *logging;
-        plymouthd_messages_t    *messages;
-        plymouthd_output_t      *output;
-        plymouthd_process_t     *process;
-        plymouthd_progress_t    *progress;
-        plymouthd_session_t     *session;
-        plymouthd_transition_t  *transition;
-        ply_boot_splash_mode_t   mode;
+        ply_event_loop_t         *loop;
+        plymouthd_commands_t     *commands;
+        plymouthd_devices_t      *devices;
+        plymouthd_interaction_t  *interaction;
+        plymouthd_logging_t      *logging;
+        plymouthd_messages_t     *messages;
+        plymouthd_output_t       *output;
+        plymouthd_process_t      *process;
+        plymouthd_progress_t     *progress;
+        plymouthd_session_t      *session;
+        plymouthd_splash_t       *splash;
+        plymouthd_splash_delay_t *splash_delay;
+        plymouthd_transition_t   *transition;
+        ply_boot_splash_mode_t    mode;
 
-        double                   start_time;
-        plymouthd_settings_t    *settings;
+        plymouthd_settings_t     *settings;
 
-        uint32_t                 showing_details : 1;
-        uint32_t                 is_inactive : 1;
-        uint32_t                 is_shown : 1;
-        uint32_t                 should_force_details : 1;
-        uint32_t                 should_force_default_splash : 1;
-        const char              *default_tty;
+        const char               *default_tty;
 };
 
 #endif /* PLYMOUTHD_STATE_PRIVATE_H */

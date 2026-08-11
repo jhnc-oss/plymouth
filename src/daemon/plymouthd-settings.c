@@ -19,6 +19,19 @@
 #include "plymouthd-policy-private.h"
 #include "plymouthd-theme-resolver-private.h"
 
+struct _plymouthd_settings
+{
+        double       splash_delay;
+        double       device_timeout;
+        int          device_scale;
+        xkb_keysym_t extra_esc_key;
+        int          use_simpledrm;
+
+        char        *override_splash_path;
+        char        *system_default_splash_path;
+        char        *distribution_default_splash_path;
+};
+
 static void initialize_settings (plymouthd_settings_t *settings);
 static void clear_settings (plymouthd_settings_t *settings);
 
@@ -65,6 +78,54 @@ plymouthd_settings_free (plymouthd_settings_t *settings)
 
         clear_settings (settings);
         free (settings);
+}
+
+double
+plymouthd_settings_get_splash_delay (const plymouthd_settings_t *settings)
+{
+        return settings->splash_delay;
+}
+
+double
+plymouthd_settings_get_device_timeout (const plymouthd_settings_t *settings)
+{
+        return settings->device_timeout;
+}
+
+int
+plymouthd_settings_get_device_scale (const plymouthd_settings_t *settings)
+{
+        return settings->device_scale;
+}
+
+xkb_keysym_t
+plymouthd_settings_get_extra_escape_key (const plymouthd_settings_t *settings)
+{
+        return settings->extra_esc_key;
+}
+
+int
+plymouthd_settings_get_use_simpledrm (const plymouthd_settings_t *settings)
+{
+        return settings->use_simpledrm;
+}
+
+const char *
+plymouthd_settings_get_override_splash_path (const plymouthd_settings_t *settings)
+{
+        return settings->override_splash_path;
+}
+
+const char *
+plymouthd_settings_get_system_default_splash_path (const plymouthd_settings_t *settings)
+{
+        return settings->system_default_splash_path;
+}
+
+const char *
+plymouthd_settings_get_distribution_default_splash_path (const plymouthd_settings_t *settings)
+{
+        return settings->distribution_default_splash_path;
 }
 
 bool

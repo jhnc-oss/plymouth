@@ -10,8 +10,6 @@
 
 #include "plymouthd-display-private.h"
 
-#include <math.h>
-
 #include "ply-boot-splash.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
@@ -21,16 +19,17 @@
 #include "plymouthd-interaction-private.h"
 #include "plymouthd-messages-private.h"
 #include "plymouthd-output-private.h"
-#include "plymouthd-policy-private.h"
 #include "plymouthd-progress-private.h"
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
+#include "plymouthd-splash-delay-private.h"
 #include "plymouthd-state-private.h"
 
 static void
 show_messages (plymouthd_t *daemon)
 {
-        plymouthd_messages_replay (daemon->messages, daemon->boot_splash);
+        plymouthd_messages_replay (daemon->messages,
+                                   plymouthd_splash_get (daemon->splash));
 }
 
 static void
@@ -108,22 +107,24 @@ void
 plymouthd_update_display (plymouthd_t *daemon)
 {
         plymouthd_interaction_update_display (daemon->interaction,
-                                              daemon->boot_splash);
+                                              plymouthd_splash_get (daemon->splash));
 }
 
 void
 plymouthd_handle_pixel_display_added (plymouthd_t         *daemon,
                                       ply_pixel_display_t *display)
 {
-        if (!daemon->is_shown)
+        if (!plymouthd_splash_is_shown (daemon->splash))
                 return;
 
-        if (daemon->boot_splash == NULL) {
+        if (plymouthd_splash_get (daemon->splash) == NULL) {
                 ply_trace ("pixel display added before splash loaded, so loading splash now");
                 plymouthd_show_splash (daemon);
         } else {
                 ply_trace ("pixel display added after splash loaded, so attaching to splash");
-                ply_boot_splash_add_pixel_display (daemon->boot_splash, display);
+                ply_boot_splash_add_pixel_display (
+                        plymouthd_splash_get (daemon->splash),
+                        display);
                 plymouthd_update_display (daemon);
         }
 }
@@ -132,24 +133,27 @@ void
 plymouthd_handle_pixel_display_removed (plymouthd_t         *daemon,
                                         ply_pixel_display_t *display)
 {
-        if (daemon->boot_splash != NULL)
-                ply_boot_splash_remove_pixel_display (daemon->boot_splash,
-                                                      display);
+        if (plymouthd_splash_get (daemon->splash) != NULL)
+                ply_boot_splash_remove_pixel_display (
+                        plymouthd_splash_get (daemon->splash),
+                        display);
 }
 
 void
 plymouthd_handle_text_display_added (plymouthd_t        *daemon,
                                      ply_text_display_t *display)
 {
-        if (!daemon->is_shown)
+        if (!plymouthd_splash_is_shown (daemon->splash))
                 return;
 
-        if (daemon->boot_splash == NULL) {
+        if (plymouthd_splash_get (daemon->splash) == NULL) {
                 ply_trace ("text display added before splash loaded, so loading splash now");
                 plymouthd_show_splash (daemon);
         } else {
                 ply_trace ("text display added after splash loaded, so attaching to splash");
-                ply_boot_splash_add_text_display (daemon->boot_splash, display);
+                ply_boot_splash_add_text_display (
+                        plymouthd_splash_get (daemon->splash),
+                        display);
                 plymouthd_update_display (daemon);
         }
 }
@@ -158,22 +162,16 @@ void
 plymouthd_handle_text_display_removed (plymouthd_t        *daemon,
                                        ply_text_display_t *display)
 {
-        if (daemon->boot_splash != NULL)
-                ply_boot_splash_remove_text_display (daemon->boot_splash,
-                                                     display);
+        if (plymouthd_splash_get (daemon->splash) != NULL)
+                ply_boot_splash_remove_text_display (
+                        plymouthd_splash_get (daemon->splash),
+                        display);
 }
 
 void
 plymouthd_cancel_pending_show (plymouthd_t *daemon)
 {
-        if (isnan (daemon->settings->splash_delay))
-                return;
-
-        ply_event_loop_stop_watching_for_timeout (
-                daemon->loop,
-                (ply_event_loop_timeout_handler_t) plymouthd_show_splash,
-                daemon);
-        daemon->settings->splash_delay = NAN;
+        plymouthd_splash_delay_cancel (daemon->splash_delay);
 }
 
 void
@@ -183,7 +181,7 @@ plymouthd_show_detailed_splash (plymouthd_t *daemon)
 
         plymouthd_cancel_pending_show (daemon);
 
-        if (daemon->boot_splash != NULL)
+        if (plymouthd_splash_get (daemon->splash) != NULL)
                 return;
 
         ply_trace ("Showing detailed splash screen");
@@ -194,7 +192,7 @@ plymouthd_show_detailed_splash (plymouthd_t *daemon)
                 return;
         }
 
-        daemon->boot_splash = splash;
+        plymouthd_splash_take (daemon->splash, splash);
         show_messages (daemon);
         plymouthd_update_display (daemon);
 }
@@ -202,60 +200,66 @@ plymouthd_show_detailed_splash (plymouthd_t *daemon)
 void
 plymouthd_show_default_splash (plymouthd_t *daemon)
 {
-        if (daemon->boot_splash != NULL)
+        ply_boot_splash_t *splash = NULL;
+        const char *override_splash_path;
+        const char *system_default_splash_path;
+        const char *distribution_default_splash_path;
+
+        if (plymouthd_splash_get (daemon->splash) != NULL)
                 return;
 
+        override_splash_path =
+                plymouthd_settings_get_override_splash_path (daemon->settings);
+        system_default_splash_path =
+                plymouthd_settings_get_system_default_splash_path (daemon->settings);
+        distribution_default_splash_path =
+                plymouthd_settings_get_distribution_default_splash_path (daemon->settings);
+
         ply_trace ("Showing splash screen");
-        if (daemon->settings->override_splash_path != NULL) {
-                ply_trace ("Trying override splash at '%s'",
-                           daemon->settings->override_splash_path);
-                daemon->boot_splash =
-                        show_theme (daemon,
-                                    daemon->settings->override_splash_path);
+        if (override_splash_path != NULL) {
+                ply_trace ("Trying override splash at '%s'", override_splash_path);
+                splash = show_theme (daemon, override_splash_path);
         }
 
-        if (daemon->boot_splash == NULL &&
-            daemon->settings->system_default_splash_path != NULL) {
+        if (splash == NULL &&
+            system_default_splash_path != NULL) {
                 ply_trace ("Trying system default splash");
-                daemon->boot_splash =
-                        show_theme (daemon,
-                                    daemon->settings->system_default_splash_path);
+                splash = show_theme (daemon, system_default_splash_path);
         }
 
-        if (daemon->boot_splash == NULL &&
-            daemon->settings->distribution_default_splash_path != NULL) {
+        if (splash == NULL &&
+            distribution_default_splash_path != NULL) {
                 ply_trace ("Trying distribution default splash");
-                daemon->boot_splash = show_theme (
-                        daemon,
-                        daemon->settings->distribution_default_splash_path);
+                splash = show_theme (daemon,
+                                     distribution_default_splash_path);
         }
 
-        if (daemon->boot_splash == NULL) {
+        if (splash == NULL) {
                 ply_trace ("Trying old scheme for default splash");
-                daemon->boot_splash =
-                        show_theme (daemon,
-                                    PLYMOUTH_THEME_PATH "default.plymouth");
+                splash = show_theme (daemon,
+                                     PLYMOUTH_THEME_PATH "default.plymouth");
         }
 
-        if (daemon->boot_splash == NULL) {
+        if (splash == NULL) {
                 ply_trace ("Could not start default splash screen,"
                            "showing text splash screen");
-                daemon->boot_splash = show_theme (
+                splash = show_theme (
                         daemon,
                         PLYMOUTH_THEME_PATH "text/text.plymouth");
         }
 
-        if (daemon->boot_splash == NULL) {
+        if (splash == NULL) {
                 ply_trace ("Could not start text splash screen,"
                            "showing built-in splash screen");
-                daemon->boot_splash = show_theme (daemon, NULL);
+                splash = show_theme (daemon, NULL);
         }
 
-        if (daemon->boot_splash == NULL) {
+        if (splash == NULL) {
                 ply_error ("plymouthd: could not start boot splash: %m");
                 return;
         }
 
+        plymouthd_splash_take (daemon->splash, splash);
         show_messages (daemon);
         plymouthd_update_display (daemon);
 }
@@ -263,59 +267,41 @@ plymouthd_show_default_splash (plymouthd_t *daemon)
 void
 plymouthd_show_splash (plymouthd_t *daemon)
 {
-        if (daemon->boot_splash != NULL)
+        double time_left;
+
+        if (plymouthd_splash_get (daemon->splash) != NULL)
                 return;
 
-        if (!isnan (daemon->settings->splash_delay)) {
-                double now, running_time;
-
-                now = ply_get_timestamp ();
-                running_time = now - daemon->start_time;
-                if (daemon->settings->splash_delay > running_time) {
-                        double time_left;
-
-                        time_left = daemon->settings->splash_delay - running_time;
-                        ply_trace ("delaying show splash for %lf seconds",
-                                   time_left);
-                        ply_event_loop_stop_watching_for_timeout (
-                                daemon->loop,
-                                (ply_event_loop_timeout_handler_t)
-                                plymouthd_show_splash,
-                                daemon);
-                        ply_event_loop_watch_for_timeout (
-                                daemon->loop,
-                                time_left,
-                                (ply_event_loop_timeout_handler_t)
-                                plymouthd_show_splash,
-                                daemon);
-                        plymouthd_devices_activate_keyboards (daemon->devices);
-                        return;
-                }
+        if (plymouthd_splash_delay_defer (daemon->splash_delay, &time_left)) {
+                ply_trace ("delaying show splash for %lf seconds", time_left);
+                plymouthd_devices_activate_keyboards (daemon->devices);
+                return;
         }
 
-        if (plymouthd_should_show_default_splash (
-                    daemon->should_force_details,
-                    daemon->should_force_default_splash)) {
+        if (plymouthd_splash_should_show_default (daemon->splash)) {
                 plymouthd_show_default_splash (daemon);
-                daemon->showing_details = false;
+                plymouthd_splash_set_showing_details (daemon->splash, false);
         } else {
                 plymouthd_show_detailed_splash (daemon);
-                daemon->showing_details = true;
+                plymouthd_splash_set_showing_details (daemon->splash, true);
         }
 }
 
 void
 plymouthd_hide_splash (plymouthd_t *daemon)
 {
-        if (daemon->boot_splash != NULL &&
-            ply_boot_splash_uses_pixel_displays (daemon->boot_splash))
+        ply_boot_splash_t *boot_splash;
+
+        boot_splash = plymouthd_splash_get (daemon->splash);
+        if (boot_splash != NULL &&
+            ply_boot_splash_uses_pixel_displays (boot_splash))
                 plymouthd_devices_deactivate_renderers (daemon->devices);
 
-        daemon->is_shown = false;
+        plymouthd_splash_set_shown (daemon->splash, false);
         plymouthd_cancel_pending_show (daemon);
 
-        if (daemon->boot_splash != NULL)
-                ply_boot_splash_hide (daemon->boot_splash);
+        if (boot_splash != NULL)
+                ply_boot_splash_hide (boot_splash);
 
         plymouthd_devices_restore_text_console (daemon->devices);
 }
@@ -324,18 +310,17 @@ void
 plymouthd_toggle_details (plymouthd_t *daemon)
 {
         ply_trace ("toggling between splash and details");
-        if (daemon->boot_splash != NULL) {
+        if (plymouthd_splash_get (daemon->splash) != NULL) {
                 ply_trace ("hiding and freeing current splash");
                 plymouthd_hide_splash (daemon);
-                ply_boot_splash_free (daemon->boot_splash);
-                daemon->boot_splash = NULL;
+                plymouthd_splash_clear (daemon->splash);
         }
 
-        if (!daemon->showing_details) {
+        if (!plymouthd_splash_is_showing_details (daemon->splash)) {
                 plymouthd_show_detailed_splash (daemon);
-                daemon->showing_details = true;
+                plymouthd_splash_set_showing_details (daemon->splash, true);
         } else {
                 plymouthd_show_default_splash (daemon);
-                daemon->showing_details = false;
+                plymouthd_splash_set_showing_details (daemon->splash, false);
         }
 }

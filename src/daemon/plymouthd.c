@@ -11,13 +11,11 @@
 #include "plymouthd-private.h"
 
 #include <errno.h>
-#include <math.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "ply-boot-splash.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
 #include "ply-utils.h"
@@ -37,6 +35,8 @@
 #include "plymouthd-runtime-private.h"
 #include "plymouthd-session-private.h"
 #include "plymouthd-settings-private.h"
+#include "plymouthd-splash-private.h"
+#include "plymouthd-splash-delay-private.h"
 #include "plymouthd-state-private.h"
 #include "plymouthd-transition-private.h"
 
@@ -107,10 +107,19 @@ static const plymouthd_devices_event_handlers_t device_event_handlers = {
 };
 
 static void
+on_splash_delay_elapsed (plymouthd_t      *daemon,
+                         ply_event_loop_t *loop)
+{
+        plymouthd_show_splash (daemon);
+}
+
+static void
 create_devices (plymouthd_t *daemon,
-                bool         should_ignore_serial_consoles)
+                bool         should_ignore_serial_consoles,
+                bool         should_show_default_splash)
 {
         ply_device_manager_flags_t flags = PLY_DEVICE_MANAGER_FLAGS_NONE;
+        int device_scale;
 
         if (ply_kernel_command_line_has_argument (
                     "plymouth.ignore-serial-consoles") ||
@@ -130,31 +139,29 @@ create_devices (plymouthd_t *daemon,
                 flags |= PLY_DEVICE_MANAGER_FLAGS_FORCE_FRAME_BUFFER;
         }
 
-        if (!plymouthd_should_show_default_splash (
-                    daemon->should_force_details,
-                    daemon->should_force_default_splash)) {
+        if (!should_show_default_splash) {
                 flags |= PLY_DEVICE_MANAGER_FLAGS_SKIP_RENDERERS;
                 flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_UDEV;
-                daemon->settings->splash_delay = NAN;
         }
 
-        if (daemon->settings->device_scale != -1)
-                ply_set_device_scale (daemon->settings->device_scale);
+        device_scale = plymouthd_settings_get_device_scale (daemon->settings);
+        if (device_scale != -1)
+                ply_set_device_scale (device_scale);
 
         flags = plymouthd_add_simpledrm_flags (
                 flags,
-                daemon->settings->use_simpledrm);
+                plymouthd_settings_get_use_simpledrm (daemon->settings));
 
         daemon->devices = plymouthd_devices_new (
                 daemon->default_tty,
                 flags,
-                daemon->settings->extra_esc_key,
-                daemon->settings->device_timeout,
+                plymouthd_settings_get_extra_escape_key (daemon->settings),
+                plymouthd_settings_get_device_timeout (daemon->settings),
                 &device_event_handlers,
                 daemon);
 
         if (plymouthd_devices_has_serial_consoles (daemon->devices))
-                daemon->should_force_details = true;
+                plymouthd_splash_force_details (daemon->splash);
 }
 
 plymouthd_t *
@@ -164,13 +171,17 @@ plymouthd_new (plymouthd_options_t *options,
 {
         plymouthd_t *daemon;
         ply_daemon_handle_t *daemon_handle = NULL;
+        double start_time;
         bool should_ignore_serial_consoles;
+        bool should_force_default_splash = false;
+        bool should_show_default_splash;
 
+        start_time = ply_get_timestamp ();
         daemon = calloc (1, sizeof(plymouthd_t));
-        daemon->start_time = ply_get_timestamp ();
         daemon->loop = ply_event_loop_get_default ();
         daemon->mode = plymouthd_options_get_mode (options);
         daemon->settings = plymouthd_settings_new ();
+        daemon->splash = plymouthd_splash_new ();
 
         should_ignore_serial_consoles =
                 plymouthd_options_should_ignore_serial_consoles (options);
@@ -199,7 +210,8 @@ plymouthd_new (plymouthd_options_t *options,
         if (plymouthd_options_should_use_graphical_boot (options) ||
             ply_kernel_command_line_has_argument ("plymouth.graphical") ||
             plymouthd_kernel_console_is_ttynull ()) {
-                daemon->should_force_default_splash = true;
+                should_force_default_splash = true;
+                plymouthd_splash_force_default (daemon->splash);
                 should_ignore_serial_consoles = true;
         }
 
@@ -207,6 +219,7 @@ plymouthd_new (plymouthd_options_t *options,
                     daemon,
                     plymouthd_options_get_debug_path (options),
                     plymouthd_options_should_debug (options),
+                    should_force_default_splash,
                     plymouthd_options_take_pid_file (options))) {
                 if (errno == 0) {
                         *exit_code = EX_OK;
@@ -266,7 +279,19 @@ plymouthd_new (plymouthd_options_t *options,
         }
 
         plymouthd_settings_load (daemon->settings);
-        create_devices (daemon, should_ignore_serial_consoles);
+        should_show_default_splash =
+                plymouthd_splash_should_show_default (daemon->splash);
+        daemon->splash_delay = plymouthd_splash_delay_new (
+                daemon->loop,
+                start_time,
+                plymouthd_settings_get_splash_delay (daemon->settings),
+                (ply_event_loop_timeout_handler_t) on_splash_delay_elapsed,
+                daemon);
+        if (!should_show_default_splash)
+                plymouthd_splash_delay_cancel (daemon->splash_delay);
+        create_devices (daemon,
+                        should_ignore_serial_consoles,
+                        should_show_default_splash);
 
         *exit_code = EX_OK;
         return daemon;
@@ -295,7 +320,7 @@ plymouthd_free (plymouthd_t *daemon)
         if (daemon == NULL)
                 return;
 
-        ply_boot_splash_free (daemon->boot_splash);
+        plymouthd_splash_free (daemon->splash);
         plymouthd_commands_free (daemon->commands);
         plymouthd_devices_free (daemon->devices);
         ply_trace ("freeing terminal session");
@@ -307,6 +332,7 @@ plymouthd_free (plymouthd_t *daemon)
         plymouthd_logging_free (daemon->logging);
         plymouthd_messages_free (daemon->messages);
         plymouthd_settings_free (daemon->settings);
+        plymouthd_splash_delay_free (daemon->splash_delay);
         plymouthd_process_free (daemon->process);
         free (daemon);
 }

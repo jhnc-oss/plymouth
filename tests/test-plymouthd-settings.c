@@ -70,14 +70,14 @@ test_settings_start_unset (void)
 
         settings = plymouthd_settings_new ();
 
-        PLY_TEST_ASSERT (isnan (settings->splash_delay));
-        PLY_TEST_ASSERT (isnan (settings->device_timeout));
-        PLY_TEST_ASSERT (settings->device_scale == -1);
-        PLY_TEST_ASSERT (settings->extra_esc_key == XKB_KEY_NoSymbol);
-        PLY_TEST_ASSERT (settings->use_simpledrm == -1);
-        PLY_TEST_ASSERT (settings->override_splash_path == NULL);
-        PLY_TEST_ASSERT (settings->system_default_splash_path == NULL);
-        PLY_TEST_ASSERT (settings->distribution_default_splash_path == NULL);
+        PLY_TEST_ASSERT (isnan (plymouthd_settings_get_splash_delay (settings)));
+        PLY_TEST_ASSERT (isnan (plymouthd_settings_get_device_timeout (settings)));
+        PLY_TEST_ASSERT (plymouthd_settings_get_device_scale (settings) == -1);
+        PLY_TEST_ASSERT (plymouthd_settings_get_extra_escape_key (settings) == XKB_KEY_NoSymbol);
+        PLY_TEST_ASSERT (plymouthd_settings_get_use_simpledrm (settings) == -1);
+        PLY_TEST_ASSERT (plymouthd_settings_get_override_splash_path (settings) == NULL);
+        PLY_TEST_ASSERT (plymouthd_settings_get_system_default_splash_path (settings) == NULL);
+        PLY_TEST_ASSERT (plymouthd_settings_get_distribution_default_splash_path (settings) == NULL);
 
         plymouthd_settings_free (settings);
         return true;
@@ -225,11 +225,11 @@ test_first_config_source_keeps_scalar_precedence (void)
         PLY_TEST_ASSERT (plymouthd_settings_apply_config_file (
                                  settings, second_config_path, &resolved_theme));
         PLY_TEST_ASSERT (strcmp (resolved_theme, beta_theme_path) == 0);
-        PLY_TEST_ASSERT (settings->splash_delay == 1.5);
-        PLY_TEST_ASSERT (settings->device_timeout == 8.0);
-        PLY_TEST_ASSERT (settings->device_scale == 2);
-        PLY_TEST_ASSERT (settings->extra_esc_key == 123);
-        PLY_TEST_ASSERT (settings->use_simpledrm == 1);
+        PLY_TEST_ASSERT (plymouthd_settings_get_splash_delay (settings) == 1.5);
+        PLY_TEST_ASSERT (plymouthd_settings_get_device_timeout (settings) == 8.0);
+        PLY_TEST_ASSERT (plymouthd_settings_get_device_scale (settings) == 2);
+        PLY_TEST_ASSERT (plymouthd_settings_get_extra_escape_key (settings) == 123);
+        PLY_TEST_ASSERT (plymouthd_settings_get_use_simpledrm (settings) == 1);
 
         plymouthd_settings_free (settings);
         unlink (first_config_path);
@@ -268,10 +268,10 @@ test_kernel_command_line_keeps_precedence (void)
         settings = plymouthd_settings_new ();
         plymouthd_settings_apply_kernel_command_line (settings);
 
-        PLY_TEST_ASSERT (settings->splash_delay == 2.5);
-        PLY_TEST_ASSERT (isnan (settings->device_timeout));
-        PLY_TEST_ASSERT (settings->device_scale == 3);
-        PLY_TEST_ASSERT (settings->use_simpledrm == 0);
+        PLY_TEST_ASSERT (plymouthd_settings_get_splash_delay (settings) == 2.5);
+        PLY_TEST_ASSERT (isnan (plymouthd_settings_get_device_timeout (settings)));
+        PLY_TEST_ASSERT (plymouthd_settings_get_device_scale (settings) == 3);
+        PLY_TEST_ASSERT (plymouthd_settings_get_use_simpledrm (settings) == 0);
 
         plymouthd_settings_free (settings);
         return true;

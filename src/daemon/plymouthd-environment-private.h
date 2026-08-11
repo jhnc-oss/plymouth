@@ -20,6 +20,7 @@ typedef struct _plymouthd plymouthd_t;
 PLY_PRIVATE bool plymouthd_initialize_environment (plymouthd_t *daemon,
                                                    const char  *debug_path,
                                                    bool         capture_debug,
+                                                   bool         should_force_default_splash,
                                                    char        *pid_file);
 
 #endif /* PLYMOUTHD_ENVIRONMENT_PRIVATE_H */
