@@ -1873,14 +1873,11 @@ static void
 on_input_leds_changed (ply_renderer_input_source_t *input_source,
                        ply_input_device_t          *input_device)
 {
-        ply_xkb_keyboard_state_t *state;
         ply_list_node_t *node;
 
-        state = ply_input_device_get_state (input_device);
-
         ply_list_foreach (input_source->input_devices, node) {
-                ply_input_device_t *set_input_device = ply_list_node_get_data (node);
-                ply_input_device_set_state (set_input_device, state);
+                ply_input_device_t *update_input_device = ply_list_node_get_data (node);
+                ply_input_device_update_leds (update_input_device);
         }
 }
 
@@ -2062,30 +2059,6 @@ get_keymap (ply_renderer_backend_t *backend)
 }
 
 static void
-sync_input_devices (ply_renderer_backend_t *backend)
-{
-        ply_list_node_t *node;
-        ply_xkb_keyboard_state_t *xkb_state;
-        ply_input_device_t *source_input_device;
-
-        source_input_device = get_any_input_device (backend);
-
-        if (source_input_device == NULL)
-                return;
-
-        xkb_state = ply_input_device_get_state (source_input_device);
-
-        ply_list_foreach (backend->input_source.input_devices, node) {
-                ply_input_device_t *target_input_device = ply_list_node_get_data (node);
-
-                if (source_input_device == target_input_device)
-                        continue;
-
-                ply_input_device_set_state (target_input_device, xkb_state);
-        }
-}
-
-static void
 add_input_device (ply_renderer_backend_t *backend,
                   ply_input_device_t     *input_device)
 {
@@ -2093,8 +2066,6 @@ add_input_device (ply_renderer_backend_t *backend,
 
         if (backend->input_source_is_open)
                 watch_input_device (backend, input_device);
-
-        sync_input_devices (backend);
 }
 
 static void
@@ -2102,8 +2073,6 @@ remove_input_device (ply_renderer_backend_t *backend,
                      ply_input_device_t     *input_device)
 {
         ply_list_remove_data (backend->input_source.input_devices, input_device);
-
-        sync_input_devices (backend);
 }
 
 ply_renderer_plugin_interface_t *
