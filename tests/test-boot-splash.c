@@ -152,6 +152,43 @@ test_theme_loads_and_attached_devices_are_removed (void)
 }
 
 static bool
+test_current_splash_owner_releases_instances (void)
+{
+        const test_splash_plugin_state_t *state;
+        plymouthd_splash_t *current_splash;
+        ply_module_handle_t *module;
+        ply_boot_splash_t *boot_splash;
+        ply_buffer_t *boot_buffer;
+
+        module = ply_open_module (TEST_SPLASH_PLUGIN_PATH);
+        PLY_TEST_ASSERT (module != NULL);
+        boot_buffer = ply_buffer_new ();
+        current_splash = plymouthd_splash_new ();
+        PLY_TEST_ASSERT (plymouthd_splash_get (current_splash) == NULL);
+
+        boot_splash = load_splash (boot_buffer);
+        PLY_TEST_ASSERT (boot_splash != NULL);
+        plymouthd_splash_take (current_splash, boot_splash);
+        PLY_TEST_ASSERT (plymouthd_splash_get (current_splash) == boot_splash);
+
+        state = get_plugin_state (module);
+        PLY_TEST_ASSERT (state != NULL);
+        plymouthd_splash_clear (current_splash);
+        PLY_TEST_ASSERT (plymouthd_splash_get (current_splash) == NULL);
+        PLY_TEST_ASSERT (state->destroy_count == 1);
+
+        boot_splash = load_splash (boot_buffer);
+        PLY_TEST_ASSERT (boot_splash != NULL);
+        plymouthd_splash_take (current_splash, boot_splash);
+        plymouthd_splash_free (current_splash);
+        PLY_TEST_ASSERT (state->destroy_count == 1);
+
+        ply_buffer_free (boot_buffer);
+        ply_close_module (module);
+        return true;
+}
+
+static bool
 test_daemon_loader_attaches_runtime_dependencies (void)
 {
         const test_splash_plugin_state_t *state;
@@ -336,6 +373,7 @@ test_plugin_idle_completion_reaches_caller (void)
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_theme_loads_and_attached_devices_are_removed),
+        PLY_TEST_CASE (test_current_splash_owner_releases_instances),
         PLY_TEST_CASE (test_daemon_loader_attaches_runtime_dependencies),
         PLY_TEST_CASE (test_runtime_operations_reach_splash_plugin),
         PLY_TEST_CASE (test_plugin_idle_completion_reaches_caller),
