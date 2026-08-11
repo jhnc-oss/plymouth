@@ -28,6 +28,7 @@ struct _plymouthd_session
         plymouthd_session_kmsg_handler_t   kmsg_handler;
         void                              *user_data;
 
+        uint32_t                           should_attach : 1;
         uint32_t                           attached : 1;
         uint32_t                           redirected : 1;
 };
@@ -168,6 +169,19 @@ plymouthd_session_detach (plymouthd_session_t *session)
         ply_terminal_session_detach (session->terminal_session);
         session->redirected = false;
         session->attached = false;
+}
+
+void
+plymouthd_session_set_should_attach (plymouthd_session_t *session,
+                                     bool                 should_attach)
+{
+        session->should_attach = should_attach;
+}
+
+bool
+plymouthd_session_should_attach (plymouthd_session_t *session)
+{
+        return session->should_attach;
 }
 
 bool
