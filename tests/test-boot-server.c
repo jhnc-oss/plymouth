@@ -391,30 +391,65 @@ on_has_active_vt (void              *user_data,
 static ply_boot_server_t *
 new_server (server_context_t *context)
 {
-        return ply_boot_server_new (
-                on_update,
-                on_change_mode,
-                on_system_update,
-                on_password,
-                on_question,
-                on_display_message,
-                on_hide_message,
-                on_watch_keystroke,
-                on_ignore_keystroke,
-                on_progress_pause,
-                on_progress_unpause,
-                on_show_splash,
-                on_hide_splash,
-                on_newroot,
-                on_initialized,
-                on_error,
-                on_deactivate,
-                on_reactivate,
-                on_quit,
-                on_has_active_vt,
-                on_reload,
-                NULL, /* connection_hangup */
-                context);
+        const ply_boot_server_handlers_t handlers = {
+                .update              = on_update,
+                .change_mode         = on_change_mode,
+                .system_update       = on_system_update,
+                .ask_for_password    = on_password,
+                .ask_question        = on_question,
+                .display_message     = on_display_message,
+                .hide_message        = on_hide_message,
+                .watch_for_keystroke = on_watch_keystroke,
+                .ignore_keystroke    = on_ignore_keystroke,
+                .progress_pause      = on_progress_pause,
+                .progress_unpause    = on_progress_unpause,
+                .show_splash         = on_show_splash,
+                .hide_splash         = on_hide_splash,
+                .newroot             = on_newroot,
+                .system_initialized  = on_initialized,
+                .error               = on_error,
+                .deactivate          = on_deactivate,
+                .reactivate          = on_reactivate,
+                .quit                = on_quit,
+                .has_active_vt       = on_has_active_vt,
+                .reload              = on_reload,
+        };
+
+        return ply_boot_server_new_with_handlers (&handlers, context);
+}
+
+static bool
+test_legacy_constructor_remains_available (void)
+{
+        ply_boot_server_t *server;
+
+        server = ply_boot_server_new (NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL,
+                                      NULL);
+
+        PLY_TEST_ASSERT (server != NULL);
+        ply_boot_server_free (server);
+        return true;
 }
 
 static void
@@ -966,6 +1001,7 @@ test_malformed_and_uncredentialed_frames_disconnect (void)
 
 static const ply_test_case_t test_cases[] =
 {
+        PLY_TEST_CASE (test_legacy_constructor_remains_available),
         PLY_TEST_CASE (test_update_argument_dispatches_and_acknowledges),
         PLY_TEST_CASE (test_pipelined_notifications_each_receive_ack),
         PLY_TEST_CASE (test_unknown_command_naks_without_breaking_pipeline),

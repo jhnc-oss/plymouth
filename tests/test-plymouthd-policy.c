@@ -19,6 +19,7 @@
 
 #include "ply-test.h"
 
+#include "ply-utils.h"
 #include "plymouthd-policy-private.h"
 
 static bool
@@ -137,12 +138,80 @@ test_setting_adds_expected_device_flags (void)
         return true;
 }
 
+static bool
+test_show_requests_keep_kernel_argument_precedence (void)
+{
+        ply_kernel_command_line_override ("plymouth.ignore-show-splash");
+        PLY_TEST_ASSERT (plymouthd_should_ignore_show_splash_calls (
+                                 PLY_BOOT_SPLASH_MODE_BOOT_UP));
+        PLY_TEST_ASSERT (!plymouthd_should_ignore_show_splash_calls (
+                                 PLY_BOOT_SPLASH_MODE_SHUTDOWN));
+
+        ply_kernel_command_line_override (
+                "plymouth.ignore-show-splash plymouth.force-splash");
+        PLY_TEST_ASSERT (!plymouthd_should_ignore_show_splash_calls (
+                                 PLY_BOOT_SPLASH_MODE_BOOT_UP));
+        return true;
+}
+
+static bool
+test_shell_init_detection_keeps_suffix_behavior (void)
+{
+        ply_kernel_command_line_override ("init=/bin/sh");
+        PLY_TEST_ASSERT (plymouthd_shell_is_init ());
+
+        ply_kernel_command_line_override ("init=/bin/bash");
+        PLY_TEST_ASSERT (plymouthd_shell_is_init ());
+
+        ply_kernel_command_line_override ("init=/bin/init");
+        PLY_TEST_ASSERT (!plymouthd_shell_is_init ());
+
+        ply_kernel_command_line_override ("");
+        PLY_TEST_ASSERT (!plymouthd_shell_is_init ());
+        return true;
+}
+
+static bool
+test_virtual_kernel_console_detection_is_stable (void)
+{
+        PLY_TEST_ASSERT (plymouthd_console_type_is_virtual ("ttynull"));
+        PLY_TEST_ASSERT (!plymouthd_console_type_is_virtual ("tty0"));
+        PLY_TEST_ASSERT (!plymouthd_console_type_is_virtual ("ttyS0"));
+        return true;
+}
+
+static bool
+test_default_splash_selection_keeps_argument_precedence (void)
+{
+        ply_kernel_command_line_override ("rhgb");
+        PLY_TEST_ASSERT (!plymouthd_should_show_default_splash (true, true));
+        PLY_TEST_ASSERT (plymouthd_should_show_default_splash (false, false));
+
+        ply_kernel_command_line_override ("single rhgb");
+        PLY_TEST_ASSERT (!plymouthd_should_show_default_splash (false, false));
+
+        ply_kernel_command_line_override ("splash=verbose splash");
+        PLY_TEST_ASSERT (!plymouthd_should_show_default_splash (false, false));
+
+        ply_kernel_command_line_override ("splash=silent");
+        PLY_TEST_ASSERT (plymouthd_should_show_default_splash (false, false));
+
+        ply_kernel_command_line_override ("");
+        PLY_TEST_ASSERT (plymouthd_should_show_default_splash (false, true));
+        PLY_TEST_ASSERT (!plymouthd_should_show_default_splash (false, false));
+        return true;
+}
+
 static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_mode_names_map_to_splash_modes),
         PLY_TEST_CASE (test_configuration_precedence_respects_encryption),
         PLY_TEST_CASE (test_kernel_argument_precedence_is_stable),
         PLY_TEST_CASE (test_setting_adds_expected_device_flags),
+        PLY_TEST_CASE (test_show_requests_keep_kernel_argument_precedence),
+        PLY_TEST_CASE (test_shell_init_detection_keeps_suffix_behavior),
+        PLY_TEST_CASE (test_virtual_kernel_console_detection_is_stable),
+        PLY_TEST_CASE (test_default_splash_selection_keeps_argument_precedence),
 };
 
 PLY_TEST_MAIN (test_cases)

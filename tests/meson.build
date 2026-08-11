@@ -176,6 +176,91 @@ test(
   timeout: test_timeout,
 )
 
+plymouthd_logging_test_executable = executable(
+  'test-plymouthd-logging',
+  'test-plymouthd-logging.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_logging_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-logging',
+  plymouthd_logging_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
+plymouthd_session_test_executable = executable(
+  'test-plymouthd-session',
+  'test-plymouthd-session.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_session_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-session',
+  plymouthd_session_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
+plymouthd_progress_test_executable = executable(
+  'test-plymouthd-progress',
+  'test-plymouthd-progress.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_progress_dep,
+  include_directories: [config_h_inc, include_directories('.')],
+)
+
+test(
+  'plymouthd-progress',
+  plymouthd_progress_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
+plymouthd_diagnostics_test_executable = executable(
+  'test-plymouthd-diagnostics',
+  'test-plymouthd-diagnostics.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_diagnostics_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-diagnostics',
+  plymouthd_diagnostics_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
+plymouthd_settings_test_executable = executable(
+  'test-plymouthd-settings',
+  'test-plymouthd-settings.c',
+  c_args: test_c_args,
+  dependencies: plymouthd_settings_dep,
+  include_directories: include_directories('.'),
+)
+
+test(
+  'plymouthd-settings',
+  plymouthd_settings_test_executable,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 script_source_dir = meson.project_source_root() / 'src/plugins/splash/script'
 
 script_scan_test_executable = executable(
@@ -538,11 +623,58 @@ boot_splash_test_c_args = test_c_args + [
   ),
 ]
 
+plymouthd_interaction_test_executable = executable(
+  'test-plymouthd-interaction',
+  'test-plymouthd-interaction.c',
+  c_args: boot_splash_test_c_args,
+  dependencies: [libply_dep, libply_splash_core_dep, plymouthd_interaction_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'plymouthd-interaction',
+  plymouthd_interaction_test_executable,
+  depends: fake_splash_plugin,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
+plymouthd_messages_test_executable = executable(
+  'test-plymouthd-messages',
+  'test-plymouthd-messages.c',
+  c_args: boot_splash_test_c_args,
+  dependencies: [libply_dep, libply_splash_core_dep, plymouthd_messages_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'plymouthd-messages',
+  plymouthd_messages_test_executable,
+  depends: fake_splash_plugin,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'plymouthd'],
+  timeout: test_timeout,
+)
+
 boot_splash_test_executable = executable(
   'test-boot-splash',
   'test-boot-splash.c',
   c_args: boot_splash_test_c_args,
-  dependencies: [libply_dep, libply_splash_core_dep, ply_renderer_dep],
+  dependencies: [
+    libply_dep,
+    libply_splash_core_dep,
+    ply_renderer_dep,
+    plymouthd_splash_dep,
+  ],
   include_directories: [
     include_directories('.'),
     include_directories('../src/libply-splash-core'),

@@ -21,6 +21,122 @@ plymouthd_policy_dep = declare_dependency(
   link_with: plymouthd_policy,
 )
 
+plymouthd_settings = static_library(
+  'plymouthd-settings-private',
+  [
+    'plymouthd-settings.c',
+    'plymouthd-theme-resolver.c',
+  ],
+  dependencies: [libply_dep, plymouthd_policy_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_settings_dep = declare_dependency(
+  dependencies: [libply_dep, plymouthd_policy_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_settings,
+)
+
+plymouthd_splash = static_library(
+  'plymouthd-splash-private',
+  'plymouthd-splash.c',
+  dependencies: libply_splash_core_dep,
+  include_directories: config_h_inc,
+)
+
+plymouthd_splash_dep = declare_dependency(
+  dependencies: libply_splash_core_dep,
+  include_directories: include_directories('.'),
+  link_with: plymouthd_splash,
+)
+
+plymouthd_interaction = static_library(
+  'plymouthd-interaction-private',
+  'plymouthd-interaction.c',
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_interaction_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_interaction,
+)
+
+plymouthd_messages = static_library(
+  'plymouthd-messages-private',
+  'plymouthd-messages.c',
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_messages_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_messages,
+)
+
+plymouthd_cflags = [
+  '-DPLYMOUTH_LOCALE_DIRECTORY="@0@"'.format(get_option('prefix') / get_option('localedir')),
+  '-DPLYMOUTH_DRM_ESCROW_DIRECTORY="@0@"'.format(get_option('prefix') / get_option('libexecdir') / 'plymouth'),
+  '-DPLYMOUTH_LOG_DIRECTORY="@0@"'.format('/var/log'),
+  '-DPLYMOUTH_SPOOL_DIRECTORY="@0@"'.format(plymouthd_spool_dir),
+]
+
+plymouthd_logging = static_library(
+  'plymouthd-logging-private',
+  'plymouthd-logging.c',
+  c_args: plymouthd_cflags,
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_logging_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_logging,
+)
+
+plymouthd_session = static_library(
+  'plymouthd-session-private',
+  'plymouthd-session.c',
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_session_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_session,
+)
+
+plymouthd_progress = static_library(
+  'plymouthd-progress-private',
+  'plymouthd-progress.c',
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_progress_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_progress,
+)
+
+plymouthd_diagnostics = static_library(
+  'plymouthd-diagnostics-private',
+  'plymouthd-diagnostics.c',
+  c_args: plymouthd_cflags,
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: config_h_inc,
+)
+
+plymouthd_diagnostics_dep = declare_dependency(
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: include_directories('.'),
+  link_with: plymouthd_diagnostics,
+)
+
 ply_peer_credentials = static_library(
   'ply-peer-credentials-private',
   'ply-peer-credentials.c',
@@ -61,13 +177,14 @@ plymouthd_deps = [
   libply_splash_core_dep,
   ply_boot_server_dep,
   plymouthd_policy_dep,
-]
-
-plymouthd_cflags = [
-  '-DPLYMOUTH_LOCALE_DIRECTORY="@0@"'.format(get_option('prefix') / get_option('localedir')),
-  '-DPLYMOUTH_DRM_ESCROW_DIRECTORY="@0@"'.format(get_option('prefix') / get_option('libexecdir') / 'plymouth'),
-  '-DPLYMOUTH_LOG_DIRECTORY="@0@"'.format('/var/log'),
-  '-DPLYMOUTH_SPOOL_DIRECTORY="@0@"'.format(plymouthd_spool_dir),
+  plymouthd_settings_dep,
+  plymouthd_splash_dep,
+  plymouthd_interaction_dep,
+  plymouthd_messages_dep,
+  plymouthd_logging_dep,
+  plymouthd_session_dep,
+  plymouthd_progress_dep,
+  plymouthd_diagnostics_dep,
 ]
 
 plymouthd = executable('plymouthd',
