@@ -67,6 +67,7 @@ plymouthd_private_sources = files(
   'daemon/plymouthd-session.c',
   'daemon/plymouthd-settings.c',
   'daemon/plymouthd-splash.c',
+  'daemon/plymouthd-splash-delay.c',
   'daemon/plymouthd-theme-resolver.c',
   'daemon/plymouthd-transition.c',
 )
@@ -89,6 +90,7 @@ plymouthd_private_dep = declare_dependency(
 plymouthd_policy_dep = plymouthd_private_dep
 plymouthd_settings_dep = plymouthd_private_dep
 plymouthd_splash_dep = plymouthd_private_dep
+plymouthd_splash_delay_dep = plymouthd_private_dep
 plymouthd_interaction_dep = plymouthd_private_dep
 plymouthd_messages_dep = plymouthd_private_dep
 plymouthd_logging_dep = plymouthd_private_dep
