@@ -30,6 +30,7 @@ test_duplicate_deactivate_requests_complete_together (void)
         int second_pull_count = 0;
 
         transition = plymouthd_transition_new ();
+        PLY_TEST_ASSERT (!plymouthd_transition_is_inactive (transition));
         first = ply_trigger_new (NULL);
         second = ply_trigger_new (NULL);
         ply_trigger_add_handler (first,
@@ -47,8 +48,12 @@ test_duplicate_deactivate_requests_complete_together (void)
 
         plymouthd_transition_complete_deactivate (transition);
         PLY_TEST_ASSERT (!plymouthd_transition_has_deactivate (transition));
+        PLY_TEST_ASSERT (plymouthd_transition_is_inactive (transition));
         PLY_TEST_ASSERT (first_pull_count == 1);
         PLY_TEST_ASSERT (second_pull_count == 1);
+
+        plymouthd_transition_activate (transition);
+        PLY_TEST_ASSERT (!plymouthd_transition_is_inactive (transition));
 
         ply_trigger_free (first);
         ply_trigger_free (second);
