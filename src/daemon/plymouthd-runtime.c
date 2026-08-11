@@ -123,7 +123,7 @@ plymouthd_handle_term_signal (plymouthd_t *daemon)
          */
         if ((daemon->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
              daemon->mode == PLY_BOOT_SPLASH_MODE_REBOOT) &&
-            !daemon->is_inactive &&
+            !plymouthd_transition_is_inactive (daemon->transition) &&
             plymouthd_splash_get (daemon->splash) != NULL &&
             ply_boot_splash_uses_pixel_displays (
                     plymouthd_splash_get (daemon->splash))) {

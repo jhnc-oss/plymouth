@@ -11,8 +11,6 @@
 #ifndef PLYMOUTHD_STATE_PRIVATE_H
 #define PLYMOUTHD_STATE_PRIVATE_H
 
-#include <stdint.h>
-
 #include "ply-boot-splash-plugin.h"
 #include "ply-private.h"
 
@@ -51,7 +49,6 @@ struct _plymouthd
 
         plymouthd_settings_t     *settings;
 
-        uint32_t                  is_inactive : 1;
         const char               *default_tty;
 };
 

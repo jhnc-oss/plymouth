@@ -30,6 +30,7 @@
 #include "plymouthd-settings-private.h"
 #include "plymouthd-splash-private.h"
 #include "plymouthd-state-private.h"
+#include "plymouthd-transition-private.h"
 
 void
 plymouthd_handle_update (plymouthd_t *daemon,
@@ -258,7 +259,7 @@ plymouthd_handle_reload (plymouthd_t *daemon)
 
         plymouthd_settings_reload_theme_paths (daemon->settings);
 
-        if (daemon->is_inactive) {
+        if (plymouthd_transition_is_inactive (daemon->transition)) {
                 ply_trace ("reload while inactive");
                 return;
         }
