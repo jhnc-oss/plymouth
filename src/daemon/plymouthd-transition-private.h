@@ -32,6 +32,8 @@ PLY_PRIVATE void plymouthd_transition_set_retain_splash (plymouthd_transition_t 
 PLY_PRIVATE bool plymouthd_transition_should_retain_splash (plymouthd_transition_t *transition);
 PLY_PRIVATE bool plymouthd_transition_begin_idle (plymouthd_transition_t *transition);
 PLY_PRIVATE void plymouthd_transition_end_idle (plymouthd_transition_t *transition);
+PLY_PRIVATE bool plymouthd_transition_is_inactive (const plymouthd_transition_t *transition);
+PLY_PRIVATE void plymouthd_transition_activate (plymouthd_transition_t *transition);
 PLY_PRIVATE void plymouthd_transition_complete_deactivate (plymouthd_transition_t *transition);
 PLY_PRIVATE void plymouthd_transition_complete_all (plymouthd_transition_t *transition);
 

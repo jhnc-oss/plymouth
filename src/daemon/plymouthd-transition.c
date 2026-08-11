@@ -20,6 +20,7 @@ struct _plymouthd_transition
 
         uint32_t       retain_splash : 1;
         uint32_t       becoming_idle : 1;
+        uint32_t       is_inactive : 1;
 };
 
 static bool
@@ -120,9 +121,22 @@ plymouthd_transition_end_idle (plymouthd_transition_t *transition)
         transition->becoming_idle = false;
 }
 
+bool
+plymouthd_transition_is_inactive (const plymouthd_transition_t *transition)
+{
+        return transition->is_inactive;
+}
+
+void
+plymouthd_transition_activate (plymouthd_transition_t *transition)
+{
+        transition->is_inactive = false;
+}
+
 void
 plymouthd_transition_complete_deactivate (plymouthd_transition_t *transition)
 {
+        transition->is_inactive = true;
         complete_trigger (&transition->deactivate_trigger);
 }
 
