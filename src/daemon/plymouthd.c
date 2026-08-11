@@ -19,7 +19,7 @@
 #include "ply-logger.h"
 #include "ply-utils.h"
 #include "plymouthd-commands-private.h"
-#include "plymouthd-display-private.h"
+#include "plymouthd-devices-private.h"
 #include "plymouthd-environment-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-options-private.h"

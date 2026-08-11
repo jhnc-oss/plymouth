@@ -25,12 +25,11 @@
 #include <assert.h>
 
 #include "ply-boot-splash.h"
-#include "ply-device-manager.h"
 #include "ply-event-loop.h"
 #include "ply-logger.h"
-#include "ply-terminal.h"
 #include "ply-trigger.h"
 #include "ply-utils.h"
+#include "plymouthd-devices-private.h"
 #include "plymouthd-display-private.h"
 #include "plymouthd-logging-private.h"
 #include "plymouthd-policy-private.h"
@@ -69,14 +68,13 @@ plymouthd_handle_show_splash (state_t *state)
         }
 
         state->is_shown = true;
-        has_displays = ply_device_manager_has_displays (state->device_manager);
+        has_displays = plymouthd_has_displays (state);
 
         if (!plymouthd_session_is_attached (state->session) &&
             state->should_be_attached && has_displays)
                 plymouthd_attach_session (state);
 
-        if (state->local_console_terminal != NULL)
-                ply_terminal_set_mode (state->local_console_terminal, PLY_TERMINAL_MODE_GRAPHICS);
+        plymouthd_prepare_console (state);
 
         plymouthd_session_request_details (state->session);
 
@@ -98,16 +96,10 @@ quit_splash (state_t *state)
                 state->boot_splash = NULL;
         }
 
-        ply_device_manager_deactivate_keyboards (state->device_manager);
+        plymouthd_deactivate_keyboards (state);
 
-        if (state->local_console_terminal != NULL) {
-                if (!plymouthd_transition_should_retain_splash (
-                            state->transition)) {
-                        ply_trace ("Not retaining splash, so deallocating VT");
-                        ply_terminal_deactivate_vt (state->local_console_terminal);
-                        ply_terminal_close (state->local_console_terminal);
-                }
-        }
+        if (!plymouthd_transition_should_retain_splash (state->transition))
+                plymouthd_release_console (state);
 
         detach_from_running_session (state);
 }
@@ -140,8 +132,7 @@ static void
 quit_program (state_t *state)
 {
         ply_trace ("cleaning up devices");
-        ply_device_manager_free (state->device_manager);
-        state->device_manager = NULL;
+        plymouthd_free_devices (state);
 
         ply_trace ("exiting event loop");
         ply_event_loop_exit (state->loop, 0);
@@ -156,12 +147,7 @@ deactivate_console (state_t *state)
 {
         detach_from_running_session (state);
 
-        if (state->local_console_terminal != NULL) {
-                ply_trace ("deactivating terminal");
-                ply_terminal_stop_watching_for_vt_changes (state->local_console_terminal);
-                ply_terminal_set_buffered_input (state->local_console_terminal);
-                ply_terminal_close (state->local_console_terminal);
-        }
+        plymouthd_deactivate_console (state);
 
         /* do not let any tty opened where we could write after deactivate */
         if (ply_kernel_command_line_has_argument ("plymouth.debug"))
@@ -174,7 +160,7 @@ deactivate_splash (state_t *state)
         assert (!state->is_inactive);
 
         if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
-                ply_device_manager_deactivate_renderers (state->device_manager);
+                plymouthd_deactivate_renderers (state);
 
         deactivate_console (state);
 
@@ -228,8 +214,8 @@ plymouthd_handle_deactivate (state_t       *state,
         ply_trace ("deactivating");
         plymouthd_cancel_pending_show (state);
 
-        ply_device_manager_pause (state->device_manager);
-        ply_device_manager_deactivate_keyboards (state->device_manager);
+        plymouthd_pause_devices (state);
+        plymouthd_deactivate_keyboards (state);
 
         if (state->boot_splash != NULL) {
                 if (plymouthd_transition_begin_idle (state->transition)) {
@@ -250,12 +236,7 @@ plymouthd_handle_reactivate (state_t *state)
         if (!state->is_inactive)
                 return;
 
-        if (state->local_console_terminal != NULL) {
-                ply_terminal_open (state->local_console_terminal);
-                ply_terminal_watch_for_vt_changes (state->local_console_terminal);
-                ply_terminal_set_unbuffered_input (state->local_console_terminal);
-                ply_terminal_ignore_mode_changes (state->local_console_terminal, false);
-        }
+        plymouthd_reactivate_console (state);
 
         if (plymouthd_session_has_terminal (state->session) &&
             state->should_be_attached) {
@@ -263,11 +244,11 @@ plymouthd_handle_reactivate (state_t *state)
                 plymouthd_attach_session (state);
         }
 
-        ply_device_manager_activate_keyboards (state->device_manager);
+        plymouthd_activate_keyboards (state);
         if (state->boot_splash && ply_boot_splash_uses_pixel_displays (state->boot_splash))
-                ply_device_manager_activate_renderers (state->device_manager);
+                plymouthd_activate_renderers (state);
 
-        ply_device_manager_unpause (state->device_manager);
+        plymouthd_unpause_devices (state);
 
         state->is_inactive = false;
 
@@ -297,7 +278,7 @@ plymouthd_handle_quit (state_t       *state,
         ply_trace ("closing log");
         plymouthd_session_close_log (state->session);
 
-        ply_device_manager_deactivate_keyboards (state->device_manager);
+        plymouthd_deactivate_keyboards (state);
 
         ply_trace ("unloading splash");
         if (state->is_inactive && !retain_splash) {
