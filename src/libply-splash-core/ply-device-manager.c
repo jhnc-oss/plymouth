@@ -21,6 +21,7 @@
 #include "ply-renderer.h"
 
 #include <assert.h>
+#include <linux/input-event-codes.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -848,6 +849,22 @@ parse_vconsole_conf (ply_device_manager_t *manager)
         manager->keymap = keymap;
 }
 
+static void
+xkb_state_enable_numlock (struct xkb_state *xkb_state)
+{
+        xkb_keycode_t keycode = (xkb_keycode_t) (KEY_NUMLOCK + 8);
+        xkb_state_update_key (xkb_state, keycode, XKB_KEY_DOWN);
+        xkb_state_update_key (xkb_state, keycode, XKB_KEY_UP);
+}
+
+static void
+xkb_state_enable_capslock (struct xkb_state *xkb_state)
+{
+        xkb_keycode_t keycode = (xkb_keycode_t) (KEY_CAPSLOCK + 8);
+        xkb_state_update_key (xkb_state, keycode, XKB_KEY_DOWN);
+        xkb_state_update_key (xkb_state, keycode, XKB_KEY_UP);
+}
+
 ply_device_manager_t *
 ply_device_manager_new (const char                *default_tty,
                         ply_device_manager_flags_t flags,
@@ -874,6 +891,20 @@ ply_device_manager_new (const char                *default_tty,
 
         manager->local_console_terminal = ply_terminal_new (default_tty, manager->keymap);
         ply_terminal_open (manager->local_console_terminal);
+
+        if (manager->local_console_terminal != NULL && ply_terminal_is_vt (manager->local_console_terminal) && manager->xkb_state != NULL) {
+                int terminal_fd = ply_terminal_get_fd (manager->local_console_terminal);
+                if (terminal_fd >= 0) {
+                        bool numlock_enabled = ply_terminal_get_numlock_state (manager->local_console_terminal);
+                        bool capslock_enabled = ply_terminal_get_capslock_state (manager->local_console_terminal);
+
+                        if (numlock_enabled)
+                                xkb_state_enable_numlock (manager->xkb_state);
+
+                        if (capslock_enabled)
+                                xkb_state_enable_capslock (manager->xkb_state);
+                }
+        }
 
         manager->input_devices = ply_hashtable_new (ply_hashtable_string_hash, ply_hashtable_string_compare);
         manager->keyboards = ply_list_new ();
