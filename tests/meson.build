@@ -616,6 +616,31 @@ test(
   timeout: test_timeout,
 )
 
+frame_buffer_renderer_test_executable = executable(
+  'test-frame-buffer-renderer',
+  'test-frame-buffer-renderer.c',
+  c_args: test_c_args + [
+    '-DTEST_FRAME_BUFFER_RENDERER_PLUGIN_PATH="@0@"'.format(
+      frame_buffer_plugin.full_path()
+    ),
+  ],
+  dependencies: [libply_dep, libply_splash_core_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+  ],
+)
+
+test(
+  'frame-buffer-renderer-plugin',
+  frame_buffer_renderer_test_executable,
+  depends: frame_buffer_plugin,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'renderer-plugin'],
+  timeout: test_timeout,
+)
+
 renderer_test_c_args = test_c_args + [
   '-DTEST_RENDERER_PLUGIN_DIR="@0@"'.format(
     meson.project_build_root() / 'tests/plugins'
