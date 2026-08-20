@@ -924,10 +924,23 @@ get_device_name (ply_renderer_backend_t *backend)
 }
 
 static void
+unload_driver (ply_renderer_backend_t *backend)
+{
+        if (backend->device_fd < 0)
+                return;
+
+        ply_trace ("unloading driver");
+        drmClose (backend->device_fd);
+        backend->device_fd = -1;
+}
+
+static void
 destroy_backend (ply_renderer_backend_t *backend)
 {
         ply_trace ("destroying renderer backend for device %s", backend->device_name);
         free_heads (backend);
+
+        unload_driver (backend);
 
         free (backend->device_name);
         ply_hashtable_free (backend->output_buffers);
@@ -1007,23 +1020,6 @@ load_driver (ply_renderer_backend_t *backend)
         return true;
 }
 
-static void
-unload_backend (ply_renderer_backend_t *backend)
-{
-        if (backend == NULL)
-                return;
-
-        ply_trace ("unloading backend");
-
-        if (backend->device_fd >= 0) {
-                drmClose (backend->device_fd);
-                backend->device_fd = -1;
-        }
-
-        destroy_backend (backend);
-        backend = NULL;
-}
-
 static bool
 open_device (ply_renderer_backend_t *backend)
 {
@@ -1069,7 +1065,7 @@ close_device (ply_renderer_backend_t *backend)
                                                                  backend);
         }
 
-        unload_backend (backend);
+        unload_driver (backend);
 }
 
 static void
