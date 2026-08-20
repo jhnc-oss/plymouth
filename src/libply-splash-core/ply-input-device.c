@@ -40,6 +40,12 @@
 #include "ply-trigger.h"
 #include "ply-utils.h"
 
+#ifdef HAVE_XKBCOMMON_VIRTUAL_MODIFIERS
+#define PLY_XKB_MOD_NAME_NUM XKB_VMOD_NAME_NUM
+#else
+#define PLY_XKB_MOD_NAME_NUM XKB_MOD_NAME_NUM
+#endif
+
 /* The docs say this needs to be at least 7, the code enforces this, but also never uses more
  * than 5. We'll just do 7.
  */
@@ -65,7 +71,6 @@ struct _ply_input_device
         struct libevdev          *dev;
 
         uint32_t                  kernel_has_vts : 1;
-        uint32_t                  leds_state_invalid : 1;
 };
 
 static bool
@@ -271,9 +276,8 @@ on_input (ply_input_device_t *input_device)
                 if (key_state != PLY_KEY_HELD) {
                         updated_state = xkb_state_update_key (input_device->keyboard_state, keycode, xkb_key_direction);
 
-                        if ((updated_state & XKB_STATE_LEDS) != 0) {
+                        if ((updated_state & XKB_STATE_LOCKED) != 0) {
                                 ply_trace ("Keyboard indicator lights need update");
-                                input_device->leds_state_invalid = true;
                                 ply_trigger_pull (input_device->leds_changed_trigger, input_device);
                         }
                 }
@@ -293,6 +297,19 @@ on_input (ply_input_device_t *input_device)
 
 error:
         ply_buffer_free (input_buffer);
+}
+
+static bool
+ply_input_device_get_locked_modifier_state (ply_input_device_t *input_device,
+                                            const char         *modifier_name)
+{
+        int is_active;
+
+        is_active = xkb_state_mod_name_is_active (input_device->keyboard_state,
+                                                  modifier_name,
+                                                  XKB_STATE_MODS_LOCKED);
+
+        return is_active > 0;
 }
 
 static void
@@ -316,6 +333,7 @@ ply_input_device_set_disconnect_handler (ply_input_device_t                   *i
 ply_input_device_t *
 ply_input_device_open (struct xkb_context *xkb_context,
                        struct xkb_keymap  *xkb_keymap,
+                       struct xkb_state   *xkb_state,
                        const char         *path,
                        xkb_keysym_t        extra_esc_key)
 {
@@ -363,7 +381,7 @@ ply_input_device_open (struct xkb_context *xkb_context,
                 input_device);
 
         input_device->keymap = xkb_keymap_ref (xkb_keymap);
-        input_device->keyboard_state = xkb_state_new (input_device->keymap);
+        input_device->keyboard_state = xkb_state_ref (xkb_state);
         if (input_device->keyboard_state == NULL) {
                 ply_error ("Failed to initialize input device \"%s\" keyboard_state", path);
                 goto error;
@@ -373,6 +391,8 @@ ply_input_device_open (struct xkb_context *xkb_context,
                 input_device->compose_state = xkb_compose_state_new (input_device->compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
 
         input_device->kernel_has_vts = ply_character_device_exists ("/dev/tty0");
+
+        ply_input_device_update_leds (input_device);
 
         return input_device;
 
@@ -427,11 +447,10 @@ ply_input_device_get_path (ply_input_device_t *input_device)
 }
 
 /*
- * from libinput's evdev_device_led_update and Weston's weston_keyboard_set_locks
+ * from libinput's evdev_device_led_update
  */
 void
-ply_input_device_set_state (ply_input_device_t       *input_device,
-                            ply_xkb_keyboard_state_t *xkb_state)
+ply_input_device_update_leds (ply_input_device_t *input_device)
 {
         static struct
         {
@@ -444,8 +463,33 @@ ply_input_device_set_state (ply_input_device_t       *input_device,
                 { PLY_LED_SCROLL_LOCK, LED_SCROLLL, false },
         };
         struct input_event ev[PLY_NUMBER_OF_ELEMENTS (map) + 1];
-        xkb_mod_mask_t mods_depressed, mods_latched, mods_locked, group;
         unsigned int i;
+
+        map[LED_NUML].status =
+                ply_input_device_get_locked_modifier_state (input_device, PLY_XKB_MOD_NAME_NUM);
+        map[LED_CAPSL].status =
+                ply_input_device_get_locked_modifier_state (input_device, XKB_MOD_NAME_CAPS);
+
+        memset (ev, 0, sizeof(ev));
+        for (i = 0; i < PLY_NUMBER_OF_ELEMENTS (map); i++) {
+                ev[i].type = EV_LED;
+                ev[i].code = map[i].evdev;
+                ev[i].value = map[i].status;
+        }
+        ev[i].type = EV_SYN;
+        ev[i].code = SYN_REPORT;
+
+        ply_write (input_device->fd, ev, sizeof(ev));
+}
+
+/*
+ * from Weston's weston_keyboard_set_locks
+ */
+void
+ply_input_device_set_state (ply_input_device_t       *input_device,
+                            ply_xkb_keyboard_state_t *xkb_state)
+{
+        xkb_mod_mask_t mods_depressed, mods_latched, mods_locked, group;
 
         mods_depressed = xkb_state_serialize_mods (input_device->keyboard_state,
                                                    XKB_STATE_DEPRESSED);
@@ -459,8 +503,7 @@ ply_input_device_set_state (ply_input_device_t       *input_device,
         if (mods_depressed == xkb_state->mods_depressed &&
             mods_latched == xkb_state->mods_latched &&
             mods_locked == xkb_state->mods_locked &&
-            group == xkb_state->group &&
-            !input_device->leds_state_invalid)
+            group == xkb_state->group)
                 return;
 
         mods_depressed = xkb_state->mods_depressed;
@@ -476,21 +519,7 @@ ply_input_device_set_state (ply_input_device_t       *input_device,
                                0,
                                group);
 
-        map[LED_NUML].status = xkb_state_led_name_is_active (input_device->keyboard_state, XKB_LED_NAME_NUM);
-        map[LED_CAPSL].status = xkb_state_led_name_is_active (input_device->keyboard_state, XKB_LED_NAME_CAPS);
-        map[LED_SCROLLL].status = xkb_state_led_name_is_active (input_device->keyboard_state, XKB_LED_NAME_SCROLL);
-
-        memset (ev, 0, sizeof(ev));
-        for (i = 0; i < PLY_NUMBER_OF_ELEMENTS (map); i++) {
-                ev[i].type = EV_LED;
-                ev[i].code = map[i].evdev;
-                ev[i].value = map[i].status;
-        }
-        ev[i].type = EV_SYN;
-        ev[i].code = SYN_REPORT;
-
-        ply_write (input_device->fd, ev, sizeof(ev));
-        input_device->leds_state_invalid = false;
+        ply_input_device_update_leds (input_device);
 }
 
 ply_xkb_keyboard_state_t
@@ -513,7 +542,7 @@ ply_xkb_keyboard_state_t
 bool
 ply_input_device_get_capslock_state (ply_input_device_t *input_device)
 {
-        return xkb_state_led_name_is_active (input_device->keyboard_state, XKB_LED_NAME_CAPS);
+        return ply_input_device_get_locked_modifier_state (input_device, XKB_MOD_NAME_CAPS);
 }
 
 const char *

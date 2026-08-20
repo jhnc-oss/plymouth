@@ -37,6 +37,7 @@ gtk3_dep = dependency('gtk+-3.0', version: '>= 3.14.0', required: get_option('gt
 libdrm_dep = dependency('libdrm', required: get_option('drm'))
 libevdev_dep = dependency('libevdev')
 xkbcommon_dep = dependency('xkbcommon')
+xkbcommon_has_virtual_modifiers = xkbcommon_dep.version().version_compare('>= 1.8.0')
 xkeyboard_config_dep = dependency('xkeyboard-config')
 
 if get_option('systemd-integration')
@@ -84,6 +85,7 @@ conf.set_quoted('PLYMOUTH_CONF_DIR', plymouth_conf_dir)
 conf.set_quoted('PLYMOUTH_TIME_DIRECTORY', plymouth_time_dir)
 conf.set('HAVE_NCURSESW_TERM_H', get_option('upstart-monitoring')? cc.has_header('ncursesw/term.h') : false)
 conf.set('HAVE_NCURSES_TERM_H', get_option('upstart-monitoring')? cc.has_header('ncurses/term.h') : false)
+conf.set('HAVE_XKBCOMMON_VIRTUAL_MODIFIERS', xkbcommon_has_virtual_modifiers)
 config_file = configure_file(
   output: 'config.h',
   configuration: conf,

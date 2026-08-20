@@ -913,10 +913,21 @@ ply_terminal_get_capslock_state (ply_terminal_t *terminal)
 {
         char state;
 
-        if (ioctl (terminal->fd, KDGETLED, &state) < 0)
+        if (ioctl (terminal->fd, KDGKBLED, &state) < 0)
                 return false;
 
-        return state & LED_CAP;
+        return (state & K_CAPSLOCK) != 0;
+}
+
+bool
+ply_terminal_get_numlock_state (ply_terminal_t *terminal)
+{
+        char state;
+
+        if (ioctl (terminal->fd, KDGKBLED, &state) < 0)
+                return false;
+
+        return (state & K_NUMLOCK) != 0;
 }
 
 int

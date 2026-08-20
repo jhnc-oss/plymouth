@@ -64,6 +64,7 @@ typedef struct
 
 ply_input_device_t *ply_input_device_open (struct xkb_context *xkb_context,
                                            struct xkb_keymap  *xkb_keymap,
+                                           struct xkb_state   *xkb_state,
                                            const char         *path,
                                            xkb_keysym_t        extra_esc_key);
 void ply_input_device_free (ply_input_device_t *input_device);
@@ -81,6 +82,7 @@ void ply_input_device_stop_watching_for_input (ply_input_device_t               
 ply_xkb_keyboard_state_t *ply_input_device_get_state (ply_input_device_t *input_device);
 void ply_input_device_set_state (ply_input_device_t       *input_device,
                                  ply_xkb_keyboard_state_t *xkb_state);
+void ply_input_device_update_leds (ply_input_device_t *input_device);
 
 void ply_input_device_set_disconnect_handler (ply_input_device_t                   *input_device,
                                               ply_input_device_disconnect_handler_t callback,
