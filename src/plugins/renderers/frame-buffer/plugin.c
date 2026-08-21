@@ -260,6 +260,7 @@ create_backend (const char     *device_name,
 
         ply_trace ("creating renderer backend for device %s", backend->device_name);
 
+        backend->device_fd = -1;
         backend->loop = ply_event_loop_get_default ();
         backend->head.map_address = MAP_FAILED;
         backend->heads = ply_list_new ();
@@ -302,6 +303,12 @@ destroy_backend (ply_renderer_backend_t *backend)
 {
         ply_trace ("destroying renderer backend for device %s",
                    backend->device_name);
+
+        if (backend->device_fd >= 0) {
+                close (backend->device_fd);
+                backend->device_fd = -1;
+        }
+
         free (backend->device_name);
         ply_list_free (backend->input_source.input_devices);
         uninitialize_head (backend, &backend->head);
