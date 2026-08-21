@@ -646,6 +646,31 @@ test(
   timeout: test_timeout,
 )
 
+if libdrm_dep.found()
+  drm_renderer_test_executable = executable(
+    'test-drm-renderer',
+    'test-drm-renderer.c',
+    c_args: test_c_args + [
+      '-DTEST_DRM_RENDERER_PLUGIN_PATH="@0@"'.format(drm_plugin.full_path()),
+    ],
+    dependencies: [libply_dep, libply_splash_core_dep],
+    include_directories: [
+      include_directories('.'),
+      include_directories('../src/libply-splash-core'),
+    ],
+  )
+
+  test(
+    'drm-renderer-plugin',
+    drm_renderer_test_executable,
+    depends: drm_plugin,
+    env: test_environment,
+    protocol: 'tap',
+    suite: ['unit', 'renderer-plugin'],
+    timeout: test_timeout,
+  )
+endif
+
 label_test_c_args = test_c_args + [
   '-DTEST_LABEL_PLUGIN_DIR="@0@"'.format(
     meson.project_build_root() / 'tests/plugins'
