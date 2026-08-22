@@ -882,9 +882,11 @@ ply_device_manager_new (const char                *default_tty,
 
         parse_vconsole_conf (manager);
 
-        manager->xkb_state = xkb_state_new (manager->xkb_keymap);
-        if (manager->xkb_state == NULL)
-                ply_trace ("Could not allocate xkb state: %m");
+        if (manager->xkb_keymap != NULL) {
+                manager->xkb_state = xkb_state_new (manager->xkb_keymap);
+                if (manager->xkb_state == NULL)
+                        ply_trace ("Could not allocate xkb state: %m");
+        }
 
         manager->terminals = ply_hashtable_new (ply_hashtable_string_hash, ply_hashtable_string_compare);
         manager->renderers = ply_hashtable_new (ply_hashtable_string_hash, ply_hashtable_string_compare);
