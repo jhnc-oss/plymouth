@@ -69,6 +69,9 @@ ply_renderer_type_t ply_renderer_get_type (ply_renderer_t *renderer);
 ply_list_t *ply_renderer_get_heads (ply_renderer_t *renderer);
 ply_pixel_buffer_t *ply_renderer_get_buffer_for_head (ply_renderer_t      *renderer,
                                                       ply_renderer_head_t *head);
+/* Returns 0 if the renderer cannot determine the head's refresh rate. */
+uint32_t ply_renderer_get_refresh_rate (ply_renderer_t      *renderer,
+                                        ply_renderer_head_t *head);
 
 void ply_renderer_flush_head (ply_renderer_t      *renderer,
                               ply_renderer_head_t *head);

@@ -84,6 +84,9 @@ typedef struct
                                  ply_input_device_t     *input_device);
         void (*remove_input_device)(ply_renderer_backend_t *backend,
                                     ply_input_device_t     *input_device);
+
+        uint32_t (*get_refresh_rate)(ply_renderer_backend_t *backend,
+                                     ply_renderer_head_t    *head);
 } ply_renderer_plugin_interface_t;
 
 #endif /* PLY_RENDERER_PLUGIN_H */
