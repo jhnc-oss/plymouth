@@ -407,6 +407,21 @@ ply_renderer_get_buffer_for_head (ply_renderer_t      *renderer,
                                                                 head);
 }
 
+uint32_t
+ply_renderer_get_refresh_rate (ply_renderer_t      *renderer,
+                               ply_renderer_head_t *head)
+{
+        assert (renderer != NULL);
+        assert (renderer->plugin_interface != NULL);
+        assert (head != NULL);
+
+        if (renderer->plugin_interface->get_refresh_rate == NULL)
+                return 0;
+
+        return renderer->plugin_interface->get_refresh_rate (renderer->backend,
+                                                             head);
+}
+
 void
 ply_renderer_flush_head (ply_renderer_t      *renderer,
                          ply_renderer_head_t *head)
