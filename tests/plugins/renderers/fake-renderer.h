@@ -38,6 +38,7 @@ typedef struct
         int                                 keymap_count;
         int                                 add_input_device_count;
         int                                 remove_input_device_count;
+        int                                 refresh_rate_count;
         bool                                query_force;
         char                                requested_device[64];
         ply_terminal_t                     *terminal;
