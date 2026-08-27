@@ -504,6 +504,28 @@ ply_boot_splash_flush_displays (ply_boot_splash_t *splash)
         ply_boot_splash_pause_pixel_displays (splash);
 }
 
+static uint32_t
+ply_boot_splash_get_frame_rate (ply_boot_splash_t *splash)
+{
+        ply_list_node_t *node;
+        uint32_t frame_rate = 0;
+
+        ply_list_foreach (splash->pixel_displays, node) {
+                ply_pixel_display_t *display = ply_list_node_get_data (node);
+                ply_renderer_t *renderer = ply_pixel_display_get_renderer (display);
+                ply_renderer_head_t *head = ply_pixel_display_get_renderer_head (display);
+                uint32_t refresh_rate;
+
+                refresh_rate = ply_renderer_get_refresh_rate (renderer, head);
+                frame_rate = MAX (frame_rate, refresh_rate);
+        }
+
+        if (frame_rate == 0)
+                frame_rate = FRAMES_PER_SECOND;
+
+        return frame_rate;
+}
+
 static void
 on_new_frame (ply_boot_splash_t *splash)
 {
@@ -513,7 +535,7 @@ on_new_frame (ply_boot_splash_t *splash)
         ply_boot_splash_flush_displays (splash);
 
         ply_event_loop_watch_for_timeout (splash->loop,
-                                          1.0 / FRAMES_PER_SECOND,
+                                          1.0 / ply_boot_splash_get_frame_rate (splash),
                                           (ply_event_loop_timeout_handler_t)
                                           on_new_frame,
                                           splash);
@@ -567,7 +589,7 @@ ply_boot_splash_show (ply_boot_splash_t     *splash,
                 }
 
                 ply_event_loop_watch_for_timeout (splash->loop,
-                                                  1.0 / FRAMES_PER_SECOND,
+                                                  1.0 / ply_boot_splash_get_frame_rate (splash),
                                                   (ply_event_loop_timeout_handler_t)
                                                   on_new_frame,
                                                   splash);
@@ -824,4 +846,3 @@ ply_boot_splash_uses_pixel_displays (ply_boot_splash_t *splash)
 {
         return splash->plugin_interface->add_pixel_display != NULL;
 }
-
