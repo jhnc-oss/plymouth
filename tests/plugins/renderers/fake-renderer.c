@@ -158,6 +158,17 @@ get_buffer_for_head (ply_renderer_backend_t *backend,
         return backend->buffer;
 }
 
+static uint32_t
+get_refresh_rate (ply_renderer_backend_t *backend,
+                  ply_renderer_head_t    *head)
+{
+        if (head != &backend->head)
+                return 0;
+
+        state.refresh_rate_count++;
+        return 144;
+}
+
 static ply_renderer_input_source_t *
 get_input_source (ply_renderer_backend_t *backend)
 {
@@ -274,6 +285,7 @@ ply_renderer_backend_get_interface (void)
                 .get_keymap                   = get_keymap,
                 .add_input_device             = add_input_device,
                 .remove_input_device          = remove_input_device,
+                .get_refresh_rate             = get_refresh_rate,
         };
 
         return &interface;

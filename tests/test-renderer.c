@@ -95,6 +95,7 @@ test_renderer_delegates_backend_lifecycle (void)
         head = ply_list_node_get_data (node);
         buffer = ply_renderer_get_buffer_for_head (renderer, head);
         PLY_TEST_ASSERT (buffer != NULL);
+        PLY_TEST_ASSERT (ply_renderer_get_refresh_rate (renderer, head) == 144);
         ply_pixel_buffer_get_size (buffer, &size);
         PLY_TEST_ASSERT (size.width == 80);
         PLY_TEST_ASSERT (size.height == 50);
@@ -103,6 +104,7 @@ test_renderer_delegates_backend_lifecycle (void)
         ply_renderer_flush_head (renderer, head);
         PLY_TEST_ASSERT (state->map_count == 1);
         PLY_TEST_ASSERT (state->flush_count == 2);
+        PLY_TEST_ASSERT (state->refresh_rate_count == 1);
         PLY_TEST_ASSERT (ply_renderer_handle_change_event (renderer));
         PLY_TEST_ASSERT (state->change_count == 1);
 
