@@ -1819,6 +1819,16 @@ get_buffer_for_head (ply_renderer_backend_t *backend,
         return head->pixel_buffer;
 }
 
+static uint32_t
+get_refresh_rate (ply_renderer_backend_t *backend,
+                  ply_renderer_head_t    *head)
+{
+        if (head->backend != backend)
+                return 0;
+
+        return head->connector0_mode.vrefresh;
+}
+
 static bool
 has_input_source (ply_renderer_backend_t      *backend,
                   ply_renderer_input_source_t *input_source)
@@ -2099,6 +2109,7 @@ ply_renderer_backend_get_interface (void)
                 .get_keymap                   = get_keymap,
                 .add_input_device             = add_input_device,
                 .remove_input_device          = remove_input_device,
+                .get_refresh_rate             = get_refresh_rate,
         };
 
         return &plugin_interface;
