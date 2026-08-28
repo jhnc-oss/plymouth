@@ -81,6 +81,35 @@ test_frame_number_advances_and_wraps (void)
 }
 
 static bool
+test_frame_transition_interpolates_and_wraps (void)
+{
+        int frame_number;
+        int next_frame_number;
+        double fraction;
+
+        ply_animation_time_get_frame_transition (0.25,
+                                                 2.0,
+                                                 4,
+                                                 &frame_number,
+                                                 &next_frame_number,
+                                                 &fraction);
+        PLY_TEST_ASSERT (frame_number == 0);
+        PLY_TEST_ASSERT (next_frame_number == 1);
+        PLY_TEST_ASSERT (fraction == 0.5);
+
+        ply_animation_time_get_frame_transition (1.75,
+                                                 2.0,
+                                                 4,
+                                                 &frame_number,
+                                                 &next_frame_number,
+                                                 &fraction);
+        PLY_TEST_ASSERT (frame_number == 3);
+        PLY_TEST_ASSERT (next_frame_number == 0);
+        PLY_TEST_ASSERT (fraction == 0.5);
+        return true;
+}
+
+static bool
 test_transition_fraction_is_clamped (void)
 {
         double fraction;
@@ -109,6 +138,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_callback_delay_has_minimum),
         PLY_TEST_CASE (test_callback_delay_accepts_smaller_minimum),
         PLY_TEST_CASE (test_frame_number_advances_and_wraps),
+        PLY_TEST_CASE (test_frame_transition_interpolates_and_wraps),
         PLY_TEST_CASE (test_transition_fraction_is_clamped),
 };
 
