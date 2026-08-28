@@ -48,6 +48,18 @@ test_callback_delay_has_minimum (void)
 }
 
 static bool
+test_callback_delay_accepts_smaller_minimum (void)
+{
+        double delay;
+
+        ply_clock_set_time (12.1);
+        delay = ply_animation_time_get_delay_with_minimum (0.04, 12.0, 0.001);
+
+        PLY_TEST_ASSERT (delay == 0.001);
+        return true;
+}
+
+static bool
 test_frame_number_advances_and_wraps (void)
 {
         PLY_TEST_ASSERT (ply_animation_time_get_frame_number (0.0,
@@ -95,6 +107,7 @@ static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_callback_delay_accounts_for_work_time),
         PLY_TEST_CASE (test_callback_delay_has_minimum),
+        PLY_TEST_CASE (test_callback_delay_accepts_smaller_minimum),
         PLY_TEST_CASE (test_frame_number_advances_and_wraps),
         PLY_TEST_CASE (test_transition_fraction_is_clamped),
 };
