@@ -68,6 +68,8 @@ struct _ply_throbber
         ply_pixel_display_t *display;
         ply_rectangle_t      frame_area;
         ply_trigger_t       *stop_trigger;
+        ply_pixel_buffer_t  *interpolated_frame;
+        ply_pixel_buffer_t  *rendered_frame;
 
         long                 x, y;
         long                 width, height;
@@ -102,6 +104,8 @@ ply_throbber_new (const char *image_dir,
         throbber->frame_area.x = 0;
         throbber->frame_area.y = 0;
         throbber->frame_number = 0;
+        throbber->interpolated_frame = NULL;
+        throbber->rendered_frame = NULL;
 
         return throbber;
 }
@@ -117,6 +121,12 @@ ply_throbber_remove_frames (ply_throbber_t *throbber)
                 ply_pixel_buffer_free (frames[i]);
         }
         free (frames);
+
+        ply_pixel_buffer_free (throbber->interpolated_frame);
+        throbber->interpolated_frame = NULL;
+        throbber->rendered_frame = NULL;
+        throbber->width = 0;
+        throbber->height = 0;
 }
 
 void
@@ -134,6 +144,24 @@ ply_throbber_free (ply_throbber_t *throbber)
         free (throbber->frames_prefix);
         free (throbber->image_dir);
         free (throbber);
+}
+
+static void
+interpolate_frames (ply_throbber_t     *throbber,
+                    ply_pixel_buffer_t *first_frame,
+                    ply_pixel_buffer_t *second_frame,
+                    double              fraction)
+{
+        if (throbber->interpolated_frame == NULL)
+                throbber->interpolated_frame = ply_pixel_buffer_new (throbber->width,
+                                                                     throbber->height);
+
+        ply_pixel_buffer_interpolate_buffers (throbber->interpolated_frame,
+                                              first_frame,
+                                              second_frame,
+                                              fraction);
+
+        throbber->rendered_frame = throbber->interpolated_frame;
 }
 
 static uint32_t
@@ -155,12 +183,16 @@ get_refresh_rate (ply_throbber_t *throbber)
 
 static bool
 animate_at_time (ply_throbber_t *throbber,
-                 double          time)
+                 double          time,
+                 uint32_t        refresh_rate)
 {
         int number_of_frames;
         ply_pixel_buffer_t *const *frames;
         bool should_continue;
+        bool should_interpolate;
         int last_frame_number;
+        int next_frame_number;
+        double interpolation_fraction;
 
         number_of_frames = ply_array_get_size (throbber->frames);
 
@@ -169,9 +201,12 @@ animate_at_time (ply_throbber_t *throbber,
 
         should_continue = true;
         last_frame_number = throbber->frame_number;
-        throbber->frame_number = ply_animation_time_get_frame_number (time,
-                                                                      THROBBER_DURATION,
-                                                                      number_of_frames);
+        ply_animation_time_get_frame_transition (time,
+                                                 THROBBER_DURATION,
+                                                 number_of_frames,
+                                                 &throbber->frame_number,
+                                                 &next_frame_number,
+                                                 &interpolation_fraction);
 
         if (throbber->stop_trigger != NULL) {
                 /* If we are trying to stop, make sure we don't skip the last
@@ -185,7 +220,23 @@ animate_at_time (ply_throbber_t *throbber,
         }
 
         frames = (ply_pixel_buffer_t *const *) ply_array_get_pointer_elements (throbber->frames);
-        ply_pixel_buffer_get_size (frames[throbber->frame_number], &throbber->frame_area);
+        should_interpolate = number_of_frames > 1 &&
+                             throbber->stop_trigger == NULL &&
+                             interpolation_fraction > 0.0 &&
+                             ply_animation_time_needs_interpolation (THROBBER_DURATION,
+                                                                     number_of_frames,
+                                                                     refresh_rate);
+
+        if (should_interpolate) {
+                interpolate_frames (throbber,
+                                    frames[throbber->frame_number],
+                                    frames[next_frame_number],
+                                    interpolation_fraction);
+                ply_pixel_buffer_get_size (throbber->rendered_frame, &throbber->frame_area);
+        } else {
+                throbber->rendered_frame = frames[throbber->frame_number];
+                ply_pixel_buffer_get_size (throbber->rendered_frame, &throbber->frame_area);
+        }
         throbber->frame_area.x = throbber->x;
         throbber->frame_area.y = throbber->y;
         ply_pixel_display_draw_area (throbber->display,
@@ -207,7 +258,8 @@ on_timeout (ply_throbber_t *throbber)
         refresh_rate = get_refresh_rate (throbber);
 
         should_continue = animate_at_time (throbber,
-                                           throbber->now - throbber->start_time);
+                                           throbber->now - throbber->start_time,
+                                           refresh_rate);
 
         sleep_time = ply_animation_time_get_delay_with_minimum (1.0 / refresh_rate,
                                                                 throbber->now,
@@ -333,6 +385,8 @@ ply_throbber_start (ply_throbber_t      *throbber,
 
         throbber->x = x;
         throbber->y = y;
+        throbber->frame_number = 0;
+        throbber->rendered_frame = NULL;
 
         throbber->start_time = ply_clock_get_time ();
 
@@ -403,13 +457,18 @@ ply_throbber_draw_area (ply_throbber_t     *throbber,
                         unsigned long       height)
 {
         ply_pixel_buffer_t *const *frames;
+        ply_pixel_buffer_t *frame;
 
         if (throbber->is_stopped)
                 return;
 
         frames = (ply_pixel_buffer_t *const *) ply_array_get_pointer_elements (throbber->frames);
+        frame = throbber->rendered_frame;
+        if (frame == NULL)
+                frame = frames[throbber->frame_number];
+
         ply_pixel_buffer_fill_with_buffer (buffer,
-                                           frames[throbber->frame_number],
+                                           frame,
                                            throbber->x,
                                            throbber->y);
 }
