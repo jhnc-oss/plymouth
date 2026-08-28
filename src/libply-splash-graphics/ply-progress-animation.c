@@ -139,50 +139,6 @@ ply_progress_animation_free (ply_progress_animation_t *progress_animation)
         free (progress_animation);
 }
 
-static void
-image_fade_merge (ply_image_t *frame0,
-                  ply_image_t *frame1,
-                  float        fade,
-                  int          width,
-                  int          height,
-                  uint32_t    *reply_data)
-{
-        int frame0_width = ply_image_get_width (frame0);
-        int frame0_height = ply_image_get_height (frame0);
-        int frame1_width = ply_image_get_width (frame1);
-        int frame1_height = ply_image_get_height (frame1);
-
-        uint32_t *frame0_data = ply_image_get_data (frame0);
-        uint32_t *frame1_data = ply_image_get_data (frame1);
-
-        int x, y, i;
-
-        for (y = 0; y < height; y++) {
-                for (x = 0; x < width; x++) {
-                        uint32_t pixel0, pixel1, pixelout;
-
-                        if (y < frame0_height && x < frame0_width)
-                                pixel0 = frame0_data[y * frame0_width + x];
-                        else
-                                pixel0 = 0;
-
-                        if (y < frame1_height && x < frame1_width)
-                                pixel1 = frame1_data[y * frame1_width + x];
-                        else
-                                pixel1 = 0;
-
-                        pixelout = 0;
-                        for (i = 0; i < 4; i++) {
-                                int subval0 = (pixel0 >> (i * 8)) & 0xFF;
-                                int subval1 = (pixel1 >> (i * 8)) & 0xFF;
-                                int subvalout = subval0 * (1 - fade) + subval1 * fade;
-                                pixelout |= (subvalout & 0xFF) << (i * 8);
-                        }
-                        reply_data[y * width + x] = pixelout;
-                }
-        }
-}
-
 void
 ply_progress_animation_draw_area (ply_progress_animation_t *progress_animation,
                                   ply_pixel_buffer_t       *buffer,
@@ -235,7 +191,6 @@ ply_progress_animation_draw (ply_progress_animation_t *progress_animation)
                 double fade_percentage;
                 double fade_out_opacity;
                 int width, height;
-                uint32_t *faded_data;
                 fade_percentage = ply_animation_time_get_transition_fraction (progress_animation->transition_start_time,
                                                                               progress_animation->transition_duration);
 
@@ -250,9 +205,10 @@ ply_progress_animation_draw (ply_progress_animation_t *progress_animation)
 
                         ply_pixel_buffer_free (progress_animation->last_rendered_frame);
                         progress_animation->last_rendered_frame = ply_pixel_buffer_new (width, height);
-                        faded_data = ply_pixel_buffer_get_argb32_data (progress_animation->last_rendered_frame);
-
-                        image_fade_merge (frames[frame_number - 1], frames[frame_number], fade_percentage, width, height, faded_data);
+                        ply_pixel_buffer_interpolate_buffers (progress_animation->last_rendered_frame,
+                                                              ply_image_get_buffer (frames[frame_number - 1]),
+                                                              ply_image_get_buffer (frames[frame_number]),
+                                                              fade_percentage);
                 } else {
                         previous_frame_buffer = ply_image_get_buffer (frames[frame_number - 1]);
                         if (progress_animation->transition == PLY_PROGRESS_ANIMATION_TRANSITION_FADE_OVER) {
