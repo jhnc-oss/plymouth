@@ -21,6 +21,12 @@ PLY_PRIVATE double ply_animation_time_get_delay_with_minimum (double frame_durat
 PLY_PRIVATE int ply_animation_time_get_frame_number (double elapsed_time,
                                                      double animation_duration,
                                                      int    number_of_frames);
+PLY_PRIVATE void ply_animation_time_get_frame_transition (double  elapsed_time,
+                                                          double  animation_duration,
+                                                          int     number_of_frames,
+                                                          int    *frame_number,
+                                                          int    *next_frame_number,
+                                                          double *fraction);
 PLY_PRIVATE double ply_animation_time_get_transition_fraction (double transition_start_time,
                                                                double transition_duration);
 

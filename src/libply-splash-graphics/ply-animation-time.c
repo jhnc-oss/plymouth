@@ -40,12 +40,42 @@ ply_animation_time_get_frame_number (double elapsed_time,
                                      double animation_duration,
                                      int    number_of_frames)
 {
-        double fraction;
+        int frame_number;
 
-        fraction = fmod (elapsed_time, animation_duration) /
-                   animation_duration;
+        ply_animation_time_get_frame_transition (elapsed_time,
+                                                 animation_duration,
+                                                 number_of_frames,
+                                                 &frame_number,
+                                                 NULL,
+                                                 NULL);
 
-        return (int) (number_of_frames * fraction);
+        return frame_number;
+}
+
+void
+ply_animation_time_get_frame_transition (double  elapsed_time,
+                                         double  animation_duration,
+                                         int     number_of_frames,
+                                         int    *frame_number,
+                                         int    *next_frame_number,
+                                         double *fraction)
+{
+        double frame_position;
+        int current_frame_number;
+
+        frame_position = number_of_frames *
+                         fmod (elapsed_time, animation_duration) /
+                         animation_duration;
+        current_frame_number = (int) frame_position;
+
+        if (frame_number != NULL)
+                *frame_number = current_frame_number;
+
+        if (next_frame_number != NULL)
+                *next_frame_number = (current_frame_number + 1) % number_of_frames;
+
+        if (fraction != NULL)
+                *fraction = frame_position - current_frame_number;
 }
 
 double
