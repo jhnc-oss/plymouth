@@ -535,7 +535,7 @@ ply_pixel_buffer_fill_with_gradient (ply_pixel_buffer_t *buffer,
         blue_step = (int32_t) (t - blue) / (int32_t) buffer->area.height;
 
 
-#define RANDOMIZE(num) (num = (num + (num << 1)) & NOISE_MASK)
+#define RANDOMIZE(num) (num = (num + (num << 1))&NOISE_MASK)
 #define UNROLLED_PIXEL_COUNT 8
 
         for (y = buffer->area.y; y < buffer->area.y + buffer->area.height; y++) {
@@ -938,6 +938,53 @@ ply_pixel_buffer_fill_with_buffer (ply_pixel_buffer_t *canvas,
                                                                 y_offset,
                                                                 NULL,
                                                                 1.0);
+}
+
+void
+ply_pixel_buffer_interpolate_buffers (ply_pixel_buffer_t *destination,
+                                      ply_pixel_buffer_t *first_source,
+                                      ply_pixel_buffer_t *second_source,
+                                      double              fraction)
+{
+        unsigned long x, y;
+
+        assert (destination != NULL);
+        assert (first_source != NULL);
+        assert (second_source != NULL);
+
+        fraction = CLAMP (fraction, 0.0, 1.0);
+
+        for (y = 0; y < destination->area.height; y++) {
+                for (x = 0; x < destination->area.width; x++) {
+                        uint32_t first_pixel = 0;
+                        uint32_t second_pixel = 0;
+                        uint32_t interpolated_pixel = 0;
+                        int component;
+
+                        if (x < first_source->area.width && y < first_source->area.height)
+                                first_pixel = first_source->bytes[y * first_source->area.width + x];
+
+                        if (x < second_source->area.width && y < second_source->area.height)
+                                second_pixel = second_source->bytes[y * second_source->area.width + x];
+
+                        for (component = 0; component < 4; component++) {
+                                int first_component;
+                                int second_component;
+                                int interpolated_component;
+
+                                first_component = (first_pixel >> (component * 8)) & 0xff;
+                                second_component = (second_pixel >> (component * 8)) & 0xff;
+                                interpolated_component = first_component * (1.0 - fraction) +
+                                                         second_component * fraction;
+                                interpolated_pixel |= (interpolated_component & 0xff) << (component * 8);
+                        }
+
+                        destination->bytes[y * destination->area.width + x] = interpolated_pixel;
+                }
+        }
+
+        destination->is_opaque = false;
+        ply_region_add_rectangle (destination->updated_areas, &destination->area);
 }
 
 uint32_t *

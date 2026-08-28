@@ -138,6 +138,11 @@ void ply_pixel_buffer_fill_with_buffer (ply_pixel_buffer_t *canvas,
                                         ply_pixel_buffer_t *source,
                                         int                 x_offset,
                                         int                 y_offset);
+/* Interpolate premultiplied pixels, treating pixels outside either source as transparent. */
+void ply_pixel_buffer_interpolate_buffers (ply_pixel_buffer_t *destination,
+                                           ply_pixel_buffer_t *first_source,
+                                           ply_pixel_buffer_t *second_source,
+                                           double              fraction);
 
 
 void ply_pixel_buffer_push_clip_area (ply_pixel_buffer_t *buffer,
