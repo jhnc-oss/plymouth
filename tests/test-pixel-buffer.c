@@ -115,6 +115,39 @@ test_opacity_blends_premultiplied_color (void)
 }
 
 static bool
+test_buffer_interpolation_crossfades_premultiplied_pixels (void)
+{
+        ply_pixel_buffer_t *destination;
+        ply_pixel_buffer_t *first_source;
+        ply_pixel_buffer_t *second_source;
+        uint32_t *pixels;
+
+        destination = ply_pixel_buffer_new (2, 1);
+        first_source = ply_pixel_buffer_new (1, 1);
+        second_source = ply_pixel_buffer_new (2, 1);
+
+        pixels = ply_pixel_buffer_get_argb32_data (first_source);
+        pixels[0] = UINT32_C (0x80402010);
+        pixels = ply_pixel_buffer_get_argb32_data (second_source);
+        pixels[0] = UINT32_C (0x40804020);
+        pixels[1] = UINT32_C (0x20402010);
+
+        ply_pixel_buffer_interpolate_buffers (destination,
+                                              first_source,
+                                              second_source,
+                                              0.5);
+        pixels = ply_pixel_buffer_get_argb32_data (destination);
+
+        PLY_TEST_ASSERT (pixels[0] == UINT32_C (0x60603018));
+        PLY_TEST_ASSERT (pixels[1] == UINT32_C (0x10201008));
+
+        ply_pixel_buffer_free (second_source);
+        ply_pixel_buffer_free (first_source);
+        ply_pixel_buffer_free (destination);
+        return true;
+}
+
+static bool
 test_gradient_interpolates_rows_deterministically (void)
 {
         ply_pixel_buffer_t *buffer;
@@ -335,6 +368,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_new_buffer_reports_empty_geometry),
         PLY_TEST_CASE (test_fill_respects_nested_clip_area),
         PLY_TEST_CASE (test_opacity_blends_premultiplied_color),
+        PLY_TEST_CASE (test_buffer_interpolation_crossfades_premultiplied_pixels),
         PLY_TEST_CASE (test_gradient_interpolates_rows_deterministically),
         PLY_TEST_CASE (test_argb_data_honors_source_clip),
         PLY_TEST_CASE (test_buffer_composition_applies_offset),
