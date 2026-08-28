@@ -50,8 +50,8 @@
 
 #include <linux/kd.h>
 
-#ifndef FRAMES_PER_SECOND
-#define FRAMES_PER_SECOND 30
+#ifndef DEFAULT_REFRESH_RATE
+#define DEFAULT_REFRESH_RATE 60
 #endif
 
 #ifndef THROBBER_DURATION
@@ -136,6 +136,23 @@ ply_throbber_free (ply_throbber_t *throbber)
         free (throbber);
 }
 
+static uint32_t
+get_refresh_rate (ply_throbber_t *throbber)
+{
+        ply_renderer_t *renderer;
+        ply_renderer_head_t *head;
+        uint32_t refresh_rate;
+
+        renderer = ply_pixel_display_get_renderer (throbber->display);
+        head = ply_pixel_display_get_renderer_head (throbber->display);
+        refresh_rate = ply_renderer_get_refresh_rate (renderer, head);
+
+        if (refresh_rate == 0)
+                refresh_rate = DEFAULT_REFRESH_RATE;
+
+        return refresh_rate;
+}
+
 static bool
 animate_at_time (ply_throbber_t *throbber,
                  double          time)
@@ -184,14 +201,17 @@ on_timeout (ply_throbber_t *throbber)
 {
         double sleep_time;
         bool should_continue;
+        uint32_t refresh_rate;
 
         throbber->now = ply_clock_get_time ();
+        refresh_rate = get_refresh_rate (throbber);
 
         should_continue = animate_at_time (throbber,
                                            throbber->now - throbber->start_time);
 
-        sleep_time = ply_animation_time_get_delay (1.0 / FRAMES_PER_SECOND,
-                                                   throbber->now);
+        sleep_time = ply_animation_time_get_delay_with_minimum (1.0 / refresh_rate,
+                                                                throbber->now,
+                                                                0.001);
 
         if (!should_continue) {
                 throbber->is_stopped = true;
@@ -317,7 +337,7 @@ ply_throbber_start (ply_throbber_t      *throbber,
         throbber->start_time = ply_clock_get_time ();
 
         ply_event_loop_watch_for_timeout (throbber->loop,
-                                          1.0 / FRAMES_PER_SECOND,
+                                          1.0 / get_refresh_rate (throbber),
                                           (ply_event_loop_timeout_handler_t)
                                           on_timeout, throbber);
 
