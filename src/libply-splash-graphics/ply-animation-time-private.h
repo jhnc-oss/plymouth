@@ -11,6 +11,8 @@
 #ifndef PLY_ANIMATION_TIME_PRIVATE_H
 #define PLY_ANIMATION_TIME_PRIVATE_H
 
+#include <stdbool.h>
+
 #include "ply-clock-private.h"
 
 PLY_PRIVATE double ply_animation_time_get_delay (double frame_duration,
@@ -27,6 +29,9 @@ PLY_PRIVATE void ply_animation_time_get_frame_transition (double  elapsed_time,
                                                           int    *frame_number,
                                                           int    *next_frame_number,
                                                           double *fraction);
+PLY_PRIVATE bool ply_animation_time_needs_interpolation (double animation_duration,
+                                                         int    number_of_frames,
+                                                         double refresh_rate);
 PLY_PRIVATE double ply_animation_time_get_transition_fraction (double transition_start_time,
                                                                double transition_duration);
 

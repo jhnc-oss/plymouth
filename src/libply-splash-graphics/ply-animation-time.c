@@ -78,6 +78,14 @@ ply_animation_time_get_frame_transition (double  elapsed_time,
                 *fraction = frame_position - current_frame_number;
 }
 
+bool
+ply_animation_time_needs_interpolation (double animation_duration,
+                                        int    number_of_frames,
+                                        double refresh_rate)
+{
+        return number_of_frames < animation_duration * refresh_rate;
+}
+
 double
 ply_animation_time_get_transition_fraction (double transition_start_time,
                                             double transition_duration)
