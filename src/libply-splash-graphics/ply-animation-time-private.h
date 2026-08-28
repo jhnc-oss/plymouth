@@ -15,6 +15,9 @@
 
 PLY_PRIVATE double ply_animation_time_get_delay (double frame_duration,
                                                  double callback_start_time);
+PLY_PRIVATE double ply_animation_time_get_delay_with_minimum (double frame_duration,
+                                                              double callback_start_time,
+                                                              double minimum_delay);
 PLY_PRIVATE int ply_animation_time_get_frame_number (double elapsed_time,
                                                      double animation_duration,
                                                      int    number_of_frames);

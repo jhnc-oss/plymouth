@@ -17,12 +17,22 @@ double
 ply_animation_time_get_delay (double frame_duration,
                               double callback_start_time)
 {
+        return ply_animation_time_get_delay_with_minimum (frame_duration,
+                                                          callback_start_time,
+                                                          0.005);
+}
+
+double
+ply_animation_time_get_delay_with_minimum (double frame_duration,
+                                           double callback_start_time,
+                                           double minimum_delay)
+{
         double delay;
 
         delay = frame_duration -
                 (ply_clock_get_time () - callback_start_time);
 
-        return MAX (delay, 0.005);
+        return MAX (delay, minimum_delay);
 }
 
 int
