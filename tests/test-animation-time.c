@@ -110,6 +110,15 @@ test_frame_transition_interpolates_and_wraps (void)
 }
 
 static bool
+test_sparse_frame_sequences_need_interpolation (void)
+{
+        PLY_TEST_ASSERT (ply_animation_time_needs_interpolation (2.0, 30, 120.0));
+        PLY_TEST_ASSERT (!ply_animation_time_needs_interpolation (2.0, 240, 120.0));
+        PLY_TEST_ASSERT (!ply_animation_time_needs_interpolation (2.0, 300, 120.0));
+        return true;
+}
+
+static bool
 test_transition_fraction_is_clamped (void)
 {
         double fraction;
@@ -139,6 +148,7 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_callback_delay_accepts_smaller_minimum),
         PLY_TEST_CASE (test_frame_number_advances_and_wraps),
         PLY_TEST_CASE (test_frame_transition_interpolates_and_wraps),
+        PLY_TEST_CASE (test_sparse_frame_sequences_need_interpolation),
         PLY_TEST_CASE (test_transition_fraction_is_clamped),
 };
 
