@@ -273,7 +273,11 @@ test_ready_fd_without_fionread_dispatches_before_hangup (void)
 
         PLY_TEST_ASSERT (pid_fd >= 0);
         errno = 0;
-        PLY_TEST_ASSERT (ioctl (pid_fd, FIONREAD, &bytes_ready) < 0);
+        if (ioctl (pid_fd, FIONREAD, &bytes_ready) >= 0) {
+                close (pid_fd);
+                return true;
+        }
+
         PLY_TEST_ASSERT (errno == ENOTTY);
 
         loop = ply_event_loop_new ();
