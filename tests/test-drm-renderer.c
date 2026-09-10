@@ -60,6 +60,26 @@ test_tile_info_parser_rejects_invalid_layouts (void)
 }
 
 static bool
+test_tile_mode_selection_ignores_full_monitor_mode (void)
+{
+        drmModeModeInfo modes[] = {
+                { .hdisplay = 7680, .vdisplay = 4320, .type = DRM_MODE_TYPE_PREFERRED },
+                { .hdisplay = 3840, .vdisplay = 2160, .type = DRM_MODE_TYPE_PREFERRED },
+                { .hdisplay = 3840, .vdisplay = 4320 },
+        };
+        ply_renderer_drm_tile_info_t tile_info = {
+                .h_size = 3840,
+                .v_size = 4320,
+        };
+
+        PLY_TEST_ASSERT (ply_renderer_drm_find_tile_mode (modes, 3, &tile_info) == &modes[2]);
+
+        tile_info.h_size = 5120;
+        PLY_TEST_ASSERT (ply_renderer_drm_find_tile_mode (modes, 3, &tile_info) == NULL);
+        return true;
+}
+
+static bool
 test_close_device_preserves_backend (void)
 {
         get_backend_interface_function_t get_backend_interface;
@@ -96,6 +116,7 @@ static const ply_test_case_t test_cases[] =
 {
         PLY_TEST_CASE (test_tile_info_parser_accepts_valid_layout),
         PLY_TEST_CASE (test_tile_info_parser_rejects_invalid_layouts),
+        PLY_TEST_CASE (test_tile_mode_selection_ignores_full_monitor_mode),
         PLY_TEST_CASE (test_close_device_preserves_backend),
 };
 
