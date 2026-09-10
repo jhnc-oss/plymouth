@@ -12,10 +12,52 @@
 #include <string.h>
 
 #include "ply-renderer-plugin.h"
+#include "ply-renderer-drm-tile.h"
 #include "ply-utils.h"
 
 typedef ply_renderer_plugin_interface_t *
 (*get_backend_interface_function_t) (void);
+
+static bool
+test_tile_info_parser_accepts_valid_layout (void)
+{
+        static const char tile_data[] = "1:1:2:1:1:0:3840:4320";
+        ply_renderer_drm_tile_info_t tile_info;
+
+        PLY_TEST_ASSERT (ply_renderer_drm_tile_info_parse (tile_data,
+                                                           sizeof(tile_data),
+                                                           &tile_info));
+        PLY_TEST_ASSERT (tile_info.group_id == 1);
+        PLY_TEST_ASSERT (tile_info.is_single_monitor);
+        PLY_TEST_ASSERT (tile_info.num_h == 2);
+        PLY_TEST_ASSERT (tile_info.num_v == 1);
+        PLY_TEST_ASSERT (tile_info.h_loc == 1);
+        PLY_TEST_ASSERT (tile_info.v_loc == 0);
+        PLY_TEST_ASSERT (tile_info.h_size == 3840);
+        PLY_TEST_ASSERT (tile_info.v_size == 4320);
+        return true;
+}
+
+static bool
+test_tile_info_parser_rejects_invalid_layouts (void)
+{
+        static const char embedded_nul[] = "1:1:2:1:0:0:3840:4320\0extra";
+        ply_renderer_drm_tile_info_t tile_info;
+
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_info_parse ("1:1:2:1:2:0:3840:4320",
+                                                            sizeof("1:1:2:1:2:0:3840:4320"),
+                                                            &tile_info));
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_info_parse ("1:1:2:1:0:0:0:4320",
+                                                            sizeof("1:1:2:1:0:0:0:4320"),
+                                                            &tile_info));
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_info_parse ("1:1:2:1:0:0:3840:4320:extra",
+                                                            sizeof("1:1:2:1:0:0:3840:4320:extra"),
+                                                            &tile_info));
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_info_parse (embedded_nul,
+                                                            sizeof(embedded_nul),
+                                                            &tile_info));
+        return true;
+}
 
 static bool
 test_close_device_preserves_backend (void)
@@ -52,6 +94,8 @@ test_close_device_preserves_backend (void)
 
 static const ply_test_case_t test_cases[] =
 {
+        PLY_TEST_CASE (test_tile_info_parser_accepts_valid_layout),
+        PLY_TEST_CASE (test_tile_info_parser_rejects_invalid_layouts),
         PLY_TEST_CASE (test_close_device_preserves_backend),
 };
 
