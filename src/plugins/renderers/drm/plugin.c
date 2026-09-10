@@ -714,23 +714,6 @@ ply_renderer_head_new (ply_renderer_backend_t *backend,
         /* Delay flush till first actual draw */
         ply_region_clear (ply_pixel_buffer_get_updated_areas (head->pixel_buffer));
 
-        /*
-         * On devices without a builtin display, use the info from the first
-         * enumerated output as panel info to sensure correct BGRT scaling.
-         * Note all outputs are enumerated before this info is used, so if
-         * there is a builtin display then that will override things.
-         */
-        if (!backend->panel_info_set ||
-            output->connector_type == DRM_MODE_CONNECTOR_LVDS ||
-            output->connector_type == DRM_MODE_CONNECTOR_eDP ||
-            output->connector_type == DRM_MODE_CONNECTOR_DSI) {
-                backend->panel_width = output->mode.hdisplay;
-                backend->panel_height = output->mode.vdisplay;
-                backend->panel_rotation = output->rotation;
-                backend->panel_scale = output->device_scale;
-                backend->panel_info_set = true;
-        }
-
         ply_list_append_data (backend->heads, head);
         ply_hashtable_insert (backend->heads_by_controller_id,
                               (void *) (intptr_t) output->controller_id,
@@ -825,6 +808,26 @@ ply_renderer_controller_set_scan_out_buffer (ply_renderer_backend_t    *backend,
         }
 
         ply_renderer_controller_clear_plane_rotation (backend, controller);
+        return true;
+}
+
+static bool
+ply_renderer_head_add_controller (ply_renderer_backend_t *backend,
+                                  ply_renderer_head_t    *head,
+                                  ply_output_t           *output,
+                                  uint32_t                console_buffer_id,
+                                  int                     gamma_size,
+                                  uint32_t                x,
+                                  uint32_t                y)
+{
+        ply_renderer_controller_t *controller;
+
+        controller = ply_renderer_controller_new (output, console_buffer_id,
+                                                  gamma_size, x, y);
+        ply_array_add_pointer_element (head->controllers, controller);
+        ply_hashtable_insert (backend->heads_by_controller_id,
+                              (void *) (intptr_t) output->controller_id,
+                              head);
         return true;
 }
 
@@ -1546,6 +1549,97 @@ check_simpledrm_resolution (ply_renderer_backend_t *backend,
         return true;
 }
 
+static bool
+outputs_share_tile_group (const ply_output_t *a,
+                          const ply_output_t *b)
+{
+        return a->tiled && b->tiled &&
+               a->tile_group_id == b->tile_group_id &&
+               a->tile_is_single_monitor && b->tile_is_single_monitor &&
+               a->tile_num_h == b->tile_num_h &&
+               a->tile_num_v == b->tile_num_v &&
+               a->tile_h_size == b->tile_h_size &&
+               a->tile_v_size == b->tile_v_size;
+}
+
+static ply_renderer_head_t *
+find_existing_head_for_tile_group (ply_renderer_backend_t *backend,
+                                   const ply_output_t     *outputs,
+                                   int                     output_index)
+{
+        ply_renderer_head_t *head;
+        int i;
+
+        for (i = 0; i < output_index; i++) {
+                if (!outputs_share_tile_group (&outputs[output_index], &outputs[i]))
+                        continue;
+
+                head = ply_hashtable_lookup (backend->heads_by_controller_id,
+                                             (void *) (intptr_t) outputs[i].controller_id);
+                if (head != NULL)
+                        return head;
+        }
+
+        return NULL;
+}
+
+static bool
+get_controller_state (ply_renderer_backend_t *backend,
+                      ply_output_t           *output,
+                      uint32_t               *console_buffer_id,
+                      int                    *gamma_size)
+{
+        drmModeCrtc *controller;
+
+        controller = drmModeGetCrtc (backend->device_fd, output->controller_id);
+        if (controller == NULL)
+                return false;
+
+        *console_buffer_id = controller->buffer_id;
+        *gamma_size = controller->gamma_size;
+        drmModeFreeCrtc (controller);
+        return true;
+}
+
+static bool
+output_is_builtin (const ply_output_t *output)
+{
+        return output->connector_type == DRM_MODE_CONNECTOR_LVDS ||
+               output->connector_type == DRM_MODE_CONNECTOR_eDP ||
+               output->connector_type == DRM_MODE_CONNECTOR_DSI;
+}
+
+static void
+update_panel_info (ply_renderer_backend_t                 *backend,
+                   const ply_output_t                     *outputs,
+                   const bool                             *complete_tile_groups,
+                   const ply_renderer_drm_tile_geometry_t *tile_geometries,
+                   int                                     outputs_len)
+{
+        int i;
+
+        backend->panel_info_set = false;
+        for (i = 0; i < outputs_len; i++) {
+                if (!outputs[i].connected || outputs[i].controller_id == 0)
+                        continue;
+
+                /* A builtin panel takes precedence over the first external output. */
+                if (backend->panel_info_set && !output_is_builtin (&outputs[i]))
+                        continue;
+
+                if (complete_tile_groups[i]) {
+                        backend->panel_width = tile_geometries[i].width;
+                        backend->panel_height = tile_geometries[i].height;
+                } else {
+                        backend->panel_width = outputs[i].mode.hdisplay;
+                        backend->panel_height = outputs[i].mode.vdisplay;
+                }
+                backend->panel_rotation = outputs[i].rotation;
+                backend->panel_scale = outputs[i].device_scale;
+                backend->panel_info_set = true;
+        }
+}
+
 /* Update our outputs array to match the hardware state and
  * create and/or remove heads as necessary.
  * Returns true if any heads were modified.
@@ -1557,6 +1651,9 @@ create_heads_for_active_connectors (ply_renderer_backend_t *backend,
 {
         int i, j, number_of_setup_outputs, outputs_len;
         ply_output_t *outputs;
+        ply_renderer_drm_tile_output_t *tile_outputs;
+        ply_renderer_drm_tile_geometry_t *tile_geometries;
+        bool *complete_tile_groups;
         bool changed = false;
 
         /* Step 1:
@@ -1645,38 +1742,107 @@ create_heads_for_active_connectors (ply_renderer_backend_t *backend,
                            outputs[i].controller_id, outputs[i].connector_id);
         }
 
+        tile_outputs = calloc (outputs_len, sizeof(*tile_outputs));
+        tile_geometries = calloc (outputs_len, sizeof(*tile_geometries));
+        complete_tile_groups = calloc (outputs_len, sizeof(*complete_tile_groups));
+        if (outputs_len > 0 &&
+            (tile_outputs == NULL || tile_geometries == NULL || complete_tile_groups == NULL)) {
+                free (complete_tile_groups);
+                free (tile_geometries);
+                free (tile_outputs);
+                free (outputs);
+                return false;
+        }
+
+        for (i = 0; i < outputs_len; i++) {
+                tile_outputs[i].tile.group_id = outputs[i].tile_group_id;
+                tile_outputs[i].tile.is_single_monitor = outputs[i].tile_is_single_monitor;
+                tile_outputs[i].tile.num_h = outputs[i].tile_num_h;
+                tile_outputs[i].tile.num_v = outputs[i].tile_num_v;
+                tile_outputs[i].tile.h_loc = outputs[i].tile_h_loc;
+                tile_outputs[i].tile.v_loc = outputs[i].tile_v_loc;
+                tile_outputs[i].tile.h_size = outputs[i].tile_h_size;
+                tile_outputs[i].tile.v_size = outputs[i].tile_v_size;
+                tile_outputs[i].mode = outputs[i].mode;
+                tile_outputs[i].controller_id = outputs[i].controller_id;
+                tile_outputs[i].device_scale = outputs[i].device_scale;
+                tile_outputs[i].tiled = outputs[i].tiled;
+                tile_outputs[i].connected = outputs[i].connected;
+                tile_outputs[i].upright_rotation = outputs[i].rotation == PLY_PIXEL_BUFFER_ROTATE_UPRIGHT;
+                tile_outputs[i].uses_hw_rotation = outputs[i].uses_hw_rotation;
+        }
+
+        for (i = 0; i < outputs_len; i++) {
+                complete_tile_groups[i] = ply_renderer_drm_tile_group_get_geometry (
+                        tile_outputs, outputs_len, i,
+                        backend->resources->max_width,
+                        backend->resources->max_height,
+                        &tile_geometries[i]);
+        }
+
+        update_panel_info (backend, outputs, complete_tile_groups,
+                           tile_geometries, outputs_len);
+
         /* Step 5:
-         * Create heads for all valid outputs
+         * Create one logical head for every complete tiled monitor, and one
+         * head per controller for all other outputs.
          */
         for (i = 0; i < outputs_len; i++) {
-                drmModeCrtc *controller;
                 ply_renderer_head_t *head;
                 uint32_t controller_id;
                 uint32_t console_buffer_id;
+                uint32_t width, height, x = 0, y = 0;
                 int gamma_size;
+                bool complete_tile_group;
 
                 if (!outputs[i].controller_id)
                         continue;
 
-                controller = drmModeGetCrtc (backend->device_fd, outputs[i].controller_id);
-                if (!controller)
+                if (!get_controller_state (backend, &outputs[i],
+                                           &console_buffer_id, &gamma_size))
                         continue;
 
-                controller_id = controller->crtc_id;
-                console_buffer_id = controller->buffer_id;
-                gamma_size = controller->gamma_size;
-                drmModeFreeCrtc (controller);
+                controller_id = outputs[i].controller_id;
+                complete_tile_group = complete_tile_groups[i];
+                width = outputs[i].mode.hdisplay;
+                height = outputs[i].mode.vdisplay;
+                if (complete_tile_group) {
+                        width = tile_geometries[i].width;
+                        height = tile_geometries[i].height;
+                        x = tile_geometries[i].x;
+                        y = tile_geometries[i].y;
+                }
 
                 head = ply_hashtable_lookup (backend->heads_by_controller_id,
                                              (void *) (intptr_t) controller_id);
 
+                if (head == NULL && complete_tile_group) {
+                        head = find_existing_head_for_tile_group (backend, outputs, i);
+                }
+
+                if (head != NULL &&
+                    (head->area.width != width || head->area.height != height)) {
+                        ply_renderer_head_remove (backend, head);
+                        head = NULL;
+                        changed = true;
+                }
+
+                if (head == NULL && complete_tile_group) {
+                        head = find_existing_head_for_tile_group (backend, outputs, i);
+                }
+
                 if (head == NULL) {
+                        if (complete_tile_group) {
+                                ply_trace ("Creating %ux%u logical head for TILE group %u",
+                                           width, height, outputs[i].tile_group_id);
+                        } else if (outputs[i].tiled) {
+                                ply_trace ("TILE group %u is incomplete or incompatible; creating an independent head",
+                                           outputs[i].tile_group_id);
+                        }
+
                         head = ply_renderer_head_new (backend, &outputs[i],
-                                                      console_buffer_id,
-                                                      gamma_size,
-                                                      outputs[i].mode.hdisplay,
-                                                      outputs[i].mode.vdisplay,
-                                                      0, 0);
+                                                      console_buffer_id, gamma_size,
+                                                      width, height, x, y);
                         changed = true;
                 } else {
                         ply_renderer_controller_t **controllers;
@@ -1691,14 +1857,24 @@ create_heads_for_active_connectors (ply_renderer_backend_t *backend,
                                 }
                         }
 
-                        if (head_controller != NULL &&
-                            ply_renderer_controller_add_connector (head_controller, &outputs[i]))
+                        if (head_controller != NULL) {
+                                if (ply_renderer_controller_add_connector (head_controller, &outputs[i]))
+                                        changed = true;
+                        } else if (complete_tile_group) {
+                                ply_renderer_head_add_controller (backend, head, &outputs[i],
+                                                                  console_buffer_id, gamma_size,
+                                                                  x, y);
                                 changed = true;
+                        }
                 }
         }
 
         backend->outputs_len = outputs_len;
         backend->outputs = outputs;
+
+        free (complete_tile_groups);
+        free (tile_geometries);
+        free (tile_outputs);
 
         ply_trace ("outputs %schanged\n", changed ? "" : "un");
 
