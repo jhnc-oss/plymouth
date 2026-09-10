@@ -18,6 +18,38 @@
 typedef ply_renderer_plugin_interface_t *
 (*get_backend_interface_function_t) (void);
 
+static ply_renderer_drm_tile_output_t
+make_tile_output (uint32_t group_id,
+                  uint32_t num_h,
+                  uint32_t num_v,
+                  uint32_t h_loc,
+                  uint32_t v_loc,
+                  uint32_t h_size,
+                  uint32_t v_size)
+{
+        ply_renderer_drm_tile_output_t output = { 0 };
+
+        output.tile.group_id = group_id;
+        output.tile.is_single_monitor = true;
+        output.tile.num_h = num_h;
+        output.tile.num_v = num_v;
+        output.tile.h_loc = h_loc;
+        output.tile.v_loc = v_loc;
+        output.tile.h_size = h_size;
+        output.tile.v_size = v_size;
+        output.mode.clock = 1058800;
+        output.mode.hdisplay = h_size;
+        output.mode.vdisplay = v_size;
+        output.mode.htotal = h_size + 200;
+        output.mode.vtotal = v_size + 48;
+        output.controller_id = h_loc + v_loc * num_h + 1;
+        output.device_scale = 2;
+        output.tiled = true;
+        output.connected = true;
+        output.upright_rotation = true;
+        return output;
+}
+
 static bool
 test_tile_info_parser_accepts_valid_layout (void)
 {
@@ -80,6 +112,134 @@ test_tile_mode_selection_ignores_full_monitor_mode (void)
 }
 
 static bool
+test_reported_tiled_layout_geometry (void)
+{
+        ply_renderer_drm_tile_output_t outputs[] = {
+                make_tile_output (1, 2, 1, 1, 0, 3840, 4320),
+                make_tile_output (1, 2, 1, 0, 0, 3840, 4320),
+        };
+        ply_renderer_drm_tile_geometry_t geometry;
+
+        /* The reporter's right tile is enumerated before the left tile. */
+        PLY_TEST_ASSERT (ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                   16384, 16384,
+                                                                   &geometry));
+        PLY_TEST_ASSERT (geometry.width == 7680);
+        PLY_TEST_ASSERT (geometry.height == 4320);
+        PLY_TEST_ASSERT (geometry.x == 3840);
+        PLY_TEST_ASSERT (geometry.y == 0);
+
+        PLY_TEST_ASSERT (ply_renderer_drm_tile_group_get_geometry (outputs, 2, 1,
+                                                                   16384, 16384,
+                                                                   &geometry));
+        PLY_TEST_ASSERT (geometry.x == 0);
+        PLY_TEST_ASSERT (geometry.y == 0);
+        return true;
+}
+
+static bool
+test_vertical_tiled_layout_geometry (void)
+{
+        ply_renderer_drm_tile_output_t outputs[] = {
+                make_tile_output (7, 1, 2, 0, 0, 1920, 2160),
+                make_tile_output (7, 1, 2, 0, 1, 1920, 2160),
+        };
+        ply_renderer_drm_tile_geometry_t geometry;
+
+        PLY_TEST_ASSERT (ply_renderer_drm_tile_group_get_geometry (outputs, 2, 1,
+                                                                   8192, 8192,
+                                                                   &geometry));
+        PLY_TEST_ASSERT (geometry.width == 1920);
+        PLY_TEST_ASSERT (geometry.height == 4320);
+        PLY_TEST_ASSERT (geometry.x == 0);
+        PLY_TEST_ASSERT (geometry.y == 2160);
+        return true;
+}
+
+static bool
+test_tile_group_arrival_and_removal (void)
+{
+        ply_renderer_drm_tile_output_t outputs[] = {
+                make_tile_output (1, 2, 1, 0, 0, 3840, 4320),
+                make_tile_output (1, 2, 1, 1, 0, 3840, 4320),
+        };
+        ply_renderer_drm_tile_geometry_t geometry;
+
+        outputs[1].connected = false;
+        outputs[1].controller_id = 0;
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                    16384, 16384,
+                                                                    &geometry));
+
+        outputs[1].connected = true;
+        outputs[1].controller_id = 2;
+        PLY_TEST_ASSERT (ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                   16384, 16384,
+                                                                   &geometry));
+
+        outputs[0].connected = false;
+        outputs[0].controller_id = 0;
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_group_get_geometry (outputs, 2, 1,
+                                                                    16384, 16384,
+                                                                    &geometry));
+        return true;
+}
+
+static bool
+test_tile_group_rejects_duplicate_and_incompatible_tiles (void)
+{
+        ply_renderer_drm_tile_output_t outputs[] = {
+                make_tile_output (1, 2, 1, 0, 0, 3840, 4320),
+                make_tile_output (1, 2, 1, 0, 0, 3840, 4320),
+        };
+        ply_renderer_drm_tile_geometry_t geometry;
+
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                    16384, 16384,
+                                                                    &geometry));
+
+        outputs[1].tile.h_loc = 1;
+        outputs[1].device_scale = 1;
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                    16384, 16384,
+                                                                    &geometry));
+
+        outputs[1].device_scale = 2;
+        outputs[1].mode.clock++;
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                    16384, 16384,
+                                                                    &geometry));
+
+        outputs[1].mode.clock--;
+        outputs[1].uses_hw_rotation = true;
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                    16384, 16384,
+                                                                    &geometry));
+
+        outputs[1].uses_hw_rotation = false;
+        outputs[1].controller_id = outputs[0].controller_id;
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                    16384, 16384,
+                                                                    &geometry));
+        return true;
+}
+
+static bool
+test_tile_group_respects_framebuffer_limits (void)
+{
+        ply_renderer_drm_tile_output_t outputs[] = {
+                make_tile_output (1, 2, 1, 0, 0, 3840, 4320),
+                make_tile_output (1, 2, 1, 1, 0, 3840, 4320),
+        };
+        ply_renderer_drm_tile_geometry_t geometry;
+
+        PLY_TEST_ASSERT (!ply_renderer_drm_tile_group_get_geometry (outputs, 2, 0,
+                                                                    4096, 8192,
+                                                                    &geometry));
+        return true;
+}
+
+static bool
 test_close_device_preserves_backend (void)
 {
         get_backend_interface_function_t get_backend_interface;
@@ -117,6 +277,11 @@ static const ply_test_case_t test_cases[] =
         PLY_TEST_CASE (test_tile_info_parser_accepts_valid_layout),
         PLY_TEST_CASE (test_tile_info_parser_rejects_invalid_layouts),
         PLY_TEST_CASE (test_tile_mode_selection_ignores_full_monitor_mode),
+        PLY_TEST_CASE (test_reported_tiled_layout_geometry),
+        PLY_TEST_CASE (test_vertical_tiled_layout_geometry),
+        PLY_TEST_CASE (test_tile_group_arrival_and_removal),
+        PLY_TEST_CASE (test_tile_group_rejects_duplicate_and_incompatible_tiles),
+        PLY_TEST_CASE (test_tile_group_respects_framebuffer_limits),
         PLY_TEST_CASE (test_close_device_preserves_backend),
 };
 
