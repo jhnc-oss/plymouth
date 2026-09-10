@@ -61,6 +61,7 @@
 
 #include "ply-renderer.h"
 #include "ply-renderer-plugin.h"
+#include "ply-renderer-drm-tile.h"
 
 #define BYTES_PER_PIXEL (4)
 
@@ -140,7 +141,15 @@ typedef struct
         int                         device_scale;
         int                         link_status;
         ply_pixel_buffer_rotation_t rotation;
+        uint32_t                    tile_group_id;
+        uint32_t                    tile_num_h;
+        uint32_t                    tile_num_v;
+        uint32_t                    tile_h_loc;
+        uint32_t                    tile_v_loc;
+        uint32_t                    tile_h_size;
+        uint32_t                    tile_v_size;
         bool                        tiled;
+        bool                        tile_is_single_monitor;
         bool                        connected;
         bool                        uses_hw_rotation;
         bool                        is_non_desktop;
@@ -524,6 +533,36 @@ connector_orientation_prop_to_rotation (drmModePropertyPtr prop,
 }
 
 static void
+ply_renderer_connector_get_tile_info (ply_renderer_backend_t *backend,
+                                      uint64_t                blob_id,
+                                      ply_output_t           *output)
+{
+        drmModePropertyBlobPtr blob;
+        ply_renderer_drm_tile_info_t tile_info;
+
+        blob = drmModeGetPropertyBlob (backend->device_fd, blob_id);
+        if (blob == NULL || blob->data == NULL || blob->length == 0)
+                goto out;
+
+        if (ply_renderer_drm_tile_info_parse (blob->data, blob->length, &tile_info)) {
+                output->tile_group_id = tile_info.group_id;
+                output->tile_is_single_monitor = tile_info.is_single_monitor;
+                output->tile_num_h = tile_info.num_h;
+                output->tile_num_v = tile_info.num_v;
+                output->tile_h_loc = tile_info.h_loc;
+                output->tile_v_loc = tile_info.v_loc;
+                output->tile_h_size = tile_info.h_size;
+                output->tile_v_size = tile_info.v_size;
+                output->tiled = true;
+        } else {
+                ply_trace ("Ignoring malformed TILE property");
+        }
+out:
+        if (blob != NULL)
+                drmModeFreePropertyBlob (blob);
+}
+
+static void
 ply_renderer_connector_get_properties (ply_renderer_backend_t *backend,
                                        drmModeConnector       *connector,
                                        ply_output_t           *output)
@@ -547,7 +586,9 @@ ply_renderer_connector_get_properties (ply_renderer_backend_t *backend,
                 if ((prop->flags & DRM_MODE_PROP_BLOB) &&
                     strcmp (prop->name, "TILE") == 0 &&
                     connector->prop_values[i] != 0)
-                        output->tiled = true;
+                        ply_renderer_connector_get_tile_info (backend,
+                                                              connector->prop_values[i],
+                                                              output);
 
                 if ((prop->flags & DRM_MODE_PROP_ENUM) &&
                     strcmp (prop->name, "link-status") == 0) {
@@ -1182,26 +1223,6 @@ output_get_controller_info (ply_renderer_backend_t *backend,
         }
 }
 
-static bool
-modes_are_equal (drmModeModeInfo *a,
-                 drmModeModeInfo *b)
-{
-        return a->clock == b->clock &&
-               a->hdisplay == b->hdisplay &&
-               a->hsync_start == b->hsync_start &&
-               a->hsync_end == b->hsync_end &&
-               a->htotal == b->htotal &&
-               a->hskew == b->hskew &&
-               a->vdisplay == b->vdisplay &&
-               a->vsync_start == b->vsync_start &&
-               a->vsync_end == b->vsync_end &&
-               a->vtotal == b->vtotal &&
-               a->vscan == b->vscan &&
-               a->vrefresh == b->vrefresh &&
-               a->flags == b->flags &&
-               a->type == b->type;
-}
-
 static drmModeModeInfo *
 find_matching_connector_mode (ply_renderer_backend_t *backend,
                               drmModeConnector       *connector,
@@ -1210,7 +1231,7 @@ find_matching_connector_mode (ply_renderer_backend_t *backend,
         int i;
 
         for (i = 0; i < connector->count_modes; i++) {
-                if (modes_are_equal (&connector->modes[i], mode)) {
+                if (ply_renderer_drm_modes_are_equal (&connector->modes[i], mode)) {
                         ply_trace ("Found connector mode index %d for mode %dx%d",
                                    i, mode->hdisplay, mode->vdisplay);
 
@@ -1219,6 +1240,27 @@ find_matching_connector_mode (ply_renderer_backend_t *backend,
         }
 
         return NULL;
+}
+
+static drmModeModeInfo *
+find_tile_mode (drmModeConnector *connector,
+                ply_output_t     *output)
+{
+        ply_renderer_drm_tile_info_t tile_info = {
+                .h_size = output->tile_h_size,
+                .v_size = output->tile_v_size,
+        };
+        drmModeModeInfo *mode;
+
+        mode = ply_renderer_drm_find_tile_mode (connector->modes,
+                                                connector->count_modes,
+                                                &tile_info);
+        if (mode != NULL)
+                ply_trace ("Found tile mode index %td for %ux%u tile",
+                           mode - connector->modes,
+                           output->tile_h_size, output->tile_v_size);
+
+        return mode;
 }
 
 static drmModeModeInfo *
@@ -1305,6 +1347,9 @@ get_output_info (ply_renderer_backend_t *backend,
 
         if (!mode && output->controller_id)
                 mode = get_active_mode (backend, connector, output);
+
+        if (!mode && output->tiled)
+                mode = find_tile_mode (connector, output);
 
         /* If we couldn't find the current active mode, fall back to the first available. */
         if (!mode) {
