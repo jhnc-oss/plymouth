@@ -14,6 +14,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <xf86drmMode.h>
+
 typedef struct
 {
         uint32_t group_id;
@@ -29,5 +31,10 @@ typedef struct
 bool ply_renderer_drm_tile_info_parse (const void                   *data,
                                        size_t                        size,
                                        ply_renderer_drm_tile_info_t *tile_info);
+bool ply_renderer_drm_modes_are_equal (const drmModeModeInfo *a,
+                                       const drmModeModeInfo *b);
+drmModeModeInfo *ply_renderer_drm_find_tile_mode (drmModeModeInfo                    *modes,
+                                                  size_t                              mode_count,
+                                                  const ply_renderer_drm_tile_info_t *tile_info);
 
 #endif

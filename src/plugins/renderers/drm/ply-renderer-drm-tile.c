@@ -59,3 +59,42 @@ ply_renderer_drm_tile_info_parse (const void                   *data,
         free (tile_data);
         return parsed;
 }
+
+bool
+ply_renderer_drm_modes_are_equal (const drmModeModeInfo *a,
+                                  const drmModeModeInfo *b)
+{
+        return a->clock == b->clock &&
+               a->hdisplay == b->hdisplay &&
+               a->hsync_start == b->hsync_start &&
+               a->hsync_end == b->hsync_end &&
+               a->htotal == b->htotal &&
+               a->hskew == b->hskew &&
+               a->vdisplay == b->vdisplay &&
+               a->vsync_start == b->vsync_start &&
+               a->vsync_end == b->vsync_end &&
+               a->vtotal == b->vtotal &&
+               a->vscan == b->vscan &&
+               a->vrefresh == b->vrefresh &&
+               a->flags == b->flags &&
+               a->type == b->type;
+}
+
+drmModeModeInfo *
+ply_renderer_drm_find_tile_mode (drmModeModeInfo                    *modes,
+                                 size_t                              mode_count,
+                                 const ply_renderer_drm_tile_info_t *tile_info)
+{
+        size_t i;
+
+        if (modes == NULL || tile_info == NULL)
+                return NULL;
+
+        for (i = 0; i < mode_count; i++) {
+                if (modes[i].hdisplay == tile_info->h_size &&
+                    modes[i].vdisplay == tile_info->v_size)
+                        return &modes[i];
+        }
+
+        return NULL;
+}
