@@ -675,13 +675,15 @@ if libdrm_dep.found()
   drm_renderer_test_executable = executable(
     'test-drm-renderer',
     'test-drm-renderer.c',
+    '../src/plugins/renderers/drm/ply-renderer-drm-tile.c',
     c_args: test_c_args + [
       '-DTEST_DRM_RENDERER_PLUGIN_PATH="@0@"'.format(drm_plugin.full_path()),
     ],
-    dependencies: [libply_dep, libply_splash_core_dep],
+    dependencies: [libply_dep, libply_splash_core_dep, libdrm_dep],
     include_directories: [
       include_directories('.'),
       include_directories('../src/libply-splash-core'),
+      include_directories('../src/plugins/renderers/drm'),
     ],
   )
 

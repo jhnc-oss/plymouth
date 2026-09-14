@@ -1,5 +1,6 @@
 drm_plugin = shared_module('drm',
   'plugin.c',
+  'ply-renderer-drm-tile.c',
   dependencies: [
     libply_dep,
     libply_splash_core_dep,
