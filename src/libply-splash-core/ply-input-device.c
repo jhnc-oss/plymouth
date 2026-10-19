@@ -571,6 +571,17 @@ ply_input_device_get_keymap (ply_input_device_t *input_device)
         return xkb_keymap_layout_get_name (input_device->keymap, 0);
 }
 
+const char *
+ply_input_device_get_keyboard_layout (ply_input_device_t *input_device)
+{
+        xkb_layout_index_t layout;
+
+        layout = xkb_state_serialize_layout (input_device->keyboard_state,
+                                             XKB_STATE_LAYOUT_EFFECTIVE);
+
+        return xkb_keymap_layout_get_name (input_device->keymap, layout);
+}
+
 int
 ply_input_device_get_fd (ply_input_device_t *input_device)
 {

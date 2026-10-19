@@ -94,6 +94,7 @@ const char *ply_input_device_get_name (ply_input_device_t *input_device);
 bool ply_input_device_get_capslock_state (ply_input_device_t *input_device);
 /* The value shouldn't be used as a unique indentifier for a keymap */
 const char *ply_input_device_get_keymap (ply_input_device_t *input_device);
+const char *ply_input_device_get_keyboard_layout (ply_input_device_t *input_device);
 const char *ply_input_device_get_path (ply_input_device_t *input_device);
 
 #endif //PLY_HIDE_FUNCTION_DECLARATIONS

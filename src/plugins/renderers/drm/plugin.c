@@ -2385,6 +2385,17 @@ get_keymap (ply_renderer_backend_t *backend)
         return ply_terminal_get_keymap (backend->local_console_terminal);
 }
 
+static const char *
+get_keyboard_layout (ply_renderer_backend_t *backend)
+{
+        ply_input_device_t *dev = get_any_input_device (backend);
+
+        if (!dev)
+                return NULL;
+
+        return ply_input_device_get_keyboard_layout (dev);
+}
+
 static void
 add_input_device (ply_renderer_backend_t *backend,
                   ply_input_device_t     *input_device)
@@ -2430,6 +2441,7 @@ ply_renderer_backend_get_interface (void)
                 .get_keymap                   = get_keymap,
                 .add_input_device             = add_input_device,
                 .remove_input_device          = remove_input_device,
+                .get_keyboard_layout          = get_keyboard_layout,
         };
 
         return &plugin_interface;
