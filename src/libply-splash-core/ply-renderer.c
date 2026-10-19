@@ -533,3 +533,12 @@ ply_renderer_get_keymap (ply_renderer_t *renderer)
 
         return renderer->plugin_interface->get_keymap (renderer->backend);
 }
+
+const char *
+ply_renderer_get_keyboard_layout (ply_renderer_t *renderer)
+{
+        if (!renderer->plugin_interface->get_keyboard_layout)
+                return NULL;
+
+        return renderer->plugin_interface->get_keyboard_layout (renderer->backend);
+}
