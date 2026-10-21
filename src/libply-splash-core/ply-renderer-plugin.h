@@ -84,6 +84,7 @@ typedef struct
                                  ply_input_device_t     *input_device);
         void (*remove_input_device)(ply_renderer_backend_t *backend,
                                     ply_input_device_t     *input_device);
+        const char * (*get_keyboard_layout)(ply_renderer_backend_t *backend);
 } ply_renderer_plugin_interface_t;
 
 #endif /* PLY_RENDERER_PLUGIN_H */

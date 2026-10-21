@@ -26,6 +26,8 @@ fun refresh_callback ()
         logo.sprite.SetY (0);
         logo.sprite.SetOpacity (1);
       }
+    if (status == "password")
+      dialog_update_keyboard_layout ();
   }
   
 Plymouth.SetRefreshFunction (refresh_callback);
@@ -39,6 +41,7 @@ fun dialog_setup()
     local.box;
     local.lock;
     local.entry;
+    local.layout;
     
     box.image = Image("box.png");
     lock.image = Image("lock.png");
@@ -62,9 +65,14 @@ fun dialog_setup()
     entry.z = box.z + 1;
     entry.sprite.SetPosition(entry.x, entry.y, entry.z);
     
+    layout.sprite = Sprite();
+    layout.y = box.y + box.image.GetHeight();
+    layout.z = box.z + 1;
+    
     global.dialog.box = box;
     global.dialog.lock = lock;
     global.dialog.entry = entry;
+    global.dialog.layout = layout;
     global.dialog.bullet_image = Image("bullet.png");
     dialog_opacity (1);
   }
@@ -74,9 +82,23 @@ fun dialog_opacity(opacity)
     dialog.box.sprite.SetOpacity (opacity);
     dialog.lock.sprite.SetOpacity (opacity);
     dialog.entry.sprite.SetOpacity (opacity);
+    dialog.layout.sprite.SetOpacity (opacity);
     for (index = 0; dialog.bullet[index]; index++)
       {
         dialog.bullet[index].sprite.SetOpacity(opacity);
+      }
+  }
+
+fun dialog_update_keyboard_layout ()
+  {
+    layout = Plymouth.GetKeyboardLayout ();
+    if (layout && layout != dialog.layout.text)
+      {
+        dialog.layout.text = layout;
+        dialog.layout.image = Image.Text (layout, 1, 1, 1);
+        dialog.layout.x = dialog.box.x + dialog.box.image.GetWidth () / 2 - dialog.layout.image.GetWidth () / 2;
+        dialog.layout.sprite.SetImage (dialog.layout.image);
+        dialog.layout.sprite.SetPosition (dialog.layout.x, dialog.layout.y, dialog.layout.z);
       }
   }
 

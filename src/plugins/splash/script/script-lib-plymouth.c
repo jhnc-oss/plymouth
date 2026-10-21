@@ -20,6 +20,7 @@
  * Written by: Charlie Brej <cbrej@cs.man.ac.uk>
  */
 #pragma weak ply_keyboard_get_capslock_state
+#pragma weak ply_keyboard_get_keyboard_layout
 
 
 #include "ply-boot-splash-plugin.h"
@@ -110,6 +111,18 @@ static script_return_t plymouth_get_capslock_state (script_state_t *state,
         obj = is_on ? script_obj_new_number (1) : script_obj_new_number (0);
 
         return script_return_obj (obj);
+}
+
+static script_return_t plymouth_get_keyboard_layout (script_state_t *state,
+                                                     void           *user_data)
+{
+        script_lib_plymouth_data_t *data = user_data;
+        const char *layout = NULL;
+
+        if (ply_keyboard_get_keyboard_layout != NULL && data->keyboard != NULL)
+                layout = ply_keyboard_get_keyboard_layout (data->keyboard);
+
+        return script_return_obj (script_obj_new_string (layout));
 }
 
 script_lib_plymouth_data_t *script_lib_plymouth_setup (script_state_t        *state,
@@ -233,6 +246,11 @@ script_lib_plymouth_data_t *script_lib_plymouth_setup (script_state_t        *st
         script_add_native_function (plymouth_hash,
                                     "GetCapslockState",
                                     plymouth_get_capslock_state,
+                                    data,
+                                    NULL);
+        script_add_native_function (plymouth_hash,
+                                    "GetKeyboardLayout",
+                                    plymouth_get_keyboard_layout,
                                     data,
                                     NULL);
         script_add_native_function (plymouth_hash,

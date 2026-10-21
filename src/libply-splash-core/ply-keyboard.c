@@ -704,3 +704,14 @@ ply_keyboard_get_capslock_state (ply_keyboard_t *keyboard)
 
         return NULL;
 }
+
+const char *
+ply_keyboard_get_keyboard_layout (ply_keyboard_t *keyboard)
+{
+        assert (keyboard != NULL);
+
+        if (keyboard->provider_type != PLY_KEYBOARD_PROVIDER_TYPE_RENDERER)
+                return NULL;
+
+        return ply_renderer_get_keyboard_layout (keyboard->provider.if_renderer->renderer);
+}

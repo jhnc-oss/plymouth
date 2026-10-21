@@ -671,6 +671,32 @@ test(
   timeout: test_timeout,
 )
 
+script_lib_plymouth_test_executable = executable(
+  'test-script-lib-plymouth',
+  [
+    'test-script-lib-plymouth.c',
+    script_headers,
+    script_source_dir / 'script-lib-plymouth.c',
+  ],
+  c_args: renderer_test_c_args,
+  dependencies: [libply_dep, ply_renderer_dep, script_engine_dep],
+  include_directories: [
+    include_directories('.'),
+    include_directories('../src/libply-splash-core'),
+    include_directories('../src/plugins/splash/script'),
+  ],
+)
+
+test(
+  'script-lib-plymouth',
+  script_lib_plymouth_test_executable,
+  depends: fake_renderer_plugin,
+  env: test_environment,
+  protocol: 'tap',
+  suite: ['unit', 'script'],
+  timeout: test_timeout,
+)
+
 if libdrm_dep.found()
   drm_renderer_test_executable = executable(
     'test-drm-renderer',

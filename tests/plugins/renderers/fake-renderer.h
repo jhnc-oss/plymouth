@@ -36,6 +36,7 @@ typedef struct
         int                                 panel_count;
         int                                 capslock_count;
         int                                 keymap_count;
+        int                                 keyboard_layout_count;
         int                                 add_input_device_count;
         int                                 remove_input_device_count;
         bool                                query_force;

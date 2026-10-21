@@ -140,9 +140,11 @@ test_renderer_delegates_backend_lifecycle (void)
         PLY_TEST_ASSERT (scale == 2);
         PLY_TEST_ASSERT (ply_renderer_get_capslock_state (renderer));
         PLY_TEST_ASSERT (strcmp (ply_renderer_get_keymap (renderer), "us") == 0);
+        PLY_TEST_ASSERT (strcmp (ply_renderer_get_keyboard_layout (renderer), "Russian") == 0);
         PLY_TEST_ASSERT (state->panel_count == 1);
         PLY_TEST_ASSERT (state->capslock_count == 1);
         PLY_TEST_ASSERT (state->keymap_count == 1);
+        PLY_TEST_ASSERT (state->keyboard_layout_count == 1);
 
         ply_renderer_add_input_device (
                 renderer,

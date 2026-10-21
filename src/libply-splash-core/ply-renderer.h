@@ -98,6 +98,7 @@ bool ply_renderer_get_panel_properties (ply_renderer_t              *renderer,
 
 bool ply_renderer_get_capslock_state (ply_renderer_t *renderer);
 const char *ply_renderer_get_keymap (ply_renderer_t *renderer);
+const char *ply_renderer_get_keyboard_layout (ply_renderer_t *renderer);
 #endif
 
 #endif /* PLY_RENDERER_H */

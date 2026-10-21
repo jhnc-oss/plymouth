@@ -231,6 +231,13 @@ get_keymap (ply_renderer_backend_t *backend)
         return "us";
 }
 
+static const char *
+get_keyboard_layout (ply_renderer_backend_t *backend)
+{
+        state.keyboard_layout_count += backend->head.marker;
+        return "Russian";
+}
+
 static void
 add_input_device (ply_renderer_backend_t *backend,
                   ply_input_device_t     *input_device)
@@ -272,6 +279,7 @@ ply_renderer_backend_get_interface (void)
                 .get_panel_properties         = get_panel_properties,
                 .get_capslock_state           = get_capslock_state,
                 .get_keymap                   = get_keymap,
+                .get_keyboard_layout          = get_keyboard_layout,
                 .add_input_device             = add_input_device,
                 .remove_input_device          = remove_input_device,
         };
