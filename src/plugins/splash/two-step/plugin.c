@@ -749,7 +749,9 @@ view_redraw (view_t *view)
                                      screen_width, screen_height);
 }
 
-/* Briefly identify the firmware security state at startup. */
+/* Briefly identify the firmware security state at startup. Prompt rendering
+ * overrides this opacity so that the emblem stays visible during passwords.
+ */
 static void
 animate_secure_boot_emblem (ply_boot_splash_plugin_t *plugin,
                             ply_event_loop_t         *loop)
@@ -1664,7 +1666,8 @@ draw_background (view_t             *view,
                 ply_pixel_buffer_fill_with_argb32_data_at_opacity (pixel_buffer,
                                                                    &view->secure_boot_area,
                                                                    data,
-                                                                   plugin->secure_boot_opacity);
+                                                                   plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY ?
+                                                                   1.0 : plugin->secure_boot_opacity);
         }
 }
 
