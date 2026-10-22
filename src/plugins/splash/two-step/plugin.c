@@ -141,6 +141,8 @@ struct _ply_boot_splash_plugin
         ply_image_t                        *background_bgrt_fallback_image;
         ply_image_t                        *watermark_image;
         ply_image_t                        *secure_boot_image;
+        double                              secure_boot_start_time;
+        double                              secure_boot_opacity;
         ply_list_t                         *views;
 
         ply_boot_splash_display_type_t      state;
@@ -745,6 +747,39 @@ view_redraw (view_t *view)
 
         ply_pixel_display_draw_area (view->display, 0, 0,
                                      screen_width, screen_height);
+}
+
+/* Briefly identify the firmware security state at startup. */
+static void
+animate_secure_boot_emblem (ply_boot_splash_plugin_t *plugin,
+                            ply_event_loop_t         *loop)
+{
+        ply_list_node_t *node;
+        double elapsed = ply_get_timestamp () - plugin->secure_boot_start_time;
+
+        if (elapsed < 0.2)
+                plugin->secure_boot_opacity = MAX (0.0, elapsed / 0.2);
+        else if (elapsed < 1.2)
+                plugin->secure_boot_opacity = 1.0;
+        else
+                plugin->secure_boot_opacity = MAX (0.0, 1.0 - (elapsed - 1.2) / 0.5);
+
+        node = ply_list_get_first_node (plugin->views);
+        while (node != NULL) {
+                view_t *view = ply_list_node_get_data (node);
+
+                ply_pixel_display_draw_area (view->display,
+                                             view->secure_boot_area.x,
+                                             view->secure_boot_area.y,
+                                             view->secure_boot_area.width,
+                                             view->secure_boot_area.height);
+                node = ply_list_get_next_node (plugin->views, node);
+        }
+
+        if (elapsed < 1.7)
+                ply_event_loop_watch_for_timeout (loop, 1.0 / 30.0,
+                                                  (ply_event_loop_timeout_handler_t) animate_secure_boot_emblem,
+                                                  plugin);
 }
 
 static void
@@ -1554,6 +1589,10 @@ stop_animation (ply_boot_splash_plugin_t *plugin)
 static void
 detach_from_event_loop (ply_boot_splash_plugin_t *plugin)
 {
+        if (plugin->loop != NULL)
+                ply_event_loop_stop_watching_for_timeout (plugin->loop,
+                                                          (ply_event_loop_timeout_handler_t) animate_secure_boot_emblem,
+                                                          plugin);
         plugin->loop = NULL;
 }
 
@@ -1622,7 +1661,10 @@ draw_background (view_t             *view,
                 uint32_t *data;
 
                 data = ply_image_get_data (plugin->secure_boot_image);
-                ply_pixel_buffer_fill_with_argb32_data (pixel_buffer, &view->secure_boot_area, data);
+                ply_pixel_buffer_fill_with_argb32_data_at_opacity (pixel_buffer,
+                                                                   &view->secure_boot_area,
+                                                                   data,
+                                                                   plugin->secure_boot_opacity);
         }
 }
 
@@ -1803,6 +1845,7 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
 
         plugin->loop = loop;
         plugin->mode = mode;
+        plugin->secure_boot_opacity = 0.0;
 
         if (boot_buffer && ply_console_viewer_preferred ()) {
                 plugin->boot_buffer = boot_buffer;
@@ -1915,6 +1958,10 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
         start_progress_animation (plugin);
 
         plugin->is_visible = true;
+        if (mode == PLY_BOOT_SPLASH_MODE_BOOT_UP && plugin->secure_boot_image != NULL) {
+                plugin->secure_boot_start_time = ply_get_timestamp ();
+                animate_secure_boot_emblem (plugin, loop);
+        }
 
         return true;
 }
