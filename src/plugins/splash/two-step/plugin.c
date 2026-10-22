@@ -1248,10 +1248,10 @@ create_plugin (ply_key_file_t *key_file)
         /* Secure boot warning icon alignment */
         plugin->secure_boot_horizontal_alignment =
                 ply_key_file_get_double (key_file, "two-step",
-                                         "SecureBootHorizontalAlignment", 0.05);
+                                         "SecureBootHorizontalAlignment", 0.9833);
         plugin->secure_boot_vertical_alignment =
                 ply_key_file_get_double (key_file, "two-step",
-                                         "SecureBootVerticalAlignment", 0.95);
+                                         "SecureBootVerticalAlignment", 0.97);
 
         /* Password (or other) dialog alignment */
         plugin->dialog_horizontal_alignment =
