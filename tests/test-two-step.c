@@ -23,6 +23,45 @@
 typedef ply_boot_splash_plugin_interface_t *
 (*get_plugin_interface_function_t) (void);
 
+typedef struct
+{
+        const ply_boot_splash_plugin_interface_t *interface;
+        ply_boot_splash_plugin_t                 *plugin;
+        ply_pixel_buffer_t                       *buffer;
+        bool                                      visible_at_start;
+        bool                                      hidden_after_start;
+} emblem_test_t;
+
+static uint32_t
+get_emblem_pixel (emblem_test_t *test)
+{
+        unsigned long width = ply_pixel_buffer_get_width (test->buffer);
+        unsigned long height = ply_pixel_buffer_get_height (test->buffer);
+        unsigned long x = (long) ((width - 40.0) * 0.9833) + 20;
+        unsigned long y = (long) ((height - 40.0) * 0.97) + 20;
+
+        return ply_pixel_buffer_get_argb32_data (test->buffer)[y * width + x] & 0xffffff;
+}
+
+static void
+check_emblem_after_start (emblem_test_t    *test,
+                          ply_event_loop_t *loop)
+{
+        test->hidden_after_start = get_emblem_pixel (test) == 0;
+        test->interface->hide_splash_screen (test->plugin, loop);
+        ply_event_loop_exit (loop, 0);
+}
+
+static void
+check_emblem_at_start (emblem_test_t    *test,
+                       ply_event_loop_t *loop)
+{
+        test->visible_at_start = get_emblem_pixel (test) != 0;
+        ply_event_loop_watch_for_timeout (loop, 1.6,
+                                          (ply_event_loop_timeout_handler_t) check_emblem_after_start,
+                                          test);
+}
+
 static bool
 test_update_mode_starts_with_empty_progress (void)
 {
@@ -38,6 +77,7 @@ test_update_mode_starts_with_empty_progress (void)
         ply_renderer_t *renderer;
         ply_list_node_t *node;
         uint32_t *pixels;
+        emblem_test_t emblem_test = { 0 };
 
         module = ply_open_module (TEST_TWO_STEP_PLUGIN_PATH);
         PLY_TEST_ASSERT (module != NULL);
@@ -76,6 +116,17 @@ test_update_mode_starts_with_empty_progress (void)
                                  loop,
                                  NULL,
                                  PLY_BOOT_SPLASH_MODE_BOOT_UP));
+        emblem_test.interface = interface;
+        emblem_test.plugin = plugin;
+        emblem_test.buffer = ply_renderer_get_buffer_for_head (renderer, head);
+        PLY_TEST_ASSERT (get_emblem_pixel (&emblem_test) == 0);
+        ply_event_loop_watch_for_timeout (loop, 0.35,
+                                          (ply_event_loop_timeout_handler_t) check_emblem_at_start,
+                                          &emblem_test);
+        ply_event_loop_run (loop);
+        PLY_TEST_ASSERT (emblem_test.visible_at_start);
+        PLY_TEST_ASSERT (emblem_test.hidden_after_start);
+
         interface->on_boot_progress (plugin, 1.0, 0.75);
         interface->hide_splash_screen (plugin, loop);
 
