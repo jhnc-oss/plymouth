@@ -151,7 +151,7 @@ make_pixel_value_translucent (uint32_t pixel_value,
         blue = (uint8_t) ((blue + (blue >> 8) + 0x80) >> 8);
         alpha = (uint8_t) ((alpha + (alpha >> 8) + 0x80) >> 8);
 
-        return (alpha << 24) | (red << 16) | (green << 8) | blue;
+        return ((uint32_t) alpha << 24) | (red << 16) | (green << 8) | blue;
 }
 
 static inline void ply_pixel_buffer_set_pixel (ply_pixel_buffer_t *buffer,
