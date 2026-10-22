@@ -15,6 +15,7 @@ spinner_plymouth = i18n.merge_file(
 
 install_data(
   'secure-boot-enabled.png',
+  'secure-boot-disabled.png',
   'bullet.png',
   'entry.png',
   'lock.png',
