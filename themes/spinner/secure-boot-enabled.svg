@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 64 64">
+<!-- Editable source for the two-step Secure Boot emblem. -->
+<path d="M 32,3 C 23,9 14,10 7,11 V 29 C 7,43 17,53 32,60 47,53 57,43 57,29 V 11 C 50,10 41,9 32,3 Z" fill="#29333d" stroke="#89939d" stroke-width="2"/>
+<path d="M 25,31 V 23 C 25,10 43,10 43,23 V 31" fill="none" stroke="#b0b8c0" stroke-width="5" stroke-linecap="round"/>
+<rect x="20" y="29" width="28" height="21" rx="4" fill="#b0b8c0"/>
+<circle cx="34" cy="37" r="3" fill="#29333d"/><path d="M 34,38 V 43" stroke="#29333d" stroke-width="3"/>
+<circle cx="49" cy="48" r="13" fill="#378451" stroke="#111820" stroke-width="2"/><path d="m 42,48 5,5 9,-10" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

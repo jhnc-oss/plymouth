@@ -140,7 +140,9 @@ struct _ply_boot_splash_plugin
         ply_image_t                        *background_bgrt_image;
         ply_image_t                        *background_bgrt_fallback_image;
         ply_image_t                        *watermark_image;
-        ply_image_t                        *secure_boot_warning_image;
+        ply_image_t                        *secure_boot_image;
+        double                              secure_boot_start_time;
+        double                              secure_boot_opacity;
         ply_list_t                         *views;
 
         ply_boot_splash_display_type_t      state;
@@ -632,12 +634,12 @@ view_load (view_t *view)
                            screen_width, screen_height);
         }
 
-        if (plugin->secure_boot_warning_image != NULL) {
-                view->secure_boot_area.width = ply_image_get_width (plugin->secure_boot_warning_image);
-                view->secure_boot_area.height = ply_image_get_height (plugin->secure_boot_warning_image);
-                view->secure_boot_area.x = screen_width * plugin->secure_boot_horizontal_alignment - ply_image_get_width (plugin->secure_boot_warning_image) * plugin->secure_boot_horizontal_alignment;
-                view->secure_boot_area.y = screen_height * plugin->secure_boot_vertical_alignment - ply_image_get_height (plugin->secure_boot_warning_image) * plugin->secure_boot_vertical_alignment;
-                ply_trace ("using %ldx%ld secure_boot_warning_image centered at %ldx%ld for %ldx%ld screen",
+        if (plugin->secure_boot_image != NULL) {
+                view->secure_boot_area.width = ply_image_get_width (plugin->secure_boot_image);
+                view->secure_boot_area.height = ply_image_get_height (plugin->secure_boot_image);
+                view->secure_boot_area.x = screen_width * plugin->secure_boot_horizontal_alignment - ply_image_get_width (plugin->secure_boot_image) * plugin->secure_boot_horizontal_alignment;
+                view->secure_boot_area.y = screen_height * plugin->secure_boot_vertical_alignment - ply_image_get_height (plugin->secure_boot_image) * plugin->secure_boot_vertical_alignment;
+                ply_trace ("using %ldx%ld secure_boot_image centered at %ldx%ld for %ldx%ld screen",
                            view->secure_boot_area.width, view->secure_boot_area.height,
                            view->secure_boot_area.x, view->secure_boot_area.y,
                            screen_width, screen_height);
@@ -745,6 +747,41 @@ view_redraw (view_t *view)
 
         ply_pixel_display_draw_area (view->display, 0, 0,
                                      screen_width, screen_height);
+}
+
+/* Briefly identify the firmware security state at startup. Prompt rendering
+ * overrides this opacity so that the emblem stays visible during passwords.
+ */
+static void
+animate_secure_boot_emblem (ply_boot_splash_plugin_t *plugin,
+                            ply_event_loop_t         *loop)
+{
+        ply_list_node_t *node;
+        double elapsed = ply_get_timestamp () - plugin->secure_boot_start_time;
+
+        if (elapsed < 0.2)
+                plugin->secure_boot_opacity = MAX (0.0, elapsed / 0.2);
+        else if (elapsed < 1.2)
+                plugin->secure_boot_opacity = 1.0;
+        else
+                plugin->secure_boot_opacity = MAX (0.0, 1.0 - (elapsed - 1.2) / 0.5);
+
+        node = ply_list_get_first_node (plugin->views);
+        while (node != NULL) {
+                view_t *view = ply_list_node_get_data (node);
+
+                ply_pixel_display_draw_area (view->display,
+                                             view->secure_boot_area.x,
+                                             view->secure_boot_area.y,
+                                             view->secure_boot_area.width,
+                                             view->secure_boot_area.height);
+                node = ply_list_get_next_node (plugin->views, node);
+        }
+
+        if (elapsed < 1.7)
+                ply_event_loop_watch_for_timeout (loop, 1.0 / 30.0,
+                                                  (ply_event_loop_timeout_handler_t) animate_secure_boot_emblem,
+                                                  plugin);
 }
 
 static void
@@ -1163,10 +1200,15 @@ create_plugin (ply_key_file_t *key_file)
         plugin->background_image_is_scaled =
                 ply_key_file_get_bool (key_file, "two-step", "ScaleBackgroundImage");
 
-        if (!ply_kernel_command_line_has_argument ("secure_boot.warn_if_disabled=false") &&
-            !ply_is_secure_boot_enabled ()) {
-                asprintf (&image_path, "%s/emblem-warning.png", image_dir);
-                plugin->secure_boot_warning_image = ply_image_new (image_path);
+        if (ply_is_secure_boot_enabled ())
+                asprintf (&image_path, "%s/secure-boot-enabled.png", image_dir);
+        else if (!ply_kernel_command_line_has_argument ("secure_boot.warn_if_disabled=false"))
+                asprintf (&image_path, "%s/secure-boot-disabled.png", image_dir);
+        else
+                image_path = NULL;
+
+        if (image_path != NULL) {
+                plugin->secure_boot_image = ply_image_new (image_path);
                 free (image_path);
         }
 
@@ -1206,10 +1248,10 @@ create_plugin (ply_key_file_t *key_file)
         /* Secure boot warning icon alignment */
         plugin->secure_boot_horizontal_alignment =
                 ply_key_file_get_double (key_file, "two-step",
-                                         "SecureBootHorizontalAlignment", 0.05);
+                                         "SecureBootHorizontalAlignment", 0.9833);
         plugin->secure_boot_vertical_alignment =
                 ply_key_file_get_double (key_file, "two-step",
-                                         "SecureBootVerticalAlignment", 0.95);
+                                         "SecureBootVerticalAlignment", 0.97);
 
         /* Password (or other) dialog alignment */
         plugin->dialog_horizontal_alignment =
@@ -1411,6 +1453,9 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
         if (plugin->watermark_image != NULL)
                 ply_image_free (plugin->watermark_image);
 
+        if (plugin->secure_boot_image != NULL)
+                ply_image_free (plugin->secure_boot_image);
+
         for (i = 0; i < PLY_BOOT_SPLASH_MODE_COUNT; i++) {
                 free (plugin->mode_settings[i].title);
                 free (plugin->mode_settings[i].subtitle);
@@ -1546,6 +1591,10 @@ stop_animation (ply_boot_splash_plugin_t *plugin)
 static void
 detach_from_event_loop (ply_boot_splash_plugin_t *plugin)
 {
+        if (plugin->loop != NULL)
+                ply_event_loop_stop_watching_for_timeout (plugin->loop,
+                                                          (ply_event_loop_timeout_handler_t) animate_secure_boot_emblem,
+                                                          plugin);
         plugin->loop = NULL;
 }
 
@@ -1610,11 +1659,15 @@ draw_background (view_t             *view,
                 ply_pixel_buffer_fill_with_argb32_data (pixel_buffer, &view->watermark_area, data);
         }
 
-        if (plugin->secure_boot_warning_image != NULL) {
+        if (plugin->secure_boot_image != NULL) {
                 uint32_t *data;
 
-                data = ply_image_get_data (plugin->secure_boot_warning_image);
-                ply_pixel_buffer_fill_with_argb32_data (pixel_buffer, &view->secure_boot_area, data);
+                data = ply_image_get_data (plugin->secure_boot_image);
+                ply_pixel_buffer_fill_with_argb32_data_at_opacity (pixel_buffer,
+                                                                   &view->secure_boot_area,
+                                                                   data,
+                                                                   plugin->state == PLY_BOOT_SPLASH_DISPLAY_PASSWORD_ENTRY ?
+                                                                   1.0 : plugin->secure_boot_opacity);
         }
 }
 
@@ -1795,6 +1848,7 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
 
         plugin->loop = loop;
         plugin->mode = mode;
+        plugin->secure_boot_opacity = 0.0;
 
         if (boot_buffer && ply_console_viewer_preferred ()) {
                 plugin->boot_buffer = boot_buffer;
@@ -1880,11 +1934,11 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                 }
         }
 
-        if (plugin->secure_boot_warning_image != NULL) {
-                ply_trace ("loading secure boot warning image");
-                if (!ply_image_load (plugin->secure_boot_warning_image)) {
-                        ply_image_free (plugin->secure_boot_warning_image);
-                        plugin->secure_boot_warning_image = NULL;
+        if (plugin->secure_boot_image != NULL) {
+                ply_trace ("loading secure boot emblem");
+                if (!ply_image_load (plugin->secure_boot_image)) {
+                        ply_image_free (plugin->secure_boot_image);
+                        plugin->secure_boot_image = NULL;
                 }
         }
 
@@ -1907,6 +1961,10 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
         start_progress_animation (plugin);
 
         plugin->is_visible = true;
+        if (mode == PLY_BOOT_SPLASH_MODE_BOOT_UP && plugin->secure_boot_image != NULL) {
+                plugin->secure_boot_start_time = ply_get_timestamp ();
+                animate_secure_boot_emblem (plugin, loop);
+        }
 
         return true;
 }
