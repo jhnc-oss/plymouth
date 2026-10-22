@@ -1411,6 +1411,9 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
         if (plugin->watermark_image != NULL)
                 ply_image_free (plugin->watermark_image);
 
+        if (plugin->secure_boot_warning_image != NULL)
+                ply_image_free (plugin->secure_boot_warning_image);
+
         for (i = 0; i < PLY_BOOT_SPLASH_MODE_COUNT; i++) {
                 free (plugin->mode_settings[i].title);
                 free (plugin->mode_settings[i].subtitle);
