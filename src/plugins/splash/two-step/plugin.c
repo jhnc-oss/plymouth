@@ -1163,9 +1163,14 @@ create_plugin (ply_key_file_t *key_file)
         plugin->background_image_is_scaled =
                 ply_key_file_get_bool (key_file, "two-step", "ScaleBackgroundImage");
 
-        if (!ply_kernel_command_line_has_argument ("secure_boot.warn_if_disabled=false") &&
-            !ply_is_secure_boot_enabled ()) {
-                asprintf (&image_path, "%s/emblem-warning.png", image_dir);
+        if (ply_is_secure_boot_enabled ())
+                asprintf (&image_path, "%s/secure-boot-enabled.png", image_dir);
+        else if (!ply_kernel_command_line_has_argument ("secure_boot.warn_if_disabled=false"))
+                asprintf (&image_path, "%s/secure-boot-disabled.png", image_dir);
+        else
+                image_path = NULL;
+
+        if (image_path != NULL) {
                 plugin->secure_boot_image = ply_image_new (image_path);
                 free (image_path);
         }
@@ -1884,7 +1889,7 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
         }
 
         if (plugin->secure_boot_image != NULL) {
-                ply_trace ("loading secure boot warning image");
+                ply_trace ("loading secure boot emblem");
                 if (!ply_image_load (plugin->secure_boot_image)) {
                         ply_image_free (plugin->secure_boot_image);
                         plugin->secure_boot_image = NULL;
