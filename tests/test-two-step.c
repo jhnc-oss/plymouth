@@ -30,6 +30,8 @@ typedef struct
         ply_pixel_buffer_t                       *buffer;
         bool                                      visible_at_start;
         bool                                      hidden_after_start;
+        bool                                      visible_during_password;
+        bool                                      hidden_after_password;
 } emblem_test_t;
 
 static uint32_t
@@ -48,6 +50,10 @@ check_emblem_after_start (emblem_test_t    *test,
                           ply_event_loop_t *loop)
 {
         test->hidden_after_start = get_emblem_pixel (test) == 0;
+        test->interface->display_password (test->plugin, "Password:", 0);
+        test->visible_during_password = get_emblem_pixel (test) != 0;
+        test->interface->display_normal (test->plugin);
+        test->hidden_after_password = get_emblem_pixel (test) == 0;
         test->interface->hide_splash_screen (test->plugin, loop);
         ply_event_loop_exit (loop, 0);
 }
@@ -126,6 +132,8 @@ test_update_mode_starts_with_empty_progress (void)
         ply_event_loop_run (loop);
         PLY_TEST_ASSERT (emblem_test.visible_at_start);
         PLY_TEST_ASSERT (emblem_test.hidden_after_start);
+        PLY_TEST_ASSERT (emblem_test.visible_during_password);
+        PLY_TEST_ASSERT (emblem_test.hidden_after_password);
 
         interface->on_boot_progress (plugin, 1.0, 0.75);
         interface->hide_splash_screen (plugin, loop);
