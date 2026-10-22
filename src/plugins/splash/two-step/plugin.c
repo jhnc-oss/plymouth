@@ -140,7 +140,7 @@ struct _ply_boot_splash_plugin
         ply_image_t                        *background_bgrt_image;
         ply_image_t                        *background_bgrt_fallback_image;
         ply_image_t                        *watermark_image;
-        ply_image_t                        *secure_boot_warning_image;
+        ply_image_t                        *secure_boot_image;
         ply_list_t                         *views;
 
         ply_boot_splash_display_type_t      state;
@@ -632,12 +632,12 @@ view_load (view_t *view)
                            screen_width, screen_height);
         }
 
-        if (plugin->secure_boot_warning_image != NULL) {
-                view->secure_boot_area.width = ply_image_get_width (plugin->secure_boot_warning_image);
-                view->secure_boot_area.height = ply_image_get_height (plugin->secure_boot_warning_image);
-                view->secure_boot_area.x = screen_width * plugin->secure_boot_horizontal_alignment - ply_image_get_width (plugin->secure_boot_warning_image) * plugin->secure_boot_horizontal_alignment;
-                view->secure_boot_area.y = screen_height * plugin->secure_boot_vertical_alignment - ply_image_get_height (plugin->secure_boot_warning_image) * plugin->secure_boot_vertical_alignment;
-                ply_trace ("using %ldx%ld secure_boot_warning_image centered at %ldx%ld for %ldx%ld screen",
+        if (plugin->secure_boot_image != NULL) {
+                view->secure_boot_area.width = ply_image_get_width (plugin->secure_boot_image);
+                view->secure_boot_area.height = ply_image_get_height (plugin->secure_boot_image);
+                view->secure_boot_area.x = screen_width * plugin->secure_boot_horizontal_alignment - ply_image_get_width (plugin->secure_boot_image) * plugin->secure_boot_horizontal_alignment;
+                view->secure_boot_area.y = screen_height * plugin->secure_boot_vertical_alignment - ply_image_get_height (plugin->secure_boot_image) * plugin->secure_boot_vertical_alignment;
+                ply_trace ("using %ldx%ld secure_boot_image centered at %ldx%ld for %ldx%ld screen",
                            view->secure_boot_area.width, view->secure_boot_area.height,
                            view->secure_boot_area.x, view->secure_boot_area.y,
                            screen_width, screen_height);
@@ -1166,7 +1166,7 @@ create_plugin (ply_key_file_t *key_file)
         if (!ply_kernel_command_line_has_argument ("secure_boot.warn_if_disabled=false") &&
             !ply_is_secure_boot_enabled ()) {
                 asprintf (&image_path, "%s/emblem-warning.png", image_dir);
-                plugin->secure_boot_warning_image = ply_image_new (image_path);
+                plugin->secure_boot_image = ply_image_new (image_path);
                 free (image_path);
         }
 
@@ -1411,8 +1411,8 @@ destroy_plugin (ply_boot_splash_plugin_t *plugin)
         if (plugin->watermark_image != NULL)
                 ply_image_free (plugin->watermark_image);
 
-        if (plugin->secure_boot_warning_image != NULL)
-                ply_image_free (plugin->secure_boot_warning_image);
+        if (plugin->secure_boot_image != NULL)
+                ply_image_free (plugin->secure_boot_image);
 
         for (i = 0; i < PLY_BOOT_SPLASH_MODE_COUNT; i++) {
                 free (plugin->mode_settings[i].title);
@@ -1613,10 +1613,10 @@ draw_background (view_t             *view,
                 ply_pixel_buffer_fill_with_argb32_data (pixel_buffer, &view->watermark_area, data);
         }
 
-        if (plugin->secure_boot_warning_image != NULL) {
+        if (plugin->secure_boot_image != NULL) {
                 uint32_t *data;
 
-                data = ply_image_get_data (plugin->secure_boot_warning_image);
+                data = ply_image_get_data (plugin->secure_boot_image);
                 ply_pixel_buffer_fill_with_argb32_data (pixel_buffer, &view->secure_boot_area, data);
         }
 }
@@ -1883,11 +1883,11 @@ show_splash_screen (ply_boot_splash_plugin_t *plugin,
                 }
         }
 
-        if (plugin->secure_boot_warning_image != NULL) {
+        if (plugin->secure_boot_image != NULL) {
                 ply_trace ("loading secure boot warning image");
-                if (!ply_image_load (plugin->secure_boot_warning_image)) {
-                        ply_image_free (plugin->secure_boot_warning_image);
-                        plugin->secure_boot_warning_image = NULL;
+                if (!ply_image_load (plugin->secure_boot_image)) {
+                        ply_image_free (plugin->secure_boot_image);
+                        plugin->secure_boot_image = NULL;
                 }
         }
 
