@@ -342,10 +342,48 @@ trigger_redraw (ply_label_plugin_control_t *label,
                                      dirty_area.width, dirty_area.height);
 }
 
+static size_t
+pixel_index (ply_pixel_buffer_rotation_t rotation,
+             unsigned long               phys_width,
+             unsigned long               phys_height,
+             FT_Int                      x,
+             FT_Int                      y)
+{
+        unsigned long max_phys_x = phys_width - 1;
+        unsigned long max_phys_y = phys_height - 1;
+        unsigned long phys_x, phys_y;
+
+        /* rotation is the correction required, not the screen orientation */
+        switch (rotation) {
+        default:
+        case PLY_PIXEL_BUFFER_ROTATE_UPRIGHT:
+                phys_x = x;
+                phys_y = y;
+                break;
+        case PLY_PIXEL_BUFFER_ROTATE_UPSIDE_DOWN:
+                phys_x = max_phys_x - x;
+                phys_y = max_phys_y - y;
+                break;
+        case PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE:
+                /* Screen is left side up (rotated clockwise) */
+                phys_x = y;
+                phys_y = max_phys_y - x;
+                break;
+        case PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE:
+                /* Screen is right side up (rotated counter-clockwise) */
+                phys_x = max_phys_x - y;
+                phys_y = x;
+                break;
+        }
+
+        return phys_y * phys_width + phys_x;
+}
+
 static void
 draw_bitmap (ply_label_plugin_control_t *label,
              uint32_t                   *target,
              ply_rectangle_t             target_size,
+             ply_pixel_buffer_rotation_t rotation,
              FT_Bitmap                  *source,
              FT_Int                      x_start,
              FT_Int                      y_start,
@@ -356,10 +394,20 @@ draw_bitmap (ply_label_plugin_control_t *label,
         FT_Int x, y, xs, ys;
         FT_Int x_end = MIN (x_start + source->width, target_size.width);
         FT_Int y_end = MIN (y_start + source->rows, target_size.height);
+        unsigned long phys_width, phys_height;
 
         if ((uint32_t) x_start >= target_size.width ||
             (uint32_t) y_start >= target_size.height)
                 return;
+
+        if (rotation == PLY_PIXEL_BUFFER_ROTATE_CLOCKWISE ||
+            rotation == PLY_PIXEL_BUFFER_ROTATE_COUNTER_CLOCKWISE) {
+                phys_width = target_size.height;
+                phys_height = target_size.width;
+        } else {
+                phys_width = target_size.width;
+                phys_height = target_size.height;
+        }
 
         uint8_t rd, gd, bd, ad;
 
@@ -368,7 +416,12 @@ draw_bitmap (ply_label_plugin_control_t *label,
                         float alpha = label->alpha *
                                       (source->buffer[xs + source->pitch * ys] / 255.0f);
                         float invalpha = 1.0f - alpha;
-                        uint32_t dest = target[x + target_size.width * y];
+                        size_t index = pixel_index (rotation,
+                                                    phys_width,
+                                                    phys_height,
+                                                    x,
+                                                    y);
+                        uint32_t dest = target[index];
 
                         /* Separate colors */
                         rd = dest >> 16;
@@ -382,7 +435,7 @@ draw_bitmap (ply_label_plugin_control_t *label,
                         /* Semi-correct: Disregard the target alpha */
                         ad = alpha * 255;
 
-                        target[x + target_size.width * y] =
+                        target[index] =
                                 (ad << 24) | (rd << 16) | (gd << 8) | bd;
                 }
         }
@@ -472,7 +525,6 @@ finish_measuring_line (ply_label_plugin_control_t *label,
                        ply_rectangle_t            *dimensions,
                        FT_Face                     face)
 {
-
         ply_freetype_unit_t line_height;
         ply_rectangle_t *entry;
 
@@ -536,6 +588,7 @@ load_glyphs (ply_label_plugin_control_t *label,
         ply_utf8_string_iterator_t utf8_string_iterator;
         uint32_t *target = NULL;
         ply_rectangle_t target_size;
+        ply_pixel_buffer_rotation_t rotation = PLY_PIXEL_BUFFER_ROTATE_UPRIGHT;
         ply_freetype_unit_t glyph_x = { .as_pixels_unit = { .pixels = label->area.x * label->scale_factor } };
         ply_freetype_unit_t glyph_y = { .as_pixels_unit = { .pixels = label->area.y * label->scale_factor } };
         FT_Error error;
@@ -592,6 +645,7 @@ load_glyphs (ply_label_plugin_control_t *label,
 
                 target_size.width *= label->scale_factor;
                 target_size.height *= label->scale_factor;
+                rotation = ply_pixel_buffer_get_device_rotation (pixel_buffer);
         }
 
         /* Go through each line */
@@ -676,7 +730,7 @@ load_glyphs (ply_label_plugin_control_t *label,
                         positive_bearing_x = glyph->bitmap_left;
 
                 if (action == PLY_LOAD_GLYPH_ACTION_RENDER) {
-                        draw_bitmap (label, target, target_size, &glyph->bitmap,
+                        draw_bitmap (label, target, target_size, rotation, &glyph->bitmap,
                                      glyph_x.as_pixels_unit.pixels + positive_bearing_x,
                                      glyph_y.as_pixels_unit.pixels - glyph->bitmap_top,
                                      red,
